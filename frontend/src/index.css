@@ -1,75 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Manrope:wght@300;400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-    margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
-}
-
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
+        --background: 60 14% 97%;
+        --foreground: 120 21% 17%;
         --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
+        --card-foreground: 120 21% 17%;
         --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
+        --popover-foreground: 120 21% 17%;
+        --primary: 13 42% 57%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 90 19% 90%;
+        --secondary-foreground: 120 21% 17%;
+        --muted: 50 12% 93%;
+        --muted-foreground: 105 9% 49%;
+        --accent: 18 72% 85%;
+        --accent-foreground: 120 21% 17%;
+        --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
+        --border: 80 10% 89%;
+        --input: 80 10% 89%;
+        --ring: 120 21% 17%;
+        --radius: 0rem;
     }
 }
 
@@ -79,37 +35,150 @@ code {
     }
     body {
         @apply bg-background text-foreground;
+        font-family: 'Manrope', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Cormorant Garamond', serif;
     }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
+.font-heading {
+    font-family: 'Cormorant Garamond', serif;
+}
 
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
+.font-body {
+    font-family: 'Manrope', sans-serif;
+}
+
+.font-accent {
+    font-family: 'Caveat', cursive;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #F0F0EA;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #C07A65;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a86856;
+}
+
+/* Product image zoom effect */
+.product-image-wrapper {
+    overflow: hidden;
+}
+
+.product-image-wrapper img {
+    transition: transform 0.5s ease-in-out;
+}
+
+.product-image-wrapper:hover img {
+    transform: scale(1.05);
+}
+
+/* Hero text shadow */
+.hero-text-shadow {
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Button hover effects */
+.btn-primary {
+    @apply bg-[#C07A65] text-white px-8 py-4 transition-all duration-300;
+}
+
+.btn-primary:hover {
+    @apply bg-[#a86856];
+}
+
+.btn-outline {
+    @apply border border-[#233520] text-[#233520] px-8 py-4 transition-all duration-300;
+}
+
+.btn-outline:hover {
+    @apply bg-[#233520] text-white;
+}
+
+/* Animation classes */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-300 { animation-delay: 300ms; }
+.animation-delay-400 { animation-delay: 400ms; }
+
+/* Sale badge */
+.sale-badge {
+    @apply absolute top-4 left-4 bg-[#C07A65] text-white text-xs font-medium px-3 py-1 uppercase tracking-wider;
+}
+
+/* Card styles */
+.product-card {
+    @apply bg-white border border-[#E3E5DF] transition-all duration-300;
+}
+
+.product-card:hover {
+    @apply shadow-lg;
+}
+
+/* Navigation styles */
+.nav-link {
+    @apply text-[#233520] hover:text-[#C07A65] transition-colors duration-300;
+}
+
+.nav-link-active {
+    @apply text-[#C07A65];
+}
+
+/* Calendar customization */
+.rdp {
+    --rdp-cell-size: 40px;
+    --rdp-accent-color: #C07A65;
+    --rdp-background-color: #F2CFC0;
+}
+
+.rdp-day_selected:not([disabled]) {
+    background-color: #C07A65;
+    color: white;
+}
+
+.rdp-day_selected:hover:not([disabled]) {
+    background-color: #a86856;
+}
+
+/* Loading spinner */
+.spinner {
+    border: 3px solid #E3E5DF;
+    border-top: 3px solid #C07A65;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
