@@ -8,10 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, addDays, isBefore, startOfToday } from "date-fns";
-import { CalendarIcon, Truck, Gift, ShieldCheck } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { format } from "date-fns";
+import { Truck, Gift, ShieldCheck, Package, Check } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -20,7 +19,14 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const { cart, sessionId, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState(addDays(new Date(), 2));
+  const [deliveryOptions, setDeliveryOptions] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [boxPersonalization, setBoxPersonalization] = useState({
+    box_color: null,
+    ribbon_color: null,
+    box_message: ""
+  });
+  const [showBoxCustomization, setShowBoxCustomization] = useState(false);
   const [formData, setFormData] = useState({
     recipient_name: "",
     recipient_phone: "",
@@ -35,14 +41,25 @@ export default function CheckoutPage() {
     if (cart.items.length === 0) {
       navigate("/cart");
     }
+    fetchDeliveryOptions();
   }, [cart.items, navigate]);
+
+  const fetchDeliveryOptions = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/delivery/options`);
+      setDeliveryOptions(response.data);
+      // Auto-select first available date
+      if (response.data.available_dates.length > 0) {
+        setSelectedDate(response.data.available_dates[0]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch delivery options:", error);
+      toast.error("Failed to load delivery options");
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const isDateDisabled = (date) => {
-    return isBefore(date, addDays(startOfToday(), 1));
   };
 
   const handleSubmit = async (e) => {
@@ -54,11 +71,25 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!selectedDate) {
+      toast.error("Please select a delivery date");
+      return;
+    }
+
     setLoading(true);
     try {
+      // Prepare box personalization if customized
+      const boxData = showBoxCustomization && (boxPersonalization.box_color || boxPersonalization.ribbon_color || boxPersonalization.box_message) 
+        ? {
+            box_color: boxPersonalization.box_color,
+            ribbon_color: boxPersonalization.ribbon_color,
+            box_message: boxPersonalization.box_message
+          }
+        : null;
+
       // Create order
       const orderResponse = await axios.post(`${API_URL}/api/orders`, {
-        delivery_date: format(deliveryDate, "yyyy-MM-dd"),
+        delivery_date: selectedDate.date,
         delivery_address: {
           line1: formData.address_line1,
           line2: formData.address_line2,
@@ -67,7 +98,8 @@ export default function CheckoutPage() {
         },
         gift_message: formData.gift_message,
         recipient_name: formData.recipient_name,
-        recipient_phone: formData.recipient_phone
+        recipient_phone: formData.recipient_phone,
+        box_personalization: boxData
       }, { params: { session_id: sessionId } });
 
       const order = orderResponse.data;
@@ -87,8 +119,23 @@ export default function CheckoutPage() {
     }
   };
 
-  const deliveryFee = cart.subtotal >= 50 ? 0 : 5.99;
+  // Calculate totals
+  const getDeliveryFee = () => {
+    if (!selectedDate) return 5.99;
+    if (cart.subtotal >= (deliveryOptions?.delivery_fees?.free_threshold || 50)) return 0;
+    return selectedDate.delivery_fee;
+  };
+
+  const deliveryFee = getDeliveryFee();
   const total = cart.subtotal + deliveryFee;
+
+  if (!deliveryOptions) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8 md:py-12 bg-[#FAFAF7]" data-testid="checkout-page">
@@ -101,37 +148,164 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             {/* Form */}
             <div className="lg:col-span-2 space-y-8">
-              {/* Delivery Date */}
+              {/* Delivery Date Selection */}
               <div className="bg-white p-6 md:p-8 border border-[#E3E5DF]" data-testid="delivery-date-section">
-                <h2 className="font-heading text-xl text-[#233520] mb-6 flex items-center gap-2">
+                <h2 className="font-heading text-xl text-[#233520] mb-2 flex items-center gap-2">
                   <Truck size={20} className="text-[#C07A65]" />
-                  Delivery Date
+                  Select Delivery Date
                 </h2>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-body border-[#E3E5DF]"
-                      data-testid="delivery-date-trigger"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4 text-[#C07A65]" />
-                      {format(deliveryDate, "EEEE, MMMM d, yyyy")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-white" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={deliveryDate}
-                      onSelect={(date) => date && setDeliveryDate(date)}
-                      disabled={isDateDisabled}
-                      initialFocus
-                      data-testid="delivery-calendar"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <p className="font-body text-sm text-[#788275] mt-2">
-                  Select your preferred delivery date (next day delivery available)
+                <p className="font-body text-sm text-[#788275] mb-6">
+                  Choose from available dates (minimum 2 days from today, no Sunday delivery)
                 </p>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" data-testid="delivery-dates-grid">
+                  {deliveryOptions.available_dates.slice(0, 8).map((dateOption) => (
+                    <button
+                      key={dateOption.date}
+                      type="button"
+                      onClick={() => setSelectedDate(dateOption)}
+                      className={`p-3 border text-left transition-all ${
+                        selectedDate?.date === dateOption.date
+                          ? "border-[#C07A65] bg-[#F2CFC0]/20"
+                          : "border-[#E3E5DF] hover:border-[#788275]"
+                      }`}
+                      data-testid={`delivery-date-${dateOption.date}`}
+                    >
+                      <p className="font-body text-sm font-semibold text-[#233520]">
+                        {dateOption.day_name}
+                      </p>
+                      <p className="font-body text-xs text-[#788275]">
+                        {format(new Date(dateOption.date), "MMM d")}
+                      </p>
+                      <p className={`font-body text-xs mt-1 ${dateOption.is_saturday ? "text-[#C07A65] font-semibold" : "text-[#788275]"}`}>
+                        {cart.subtotal >= deliveryOptions.delivery_fees.free_threshold 
+                          ? "Free" 
+                          : `£${dateOption.delivery_fee.toFixed(2)}`}
+                      </p>
+                      {dateOption.is_saturday && (
+                        <span className="inline-block mt-1 bg-[#C07A65] text-white text-[10px] px-1.5 py-0.5">
+                          SAT
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                
+                {selectedDate?.is_saturday && cart.subtotal < deliveryOptions.delivery_fees.free_threshold && (
+                  <p className="mt-4 font-body text-sm text-[#C07A65] bg-[#F2CFC0]/30 p-3">
+                    Saturday delivery has a premium fee of £{SATURDAY_DELIVERY_FEE || 8.99}. 
+                    Spend £{(deliveryOptions.delivery_fees.free_threshold - cart.subtotal).toFixed(2)} more for free delivery!
+                  </p>
+                )}
+              </div>
+
+              {/* Box Personalization */}
+              <div className="bg-white p-6 md:p-8 border border-[#E3E5DF]" data-testid="box-personalization-section">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-heading text-xl text-[#233520] flex items-center gap-2">
+                    <Package size={20} className="text-[#C07A65]" />
+                    Personalize Your Box
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setShowBoxCustomization(!showBoxCustomization)}
+                    className="font-body text-sm text-[#C07A65] hover:text-[#a86856]"
+                    data-testid="toggle-box-customization"
+                  >
+                    {showBoxCustomization ? "Skip Customization" : "Customize Box"}
+                  </button>
+                </div>
+                
+                {!showBoxCustomization ? (
+                  <p className="font-body text-sm text-[#788275]">
+                    Your flowers will arrive in our classic white presentation box. Click "Customize Box" to personalize it!
+                  </p>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Box Color */}
+                    <div>
+                      <Label className="font-body text-[#233520] mb-3 block">Box Color</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {deliveryOptions.box_personalization.box_colors.map((color) => (
+                          <button
+                            key={color.id}
+                            type="button"
+                            onClick={() => setBoxPersonalization({ ...boxPersonalization, box_color: color.id })}
+                            className={`relative w-12 h-12 rounded-full border-2 transition-all ${
+                              boxPersonalization.box_color === color.id
+                                ? "border-[#C07A65] ring-2 ring-[#C07A65] ring-offset-2"
+                                : "border-[#E3E5DF] hover:border-[#788275]"
+                            }`}
+                            style={{ backgroundColor: color.hex }}
+                            title={color.name}
+                            data-testid={`box-color-${color.id}`}
+                          >
+                            {boxPersonalization.box_color === color.id && (
+                              <Check size={16} className="absolute inset-0 m-auto text-[#233520]" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      {boxPersonalization.box_color && (
+                        <p className="font-body text-xs text-[#788275] mt-2">
+                          Selected: {deliveryOptions.box_personalization.box_colors.find(c => c.id === boxPersonalization.box_color)?.name}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Ribbon Color */}
+                    <div>
+                      <Label className="font-body text-[#233520] mb-3 block">Ribbon Color</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {deliveryOptions.box_personalization.ribbon_colors.map((color) => (
+                          <button
+                            key={color.id}
+                            type="button"
+                            onClick={() => setBoxPersonalization({ ...boxPersonalization, ribbon_color: color.id })}
+                            className={`relative w-12 h-12 rounded-full border-2 transition-all ${
+                              boxPersonalization.ribbon_color === color.id
+                                ? "border-[#C07A65] ring-2 ring-[#C07A65] ring-offset-2"
+                                : "border-[#E3E5DF] hover:border-[#788275]"
+                            }`}
+                            style={{ backgroundColor: color.hex }}
+                            title={color.name}
+                            data-testid={`ribbon-color-${color.id}`}
+                          >
+                            {boxPersonalization.ribbon_color === color.id && (
+                              <Check size={16} className={`absolute inset-0 m-auto ${color.hex === '#FFFFFF' || color.hex === '#FFFFF0' || color.hex === '#C0C0C0' ? 'text-[#233520]' : 'text-white'}`} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      {boxPersonalization.ribbon_color && (
+                        <p className="font-body text-xs text-[#788275] mt-2">
+                          Selected: {deliveryOptions.box_personalization.ribbon_colors.find(c => c.id === boxPersonalization.ribbon_color)?.name}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Box Message */}
+                    <div>
+                      <Label className="font-body text-[#233520] mb-2 block">
+                        Message on Box (max {deliveryOptions.box_personalization.max_box_message_length} characters)
+                      </Label>
+                      <Input
+                        value={boxPersonalization.box_message}
+                        onChange={(e) => {
+                          if (e.target.value.length <= deliveryOptions.box_personalization.max_box_message_length) {
+                            setBoxPersonalization({ ...boxPersonalization, box_message: e.target.value });
+                          }
+                        }}
+                        className="border-[#E3E5DF] focus:border-[#C07A65]"
+                        placeholder="e.g., Happy Birthday!"
+                        data-testid="box-message-input"
+                      />
+                      <p className="font-body text-xs text-[#788275] mt-1">
+                        {boxPersonalization.box_message.length}/{deliveryOptions.box_personalization.max_box_message_length} characters
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Recipient Details */}
@@ -235,6 +409,9 @@ export default function CheckoutPage() {
                   placeholder="Add a personal message to include with your flowers..."
                   data-testid="checkout-gift-message"
                 />
+                <p className="font-body text-xs text-[#788275] mt-2">
+                  This message will be printed on a card inside the box
+                </p>
               </div>
             </div>
 
@@ -259,6 +436,41 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
+                {/* Delivery Date */}
+                {selectedDate && (
+                  <div className="bg-[#E8ECE1] p-3 mb-4">
+                    <p className="font-body text-xs text-[#788275]">Delivery Date</p>
+                    <p className="font-body text-sm font-semibold text-[#233520]">
+                      {selectedDate.day_name}, {format(new Date(selectedDate.date), "MMMM d, yyyy")}
+                    </p>
+                    {selectedDate.is_saturday && (
+                      <p className="font-body text-xs text-[#C07A65]">Saturday Premium Delivery</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Box Customization Summary */}
+                {showBoxCustomization && (boxPersonalization.box_color || boxPersonalization.ribbon_color || boxPersonalization.box_message) && (
+                  <div className="bg-[#F2CFC0]/20 p-3 mb-4">
+                    <p className="font-body text-xs text-[#788275] mb-1">Box Personalization</p>
+                    {boxPersonalization.box_color && (
+                      <p className="font-body text-xs text-[#233520]">
+                        Box: {deliveryOptions.box_personalization.box_colors.find(c => c.id === boxPersonalization.box_color)?.name}
+                      </p>
+                    )}
+                    {boxPersonalization.ribbon_color && (
+                      <p className="font-body text-xs text-[#233520]">
+                        Ribbon: {deliveryOptions.box_personalization.ribbon_colors.find(c => c.id === boxPersonalization.ribbon_color)?.name}
+                      </p>
+                    )}
+                    {boxPersonalization.box_message && (
+                      <p className="font-body text-xs text-[#233520]">
+                        Message: "{boxPersonalization.box_message}"
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Totals */}
                 <div className="border-t border-[#E3E5DF] pt-4 space-y-3 mb-6">
                   <div className="flex justify-between font-body text-[#233520]">
@@ -266,9 +478,21 @@ export default function CheckoutPage() {
                     <span>£{cart.subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-body text-[#233520]">
-                    <span>Delivery</span>
-                    <span>{deliveryFee === 0 ? "Free" : `£${deliveryFee.toFixed(2)}`}</span>
+                    <span>
+                      Delivery
+                      {selectedDate?.is_saturday && deliveryFee > 0 && (
+                        <span className="text-xs text-[#C07A65] ml-1">(Saturday)</span>
+                      )}
+                    </span>
+                    <span className={deliveryFee === 0 ? "text-green-600" : ""}>
+                      {deliveryFee === 0 ? "Free" : `£${deliveryFee.toFixed(2)}`}
+                    </span>
                   </div>
+                  {deliveryFee > 0 && cart.subtotal < (deliveryOptions?.delivery_fees?.free_threshold || 50) && (
+                    <p className="font-body text-xs text-[#788275]">
+                      Free delivery on orders over £{deliveryOptions?.delivery_fees?.free_threshold || 50}
+                    </p>
+                  )}
                 </div>
 
                 <div className="border-t border-[#E3E5DF] pt-4 mb-6">
@@ -280,7 +504,7 @@ export default function CheckoutPage() {
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !selectedDate}
                   className="w-full bg-[#C07A65] hover:bg-[#a86856] text-white py-6 text-base font-body"
                   data-testid="place-order-button"
                 >

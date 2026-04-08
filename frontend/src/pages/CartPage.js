@@ -45,6 +45,7 @@ export default function CartPage() {
   };
 
   const deliveryFee = cart.subtotal >= 50 ? 0 : 5.99;
+  const saturdayDeliveryFee = 8.99;
   const total = cart.subtotal + deliveryFee;
 
   if (cart.items.length === 0) {
@@ -171,15 +172,20 @@ export default function CartPage() {
                   <span data-testid="subtotal">£{cart.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-body text-[#233520]">
-                  <span>Delivery</span>
+                  <span>Delivery (Standard)</span>
                   <span data-testid="delivery-fee">
-                    {deliveryFee === 0 ? "Free" : `£${deliveryFee.toFixed(2)}`}
+                    {deliveryFee === 0 ? "Free" : `from £${deliveryFee.toFixed(2)}`}
                   </span>
                 </div>
                 {deliveryFee > 0 && (
-                  <p className="font-body text-xs text-[#788275]">
-                    Free delivery on orders over £50
-                  </p>
+                  <>
+                    <p className="font-body text-xs text-[#788275]">
+                      Free delivery on orders over £50
+                    </p>
+                    <p className="font-body text-xs text-[#C07A65]">
+                      Saturday delivery: £{saturdayDeliveryFee.toFixed(2)}
+                    </p>
+                  </>
                 )}
               </div>
 

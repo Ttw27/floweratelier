@@ -122,6 +122,12 @@ class OrderCreate(BaseModel):
     gift_message: Optional[str] = None
     recipient_name: str
     recipient_phone: str
+    box_personalization: Optional[Dict] = None  # {color: str, ribbon_color: str, custom_message: str}
+
+class BoxPersonalizationOptions(BaseModel):
+    box_colors: List[str] = ["Classic White", "Blush Pink", "Sage Green", "Navy Blue", "Kraft Natural"]
+    ribbon_colors: List[str] = ["Gold", "Silver", "White", "Ivory", "Dusty Rose", "Forest Green", "Navy"]
+    max_message_length: int = 50
 
 class OrderResponse(BaseModel):
     id: str
@@ -132,11 +138,13 @@ class OrderResponse(BaseModel):
     gift_message: Optional[str] = None
     recipient_name: str
     recipient_phone: str
+    box_personalization: Optional[Dict] = None
     subtotal: float
     delivery_fee: float
     total: float
     status: str
     payment_status: str
+    is_saturday_delivery: bool = False
     created_at: str
 
 class SubscriptionCreate(BaseModel):
@@ -472,6 +480,64 @@ async def clear_cart(session_id: Optional[str] = None, user = Depends(get_curren
     await db.carts.delete_one(query)
     return {"message": "Cart cleared"}
 
+# ==================== DELIVERY & BOX PERSONALIZATION ====================
+
+STANDARD_DELIVERY_FEE = 5.99
+SATURDAY_DELIVERY_FEE = 8.99
+FREE_DELIVERY_THRESHOLD = 50.0
+
+@api_router.get("/delivery/options")
+async def get_delivery_options():
+    """Get delivery date options and box personalization choices"""
+    from datetime import date
+    today = date.today()
+    
+    # Calculate available dates (starting from 2 days ahead, excluding Sundays)
+    available_dates = []
+    check_date = today + timedelta(days=2)
+    
+    for _ in range(14):  # Next 2 weeks
+        if check_date.weekday() != 6:  # Not Sunday (0=Monday, 6=Sunday)
+            is_saturday = check_date.weekday() == 5
+            available_dates.append({
+                "date": check_date.isoformat(),
+                "day_name": check_date.strftime("%A"),
+                "formatted": check_date.strftime("%B %d, %Y"),
+                "is_saturday": is_saturday,
+                "delivery_fee": SATURDAY_DELIVERY_FEE if is_saturday else STANDARD_DELIVERY_FEE
+            })
+        check_date += timedelta(days=1)
+    
+    box_options = {
+        "box_colors": [
+            {"id": "classic-white", "name": "Classic White", "hex": "#FFFFFF"},
+            {"id": "blush-pink", "name": "Blush Pink", "hex": "#F2CFC0"},
+            {"id": "sage-green", "name": "Sage Green", "hex": "#E8ECE1"},
+            {"id": "navy-blue", "name": "Navy Blue", "hex": "#233520"},
+            {"id": "kraft-natural", "name": "Kraft Natural", "hex": "#C9A66B"}
+        ],
+        "ribbon_colors": [
+            {"id": "gold", "name": "Gold", "hex": "#D4AF37"},
+            {"id": "silver", "name": "Silver", "hex": "#C0C0C0"},
+            {"id": "white", "name": "White", "hex": "#FFFFFF"},
+            {"id": "ivory", "name": "Ivory", "hex": "#FFFFF0"},
+            {"id": "dusty-rose", "name": "Dusty Rose", "hex": "#C07A65"},
+            {"id": "forest-green", "name": "Forest Green", "hex": "#228B22"},
+            {"id": "navy", "name": "Navy", "hex": "#000080"}
+        ],
+        "max_box_message_length": 50
+    }
+    
+    return {
+        "available_dates": available_dates,
+        "box_personalization": box_options,
+        "delivery_fees": {
+            "standard": STANDARD_DELIVERY_FEE,
+            "saturday": SATURDAY_DELIVERY_FEE,
+            "free_threshold": FREE_DELIVERY_THRESHOLD
+        }
+    }
+
 # ==================== ORDER ENDPOINTS ====================
 
 @api_router.post("/orders", response_model=OrderResponse)
@@ -481,6 +547,24 @@ async def create_order(data: OrderCreate, session_id: Optional[str] = None, user
     
     if not cart or not cart.get("items"):
         raise HTTPException(status_code=400, detail="Cart is empty")
+    
+    # Validate delivery date
+    from datetime import date
+    try:
+        delivery_date = datetime.strptime(data.delivery_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    today = date.today()
+    min_delivery_date = today + timedelta(days=2)
+    
+    if delivery_date < min_delivery_date:
+        raise HTTPException(status_code=400, detail="Delivery date must be at least 2 days from today")
+    
+    if delivery_date.weekday() == 6:  # Sunday
+        raise HTTPException(status_code=400, detail="Sunday delivery is not available")
+    
+    is_saturday = delivery_date.weekday() == 5
     
     # Calculate totals
     subtotal = 0
@@ -498,7 +582,14 @@ async def create_order(data: OrderCreate, session_id: Optional[str] = None, user
                 "item_total": item_total
             })
     
-    delivery_fee = 5.99
+    # Calculate delivery fee
+    if subtotal >= FREE_DELIVERY_THRESHOLD:
+        delivery_fee = 0
+    elif is_saturday:
+        delivery_fee = SATURDAY_DELIVERY_FEE
+    else:
+        delivery_fee = STANDARD_DELIVERY_FEE
+    
     total = round(subtotal + delivery_fee, 2)
     
     order_id = str(uuid.uuid4())
@@ -511,9 +602,11 @@ async def create_order(data: OrderCreate, session_id: Optional[str] = None, user
         "gift_message": data.gift_message or cart.get("gift_message"),
         "recipient_name": data.recipient_name,
         "recipient_phone": data.recipient_phone,
+        "box_personalization": data.box_personalization,
         "subtotal": round(subtotal, 2),
         "delivery_fee": delivery_fee,
         "total": total,
+        "is_saturday_delivery": is_saturday,
         "status": "pending",
         "payment_status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()

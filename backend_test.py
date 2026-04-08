@@ -283,6 +283,224 @@ class FloristAPITester:
         )
         return success and isinstance(response, list)
 
+    def test_delivery_options(self):
+        """Test delivery options endpoint"""
+        success, response = self.run_test(
+            "Get Delivery Options",
+            "GET",
+            "api/delivery/options",
+            200
+        )
+        
+        if not success:
+            return False
+            
+        # Validate response structure
+        required_keys = ['available_dates', 'box_personalization', 'delivery_fees']
+        if not all(key in response for key in required_keys):
+            print(f"   Missing required keys in response")
+            return False
+            
+        # Check available dates
+        dates = response['available_dates']
+        if not isinstance(dates, list) or len(dates) == 0:
+            print(f"   No available dates found")
+            return False
+            
+        # Validate dates start from 2 days ahead
+        from datetime import date, timedelta
+        today = date.today()
+        min_date = today + timedelta(days=2)
+        
+        first_date = date.fromisoformat(dates[0]['date'])
+        if first_date < min_date:
+            print(f"   First available date {first_date} is less than 2 days from today")
+            return False
+            
+        # Check no Sundays in available dates
+        sunday_dates = [d for d in dates if date.fromisoformat(d['date']).weekday() == 6]
+        if sunday_dates:
+            print(f"   Found Sunday dates in available dates: {[d['date'] for d in sunday_dates]}")
+            return False
+            
+        # Check Saturday premium pricing
+        saturday_dates = [d for d in dates if d.get('is_saturday', False)]
+        standard_dates = [d for d in dates if not d.get('is_saturday', False)]
+        
+        if saturday_dates and saturday_dates[0]['delivery_fee'] != 8.99:
+            print(f"   Saturday delivery fee should be 8.99, got {saturday_dates[0]['delivery_fee']}")
+            return False
+            
+        if standard_dates and standard_dates[0]['delivery_fee'] != 5.99:
+            print(f"   Standard delivery fee should be 5.99, got {standard_dates[0]['delivery_fee']}")
+            return False
+            
+        # Check box personalization options
+        box_options = response['box_personalization']
+        required_box_keys = ['box_colors', 'ribbon_colors', 'max_box_message_length']
+        if not all(key in box_options for key in required_box_keys):
+            print(f"   Missing box personalization options")
+            return False
+            
+        if len(box_options['box_colors']) != 5:
+            print(f"   Expected 5 box colors, got {len(box_options['box_colors'])}")
+            return False
+            
+        if len(box_options['ribbon_colors']) != 7:
+            print(f"   Expected 7 ribbon colors, got {len(box_options['ribbon_colors'])}")
+            return False
+            
+        if box_options['max_box_message_length'] != 50:
+            print(f"   Expected max message length 50, got {box_options['max_box_message_length']}")
+            return False
+            
+        print(f"   ✅ Found {len(dates)} available dates, {len(saturday_dates)} Saturday dates")
+        print(f"   ✅ Box personalization: {len(box_options['box_colors'])} colors, {len(box_options['ribbon_colors'])} ribbons")
+        return True
+
+    def test_order_with_box_personalization(self):
+        """Test order creation with box personalization"""
+        from datetime import date, timedelta
+        
+        # Use a valid delivery date (3 days from today, not Sunday)
+        delivery_date = date.today() + timedelta(days=3)
+        while delivery_date.weekday() == 6:  # Skip Sunday
+            delivery_date += timedelta(days=1)
+            
+        success, response = self.run_test(
+            "Create Order with Box Personalization",
+            "POST",
+            "api/orders",
+            200,
+            data={
+                "delivery_date": delivery_date.strftime("%Y-%m-%d"),
+                "delivery_address": {
+                    "line1": "123 Test Street",
+                    "line2": "Apt 4B",
+                    "city": "London",
+                    "postcode": "SW1A 1AA"
+                },
+                "gift_message": "Test gift message",
+                "recipient_name": "Jane Doe",
+                "recipient_phone": "07123456789",
+                "box_personalization": {
+                    "box_color": "blush-pink",
+                    "ribbon_color": "gold",
+                    "box_message": "Happy Birthday!"
+                }
+            },
+            params={"session_id": self.session_id}
+        )
+        
+        if success and 'id' in response:
+            # Verify box personalization is included
+            if 'box_personalization' not in response:
+                print(f"   Box personalization not included in order response")
+                return False
+                
+            box_data = response['box_personalization']
+            if (box_data.get('box_color') != 'blush-pink' or 
+                box_data.get('ribbon_color') != 'gold' or 
+                box_data.get('box_message') != 'Happy Birthday!'):
+                print(f"   Box personalization data incorrect: {box_data}")
+                return False
+                
+            self.test_personalized_order_id = response['id']
+            print(f"   ✅ Order with personalization created: {self.test_personalized_order_id}")
+            return True
+        return False
+
+    def test_order_date_validation(self):
+        """Test order creation with invalid dates"""
+        from datetime import date, timedelta
+        
+        # Test 1: Date too soon (tomorrow)
+        tomorrow = date.today() + timedelta(days=1)
+        success1, _ = self.run_test(
+            "Order with Date Too Soon",
+            "POST",
+            "api/orders",
+            400,  # Should fail
+            data={
+                "delivery_date": tomorrow.strftime("%Y-%m-%d"),
+                "delivery_address": {
+                    "line1": "123 Test Street",
+                    "city": "London",
+                    "postcode": "SW1A 1AA"
+                },
+                "recipient_name": "Test User",
+                "recipient_phone": "07123456789"
+            },
+            params={"session_id": self.session_id}
+        )
+        
+        # Test 2: Sunday delivery (should fail)
+        future_date = date.today() + timedelta(days=7)
+        while future_date.weekday() != 6:  # Find next Sunday
+            future_date += timedelta(days=1)
+            
+        success2, _ = self.run_test(
+            "Order with Sunday Date",
+            "POST",
+            "api/orders",
+            400,  # Should fail
+            data={
+                "delivery_date": future_date.strftime("%Y-%m-%d"),
+                "delivery_address": {
+                    "line1": "123 Test Street",
+                    "city": "London",
+                    "postcode": "SW1A 1AA"
+                },
+                "recipient_name": "Test User",
+                "recipient_phone": "07123456789"
+            },
+            params={"session_id": self.session_id}
+        )
+        
+        return success1 and success2
+
+    def test_saturday_delivery_fee(self):
+        """Test Saturday delivery premium fee calculation"""
+        from datetime import date, timedelta
+        
+        # Find next Saturday
+        saturday_date = date.today() + timedelta(days=2)
+        while saturday_date.weekday() != 5:  # 5 = Saturday
+            saturday_date += timedelta(days=1)
+            
+        success, response = self.run_test(
+            "Create Saturday Delivery Order",
+            "POST",
+            "api/orders",
+            200,
+            data={
+                "delivery_date": saturday_date.strftime("%Y-%m-%d"),
+                "delivery_address": {
+                    "line1": "123 Test Street",
+                    "city": "London",
+                    "postcode": "SW1A 1AA"
+                },
+                "recipient_name": "Saturday Test",
+                "recipient_phone": "07123456789"
+            },
+            params={"session_id": self.session_id}
+        )
+        
+        if success:
+            # Check if Saturday delivery fee is applied
+            if not response.get('is_saturday_delivery'):
+                print(f"   Order should be marked as Saturday delivery")
+                return False
+                
+            # Check delivery fee (should be 8.99 unless order qualifies for free delivery)
+            if response.get('subtotal', 0) < 50 and response.get('delivery_fee') != 8.99:
+                print(f"   Saturday delivery fee should be 8.99, got {response.get('delivery_fee')}")
+                return False
+                
+            print(f"   ✅ Saturday delivery order created with correct fee: £{response.get('delivery_fee')}")
+            return True
+        return False
+
     def test_checkout_session(self):
         """Test checkout session creation"""
         if not hasattr(self, 'test_order_id'):
@@ -316,7 +534,11 @@ def main():
         ("Get Featured Products", tester.test_get_featured_products),
         ("Get Single Product", tester.test_get_single_product),
         ("Cart Operations", tester.test_cart_operations),
+        ("Delivery Options", tester.test_delivery_options),
         ("Order Creation", tester.test_order_creation),
+        ("Order with Box Personalization", tester.test_order_with_box_personalization),
+        ("Order Date Validation", tester.test_order_date_validation),
+        ("Saturday Delivery Fee", tester.test_saturday_delivery_fee),
         ("Subscription Plans", tester.test_subscription_plans),
         ("Admin Stats", tester.test_admin_stats),
         ("Admin Orders", tester.test_admin_orders),
