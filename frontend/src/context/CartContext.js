@@ -36,10 +36,10 @@ export function CartProvider({ children }) {
     fetchCart();
   }, [fetchCart]);
 
-  const addToCart = async (productId, quantity = 1, size = null) => {
+  const addToCart = async (productId, quantity = 1, size = null, boxPersonalization = null) => {
     try {
       await axios.post(`${API_URL}/api/cart/add`, 
-        { product_id: productId, quantity, size },
+        { product_id: productId, quantity, size, box_personalization: boxPersonalization },
         { params: { session_id: sessionId } }
       );
       await fetchCart();

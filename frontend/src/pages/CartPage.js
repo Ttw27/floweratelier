@@ -73,8 +73,8 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-6" data-testid="cart-items">
-            {cart.items.map((item) => (
-              <div key={`${item.product_id}-${item.size}`} className="flex gap-4 md:gap-6 pb-6 border-b border-[#E3E5DF]" data-testid={`cart-item-${item.product_id}`}>
+            {cart.items.map((item, index) => (
+              <div key={`${item.product_id}-${item.size}-${index}`} className="flex gap-4 md:gap-6 pb-6 border-b border-[#E3E5DF]" data-testid={`cart-item-${item.product_id}`}>
                 {/* Image */}
                 <div className="w-24 h-32 md:w-32 md:h-40 bg-[#F0F0EA] flex-shrink-0">
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
@@ -87,6 +87,21 @@ export default function CartPage() {
                       <h3 className="font-heading text-lg text-[#233520]">{item.name}</h3>
                       {item.size && (
                         <p className="font-body text-sm text-[#788275]">Size: {item.size}</p>
+                      )}
+                      {/* Box Personalization */}
+                      {item.box_personalization && (
+                        <div className="mt-2 bg-[#F2CFC0]/20 p-2 rounded" data-testid={`cart-item-box-${item.product_id}`}>
+                          <p className="font-body text-xs text-[#C07A65] font-semibold mb-1">Personalized Box:</p>
+                          {item.box_personalization.box_color && (
+                            <p className="font-body text-xs text-[#788275]">Box: {item.box_personalization.box_color.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                          )}
+                          {item.box_personalization.ribbon_color && (
+                            <p className="font-body text-xs text-[#788275]">Ribbon: {item.box_personalization.ribbon_color.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                          )}
+                          {item.box_personalization.box_message && (
+                            <p className="font-body text-xs text-[#788275]">Message: "{item.box_personalization.box_message}"</p>
+                          )}
+                        </div>
                       )}
                     </div>
                     <button

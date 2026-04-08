@@ -6,7 +6,8 @@ import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Truck, Leaf, Gift, ChevronLeft, Plus, Minus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Truck, Leaf, Gift, ChevronLeft, Plus, Minus, Package, Check, ChevronDown, ChevronUp } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -19,14 +20,29 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
+  
+  // Box personalization state
+  const [deliveryOptions, setDeliveryOptions] = useState(null);
+  const [showBoxCustomization, setShowBoxCustomization] = useState(false);
+  const [boxPersonalization, setBoxPersonalization] = useState({
+    box_color: null,
+    ribbon_color: null,
+    box_message: ""
+  });
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/products/${productId}`);
-        setProduct(response.data);
-        if (response.data.sizes && response.data.sizes.length > 0) {
-          setSelectedSize(response.data.sizes[0].name);
+        const [productRes, optionsRes] = await Promise.all([
+          axios.get(`${API_URL}/api/products/${productId}`),
+          axios.get(`${API_URL}/api/delivery/options`)
+        ]);
+        
+        setProduct(productRes.data);
+        setDeliveryOptions(optionsRes.data);
+        
+        if (productRes.data.sizes && productRes.data.sizes.length > 0) {
+          setSelectedSize(productRes.data.sizes[0].name);
         }
       } catch (error) {
         console.error("Failed to fetch product:", error);
@@ -36,7 +52,7 @@ export default function ProductDetailPage() {
         setLoading(false);
       }
     };
-    fetchProduct();
+    fetchData();
   }, [productId, navigate]);
 
   const getPrice = () => {
@@ -54,13 +70,37 @@ export default function ProductDetailPage() {
   const handleAddToCart = async () => {
     setAdding(true);
     try {
-      await addToCart(product.id, quantity, selectedSize);
-      toast.success("Added to cart!");
+      // Prepare box personalization if any options selected
+      const boxData = (boxPersonalization.box_color || boxPersonalization.ribbon_color || boxPersonalization.box_message)
+        ? {
+            box_color: boxPersonalization.box_color,
+            ribbon_color: boxPersonalization.ribbon_color,
+            box_message: boxPersonalization.box_message
+          }
+        : null;
+      
+      await addToCart(product.id, quantity, selectedSize, boxData);
+      toast.success(
+        <div>
+          <p className="font-semibold">Added to basket!</p>
+          {boxData && <p className="text-sm text-gray-600">With personalized box</p>}
+        </div>
+      );
     } catch (error) {
       toast.error("Failed to add to cart");
     } finally {
       setAdding(false);
     }
+  };
+
+  const getSelectedBoxColorName = () => {
+    if (!boxPersonalization.box_color || !deliveryOptions) return null;
+    return deliveryOptions.box_personalization.box_colors.find(c => c.id === boxPersonalization.box_color)?.name;
+  };
+
+  const getSelectedRibbonColorName = () => {
+    if (!boxPersonalization.ribbon_color || !deliveryOptions) return null;
+    return deliveryOptions.box_personalization.ribbon_colors.find(c => c.id === boxPersonalization.ribbon_color)?.name;
   };
 
   if (loading) {
@@ -74,6 +114,7 @@ export default function ProductDetailPage() {
   if (!product) return null;
 
   const hasDiscount = product.original_price && product.original_price > product.price;
+  const hasBoxCustomization = boxPersonalization.box_color || boxPersonalization.ribbon_color || boxPersonalization.box_message;
 
   return (
     <div className="min-h-screen py-8 md:py-12" data-testid="product-detail-page">
@@ -131,7 +172,7 @@ export default function ProductDetailPage() {
 
             {/* Size Selection */}
             {product.sizes && product.sizes.length > 0 && (
-              <div className="mb-8">
+              <div className="mb-6">
                 <h3 className="font-heading text-lg text-[#233520] mb-4">Select Size</h3>
                 <RadioGroup value={selectedSize} onValueChange={setSelectedSize} data-testid="size-selector">
                   <div className="space-y-3">
@@ -151,8 +192,136 @@ export default function ProductDetailPage() {
               </div>
             )}
 
+            {/* Box Personalization */}
+            {deliveryOptions && (
+              <div className="mb-6 border border-[#E3E5DF] bg-[#FAFAF7]" data-testid="box-personalization-section">
+                <button
+                  onClick={() => setShowBoxCustomization(!showBoxCustomization)}
+                  className="w-full p-4 flex items-center justify-between"
+                  data-testid="toggle-box-customization"
+                >
+                  <div className="flex items-center gap-3">
+                    <Package size={20} className="text-[#C07A65]" />
+                    <div className="text-left">
+                      <h3 className="font-heading text-lg text-[#233520]">Personalise Your Box</h3>
+                      <p className="font-body text-xs text-[#788275]">
+                        {hasBoxCustomization 
+                          ? `${getSelectedBoxColorName() || 'Classic'} box${getSelectedRibbonColorName() ? ` with ${getSelectedRibbonColorName()} ribbon` : ''}`
+                          : 'Customize the presentation box'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasBoxCustomization && (
+                      <span className="bg-[#C07A65] text-white text-xs px-2 py-1 font-body">CUSTOMIZED</span>
+                    )}
+                    {showBoxCustomization ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </div>
+                </button>
+                
+                {showBoxCustomization && (
+                  <div className="px-4 pb-4 space-y-6 border-t border-[#E3E5DF] pt-4">
+                    {/* Box Color */}
+                    <div>
+                      <Label className="font-body text-[#233520] mb-3 block text-sm font-semibold">Box Colour</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {deliveryOptions.box_personalization.box_colors.map((color) => (
+                          <button
+                            key={color.id}
+                            type="button"
+                            onClick={() => setBoxPersonalization({ ...boxPersonalization, box_color: boxPersonalization.box_color === color.id ? null : color.id })}
+                            className={`relative w-10 h-10 rounded-full border-2 transition-all ${
+                              boxPersonalization.box_color === color.id
+                                ? "border-[#C07A65] ring-2 ring-[#C07A65] ring-offset-2"
+                                : "border-[#E3E5DF] hover:border-[#788275]"
+                            }`}
+                            style={{ backgroundColor: color.hex }}
+                            title={color.name}
+                            data-testid={`box-color-${color.id}`}
+                          >
+                            {boxPersonalization.box_color === color.id && (
+                              <Check size={14} className={`absolute inset-0 m-auto ${color.hex === '#FFFFFF' ? 'text-[#233520]' : 'text-white'}`} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      {boxPersonalization.box_color && (
+                        <p className="font-body text-xs text-[#788275] mt-2">
+                          Selected: {getSelectedBoxColorName()}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Ribbon Color */}
+                    <div>
+                      <Label className="font-body text-[#233520] mb-3 block text-sm font-semibold">Ribbon Colour</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {deliveryOptions.box_personalization.ribbon_colors.map((color) => (
+                          <button
+                            key={color.id}
+                            type="button"
+                            onClick={() => setBoxPersonalization({ ...boxPersonalization, ribbon_color: boxPersonalization.ribbon_color === color.id ? null : color.id })}
+                            className={`relative w-10 h-10 rounded-full border-2 transition-all ${
+                              boxPersonalization.ribbon_color === color.id
+                                ? "border-[#C07A65] ring-2 ring-[#C07A65] ring-offset-2"
+                                : "border-[#E3E5DF] hover:border-[#788275]"
+                            }`}
+                            style={{ backgroundColor: color.hex }}
+                            title={color.name}
+                            data-testid={`ribbon-color-${color.id}`}
+                          >
+                            {boxPersonalization.ribbon_color === color.id && (
+                              <Check size={14} className={`absolute inset-0 m-auto ${['#FFFFFF', '#FFFFF0', '#C0C0C0'].includes(color.hex) ? 'text-[#233520]' : 'text-white'}`} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      {boxPersonalization.ribbon_color && (
+                        <p className="font-body text-xs text-[#788275] mt-2">
+                          Selected: {getSelectedRibbonColorName()}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Box Message */}
+                    <div>
+                      <Label className="font-body text-[#233520] mb-2 block text-sm font-semibold">
+                        Message on Box <span className="font-normal text-[#788275]">(max {deliveryOptions.box_personalization.max_box_message_length} characters)</span>
+                      </Label>
+                      <Input
+                        value={boxPersonalization.box_message}
+                        onChange={(e) => {
+                          if (e.target.value.length <= deliveryOptions.box_personalization.max_box_message_length) {
+                            setBoxPersonalization({ ...boxPersonalization, box_message: e.target.value });
+                          }
+                        }}
+                        className="border-[#E3E5DF] focus:border-[#C07A65]"
+                        placeholder="e.g., Happy Birthday!, With Love, Congratulations!"
+                        data-testid="box-message-input"
+                      />
+                      <p className="font-body text-xs text-[#788275] mt-1">
+                        {boxPersonalization.box_message.length}/{deliveryOptions.box_personalization.max_box_message_length} characters
+                      </p>
+                    </div>
+
+                    {/* Clear customization */}
+                    {hasBoxCustomization && (
+                      <button
+                        type="button"
+                        onClick={() => setBoxPersonalization({ box_color: null, ribbon_color: null, box_message: "" })}
+                        className="font-body text-sm text-[#788275] hover:text-[#C07A65] underline"
+                        data-testid="clear-box-customization"
+                      >
+                        Clear all customizations
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Quantity */}
-            <div className="mb-8">
+            <div className="mb-6">
               <h3 className="font-heading text-lg text-[#233520] mb-4">Quantity</h3>
               <div className="flex items-center space-x-4">
                 <button
@@ -180,14 +349,14 @@ export default function ProductDetailPage() {
               className="w-full bg-[#C07A65] hover:bg-[#a86856] text-white py-6 text-base font-body mb-8"
               data-testid="add-to-cart-button"
             >
-              {adding ? "Adding..." : product.in_stock ? "Add to Basket" : "Out of Stock"}
+              {adding ? "Adding..." : product.in_stock ? (hasBoxCustomization ? "Add to Basket with Personalized Box" : "Add to Basket") : "Out of Stock"}
             </Button>
 
             {/* Features */}
             <div className="border-t border-[#E3E5DF] pt-8 space-y-4">
               <div className="flex items-center space-x-3">
                 <Truck className="text-[#C07A65]" size={20} />
-                <span className="font-body text-sm text-[#233520]">Free delivery on orders over £50</span>
+                <span className="font-body text-sm text-[#233520]">Free delivery on orders over £50 | Saturday delivery £8.99</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Leaf className="text-[#C07A65]" size={20} />

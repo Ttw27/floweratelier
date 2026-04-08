@@ -106,6 +106,7 @@ class CartItem(BaseModel):
     product_id: str
     quantity: int = 1
     size: Optional[str] = None
+    box_personalization: Optional[Dict] = None  # {box_color, ribbon_color, box_message}
 
 class CartResponse(BaseModel):
     id: str
@@ -395,7 +396,8 @@ async def get_cart(session_id: Optional[str] = None, user = Depends(get_current_
                 "name": product["name"],
                 "price": product["price"],
                 "image": product["images"][0] if product["images"] else "",
-                "item_total": item_total
+                "item_total": item_total,
+                "box_personalization": item.get("box_personalization")
             })
     
     cart["items"] = enriched_items
@@ -422,10 +424,12 @@ async def add_to_cart(item: CartItem, session_id: Optional[str] = None, user = D
             "created_at": datetime.now(timezone.utc).isoformat()
         }
     
-    # Check if item already exists
+    # Check if item already exists (same product, size, and box personalization)
     existing_idx = None
     for idx, existing in enumerate(cart["items"]):
-        if existing["product_id"] == item.product_id and existing.get("size") == item.size:
+        if (existing["product_id"] == item.product_id and 
+            existing.get("size") == item.size and
+            existing.get("box_personalization") == item.box_personalization):
             existing_idx = idx
             break
     
