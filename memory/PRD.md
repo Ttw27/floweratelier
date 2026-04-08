@@ -50,6 +50,9 @@ Build an online florist website inspired by Bloom & Wild, Bunches, and Prestige 
 - [x] Stripe checkout integration
 - [x] Admin stats and order management endpoints
 - [x] Seed data for initial products/categories
+- [x] **NEW: Delivery date restrictions (min 2 days, no Sundays)**
+- [x] **NEW: Saturday premium delivery (£8.99 vs £5.99 standard)**
+- [x] **NEW: Box personalization options API**
 
 ### Frontend
 - [x] Homepage with hero, categories, featured products
@@ -62,6 +65,9 @@ Build an online florist website inspired by Bloom & Wild, Bunches, and Prestige 
 - [x] Account page with order history
 - [x] Subscription plans page
 - [x] Admin dashboard with orders and products management
+- [x] **NEW: Delivery date selector showing available dates (no Sundays, min 2 days)**
+- [x] **NEW: Saturday delivery with premium pricing badge**
+- [x] **NEW: Box personalization UI (color, ribbon, message)**
 
 ### Design
 - Custom color palette (earthy tones with terracotta accents)
