@@ -67,7 +67,8 @@ Build an online florist website inspired by Bloom & Wild, Bunches, and Prestige 
 - [x] Admin dashboard with orders and products management
 - [x] **NEW: Delivery date selector showing available dates (no Sundays, min 2 days)**
 - [x] **NEW: Saturday delivery with premium pricing badge**
-- [x] **NEW: Box personalization UI (color, ribbon, message)**
+- [x] **NEW: Box personalization on PRODUCT PAGES (color, ribbon, message)**
+- [x] **NEW: Cart displays personalized box details for each item**
 
 ### Design
 - Custom color palette (earthy tones with terracotta accents)
