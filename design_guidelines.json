@@ -1,0 +1,114 @@
+{
+  "theme": "LIGHT",
+  "archetype": "1_Organic_Earthy",
+  "typography": {
+    "fonts": {
+      "heading": "Cormorant Garamond",
+      "body": "Manrope",
+      "accent": "Caveat"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-light tracking-tight text-foreground",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight text-foreground",
+      "h3": "text-xl sm:text-2xl font-normal text-foreground",
+      "body": "text-base font-normal leading-relaxed text-foreground/80",
+      "small": "text-sm uppercase tracking-[0.2em] font-medium text-foreground/60"
+    }
+  },
+  "colors": {
+    "background": "#FAFAF7",
+    "foreground": "#233520",
+    "primary": "#C07A65",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#E8ECE1",
+    "secondary_foreground": "#233520",
+    "accent": "#F2CFC0",
+    "accent_foreground": "#233520",
+    "muted": "#F0F0EA",
+    "muted_foreground": "#788275",
+    "card": "#FFFFFF",
+    "card_foreground": "#233520",
+    "border": "#E3E5DF"
+  },
+  "spacing": {
+    "section": "py-20 md:py-32",
+    "container": "px-4 md:px-8 max-w-7xl mx-auto",
+    "grid_gap": "gap-8 md:gap-12"
+  },
+  "components": {
+    "button": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-none px-8 py-4 transition-colors",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-none px-8 py-4 transition-colors",
+      "outline": "border border-foreground text-foreground hover:bg-foreground hover:text-white rounded-none px-8 py-4 transition-colors"
+    },
+    "card": {
+      "product": "bg-card border border-border group overflow-hidden cursor-pointer",
+      "image_wrapper": "aspect-[4/5] overflow-hidden bg-muted",
+      "image": "w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    },
+    "header": "sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border transition-all",
+    "footer": "bg-foreground text-white py-20 px-8"
+  },
+  "layout": {
+    "product_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8",
+    "bento_grid": "grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8"
+  },
+  "motion": {
+    "hover": "transition-all duration-300 ease-in-out",
+    "page_load": "framer-motion fade-in and slide-up for sections"
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero",
+        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/a4d1e9ab6b2b8addbe3535569ddca8a3431d60bfbb52e5d0caffc28093e2def0.png",
+        "description": "florist studio hero image, wide landscape"
+      },
+      {
+        "category": "product_1",
+        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/90a90391c07e0c35d79733aaf9fde040095ee04bb0fae08557c56af10e0dc600.png",
+        "description": "elegant vase arrangement"
+      },
+      {
+        "category": "product_2",
+        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/c3e02374003409a1a8a8529e9e73dcbdf29e00fe424556c11b7c8e1bb19d37eb.png",
+        "description": "wrapped bouquet"
+      },
+      {
+        "category": "product_3",
+        "url": "https://images.unsplash.com/photo-1603983856087-c175061451de?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHw0fHxmbG93ZXIlMjBib3VxdWV0JTIwZWxlZ2FudHxlbnwwfHx8fDE3NzU2NTQ1OTR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "pink and orange flowers"
+      },
+      {
+        "category": "product_4",
+        "url": "https://images.unsplash.com/photo-1774959725056-9556b06c8806?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwzfHxmbG93ZXIlMjBib3VxdWV0JTIwZWxlZ2FudHxlbnwwfHx8fDE3NzU2NTQ1OTR8MA&ixlib=rb-4.1.0&q=85",
+        "description": "white calla lilies"
+      },
+      {
+        "category": "background_texture",
+        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/0f7137e5b8f9db23515daaa83a6ce033d0860190f2e6e9c41ffec8d0a2c82a5a.png",
+        "description": "organic paper texture"
+      },
+      {
+        "category": "about_florist",
+        "url": "https://images.pexels.com/photos/5414006/pexels-photo-5414006.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "florist working smiling"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use pure HTML/Tailwind for the landing page hero and product grids. Avoid Shadcn Cards for creative layout sections, just use semantic HTML.",
+    "For the e-commerce checkout, cart, user dashboard, and admin panel, use Shadcn UI components but heavily customize them to remove the default tech 'Vercel' look (e.g., replace radii, add custom colors).",
+    "Ensure all interactive elements have data-testid attributes for testing.",
+    "Implement a generous spacing scale. Don't cramp the layout.",
+    "The hero section should use 'florist_hero' as background with 'bg-black/30' overlay max. Use text-shadow if needed.",
+    "Load 'Cormorant Garamond' and 'Manrope' fonts.",
+    "Product images must have a 4:5 aspect ratio.",
+    "Avoid center-alignment for everything; use left-alignment for product details and dense text.",
+    "Integrate Lucide-react for icons. Size them elegantly.",
+    "For date selection in checkout, use Shadcn Calendar but style it warmly.",
+    "DO NOT use Inter or standard sans-serif for headings.",
+    "Ensure hover states are clearly defined with color shifts, not just opacity.",
+    "All components must be accessible and include aria labels where necessary."
+  ]
+}
