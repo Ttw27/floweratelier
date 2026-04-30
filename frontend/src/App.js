@@ -6,15 +6,17 @@ import { CartProvider } from "./context/CartContext";
 
 // Pages
 import HomePage from "./pages/HomePage";
-import ProductsPage from "./pages/ProductsPage";
+import CollectionPage from "./pages/CollectionPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
+import WeddingsPage from "./pages/WeddingsPage";
+import SympathyPage from "./pages/SympathyPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AccountPage from "./pages/AccountPage";
-import SubscriptionsPage from "./pages/SubscriptionsPage";
+import ConsultationPage from "./pages/ConsultationPage";
 import AdminPage from "./pages/AdminPage";
 
 // Layout
@@ -26,27 +28,29 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
-          <div className="min-h-screen flex flex-col bg-[#FAFAF7]">
+          <div className="min-h-screen flex flex-col bg-[#0B0C0B]">
             <Header />
             <main className="flex-1">
               <Routes>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/flowers" element={<ProductsPage />} />
-                <Route path="/flowers/:category" element={<ProductsPage />} />
+                <Route path="/collection" element={<CollectionPage />} />
+                <Route path="/collection/:category" element={<CollectionPage />} />
                 <Route path="/product/:productId" element={<ProductDetailPage />} />
+                <Route path="/weddings" element={<WeddingsPage />} />
+                <Route path="/sympathy" element={<SympathyPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/order-success" element={<OrderSuccessPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/account" element={<AccountPage />} />
-                <Route path="/subscriptions" element={<SubscriptionsPage />} />
+                <Route path="/consultation" element={<ConsultationPage />} />
                 <Route path="/admin" element={<AdminPage />} />
               </Routes>
             </main>
             <Footer />
           </div>
-          <Toaster position="top-right" />
+          <Toaster position="top-right" theme="dark" />
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>

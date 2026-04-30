@@ -836,14 +836,14 @@ async def seed_data():
     if existing_cats > 0:
         return {"message": "Data already seeded"}
     
-    # Seed categories
+    # Premium luxury categories
     categories = [
-        {"id": str(uuid.uuid4()), "name": "Birthday", "slug": "birthday", "description": "Perfect flowers for birthday celebrations", "image": "https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=400"},
-        {"id": str(uuid.uuid4()), "name": "Anniversary", "slug": "anniversary", "description": "Romantic flowers for anniversaries", "image": "https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=400"},
-        {"id": str(uuid.uuid4()), "name": "Sympathy", "slug": "sympathy", "description": "Thoughtful arrangements for difficult times", "image": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=400"},
-        {"id": str(uuid.uuid4()), "name": "Thank You", "slug": "thank-you", "description": "Express gratitude with beautiful blooms", "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=400"},
-        {"id": str(uuid.uuid4()), "name": "Roses", "slug": "roses", "description": "Classic and elegant rose arrangements", "image": "https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=400"},
-        {"id": str(uuid.uuid4()), "name": "Plants", "slug": "plants", "description": "Long-lasting potted plants", "image": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400"}
+        {"id": str(uuid.uuid4()), "name": "Luxury Bouquets", "slug": "luxury-bouquets", "description": "Opulent hand-tied arrangements for those who deserve the finest", "image": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/f27037e690ea606fe6fdfcd8e721d768249ffa5685c08d3c2b65680492c5a13e.png"},
+        {"id": str(uuid.uuid4()), "name": "Wedding Collection", "slug": "wedding", "description": "Bridal bouquets and wedding floristry", "image": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/12a142ed2b28feae7d2b9e1bd97279a7c9bf8aaf7fae184fe9d56aa279456ed3.png"},
+        {"id": str(uuid.uuid4()), "name": "Sympathy & Funeral", "slug": "sympathy", "description": "Elegant tributes crafted with care and respect", "image": "https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=600"},
+        {"id": str(uuid.uuid4()), "name": "Celebration", "slug": "celebration", "description": "Premium arrangements for birthdays, anniversaries and special occasions", "image": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/18c3dcb9dbd05cb6efcfadb79429357816a868d87bf9d53dabd71b73756e5bac.png"},
+        {"id": str(uuid.uuid4()), "name": "Signature Roses", "slug": "roses", "description": "Long-stem premium roses in stunning arrangements", "image": "https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=600"},
+        {"id": str(uuid.uuid4()), "name": "Orchids & Exotics", "slug": "exotics", "description": "Rare and exotic blooms for the discerning client", "image": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=600"}
     ]
     
     for cat in categories:
@@ -851,111 +851,111 @@ async def seed_data():
     
     await db.categories.insert_many(categories)
     
-    # Seed products
+    # Premium products £80+
     products = [
         {
             "id": str(uuid.uuid4()),
-            "name": "Rose & Lily Elegance",
-            "description": "A stunning arrangement of fresh roses and oriental lilies, perfect for any special occasion.",
-            "price": 49.99,
-            "original_price": 64.99,
-            "category_id": categories[4]["id"],
-            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/90a90391c07e0c35d79733aaf9fde040095ee04bb0fae08557c56af10e0dc600.png"],
-            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Deluxe", "price_modifier": 15}, {"name": "Premium", "price_modifier": 30}],
-            "in_stock": True,
-            "featured": True,
-            "occasion_tags": ["birthday", "anniversary", "thank-you"]
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Spring Meadow Bouquet",
-            "description": "A vibrant mix of seasonal blooms capturing the essence of spring.",
-            "price": 39.99,
+            "name": "The Grand Gesture",
+            "description": "An extraordinary arrangement of over 50 premium roses, garden roses, and ranunculus in rich burgundy and blush tones. The ultimate statement piece for those who believe in making unforgettable impressions.",
+            "price": 185.00,
             "original_price": None,
             "category_id": categories[0]["id"],
-            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/c3e02374003409a1a8a8529e9e73dcbdf29e00fe424556c11b7c8e1bb19d37eb.png"],
-            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Deluxe", "price_modifier": 12}],
+            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/18c3dcb9dbd05cb6efcfadb79429357816a868d87bf9d53dabd71b73756e5bac.png"],
+            "sizes": [{"name": "Luxe", "price_modifier": 0}, {"name": "Grande", "price_modifier": 65}, {"name": "Extraordinaire", "price_modifier": 120}],
             "in_stock": True,
             "featured": True,
-            "occasion_tags": ["birthday", "thank-you"]
+            "occasion_tags": ["anniversary", "birthday", "celebration"]
         },
         {
             "id": str(uuid.uuid4()),
-            "name": "Romantic Red Roses",
-            "description": "Classic long-stem red roses, the ultimate symbol of love and romance.",
-            "price": 54.99,
-            "original_price": 69.99,
-            "category_id": categories[4]["id"],
-            "images": ["https://images.unsplash.com/photo-1603983856087-c175061451de?w=600"],
-            "sizes": [{"name": "12 Roses", "price_modifier": 0}, {"name": "24 Roses", "price_modifier": 35}, {"name": "36 Roses", "price_modifier": 65}],
+            "name": "Eternal Elegance",
+            "description": "A sophisticated composition of white peonies, cream roses, and delicate eucalyptus. Hand-tied in our signature style for moments that call for pure refinement.",
+            "price": 125.00,
+            "original_price": None,
+            "category_id": categories[0]["id"],
+            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/f27037e690ea606fe6fdfcd8e721d768249ffa5685c08d3c2b65680492c5a13e.png"],
+            "sizes": [{"name": "Classic", "price_modifier": 0}, {"name": "Luxe", "price_modifier": 45}, {"name": "Grand", "price_modifier": 85}],
             "in_stock": True,
             "featured": True,
-            "occasion_tags": ["anniversary", "birthday"]
+            "occasion_tags": ["anniversary", "thank-you", "celebration"]
         },
         {
             "id": str(uuid.uuid4()),
-            "name": "Peaceful Whites",
-            "description": "A serene arrangement of white lilies and roses, perfect for expressing sympathy.",
-            "price": 44.99,
+            "name": "Bridal Dreams Bouquet",
+            "description": "An exquisite bridal bouquet featuring garden roses, spray roses, and seasonal blooms in soft ivory and blush. Includes complementary boutonnière.",
+            "price": 195.00,
+            "original_price": None,
+            "category_id": categories[1]["id"],
+            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/12a142ed2b28feae7d2b9e1bd97279a7c9bf8aaf7fae184fe9d56aa279456ed3.png"],
+            "sizes": [{"name": "Bridal", "price_modifier": 0}, {"name": "Statement Bridal", "price_modifier": 75}],
+            "in_stock": True,
+            "featured": True,
+            "occasion_tags": ["wedding"]
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "name": "Peaceful Remembrance",
+            "description": "A dignified wreath of white lilies, roses, and seasonal foliage. Crafted with the utmost respect and care for life's most difficult moments.",
+            "price": 145.00,
             "original_price": None,
             "category_id": categories[2]["id"],
-            "images": ["https://images.unsplash.com/photo-1774959725056-9556b06c8806?w=600"],
-            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Large", "price_modifier": 20}],
+            "images": ["https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=600"],
+            "sizes": [{"name": "Standard Wreath", "price_modifier": 0}, {"name": "Large Wreath", "price_modifier": 55}, {"name": "Premium Spray", "price_modifier": 95}],
             "in_stock": True,
             "featured": False,
-            "occasion_tags": ["sympathy"]
+            "occasion_tags": ["sympathy", "funeral"]
         },
         {
             "id": str(uuid.uuid4()),
-            "name": "Sunshine Celebration",
-            "description": "Bright sunflowers and cheerful daisies to brighten anyone's day.",
-            "price": 34.99,
+            "name": "Centenary Rose Collection",
+            "description": "100 long-stem premium red roses, the ultimate romantic gesture. Arranged in our signature presentation box with hand-tied ribbon.",
+            "price": 295.00,
             "original_price": None,
-            "category_id": categories[3]["id"],
-            "images": ["https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=600"],
-            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Deluxe", "price_modifier": 10}],
+            "category_id": categories[4]["id"],
+            "images": ["https://images.unsplash.com/photo-1518709766631-a6a7f45921c3?w=600"],
+            "sizes": [{"name": "50 Roses", "price_modifier": -95}, {"name": "100 Roses", "price_modifier": 0}, {"name": "150 Roses", "price_modifier": 145}],
             "in_stock": True,
             "featured": True,
-            "occasion_tags": ["thank-you", "birthday"]
+            "occasion_tags": ["anniversary", "proposal", "celebration"]
         },
         {
             "id": str(uuid.uuid4()),
-            "name": "Orchid Paradise",
-            "description": "Elegant phalaenopsis orchid in a decorative ceramic pot.",
-            "price": 59.99,
-            "original_price": 74.99,
+            "name": "Orchid Majesty",
+            "description": "A stunning phalaenopsis orchid arrangement in ceramic vessel. Multiple cascading stems create a breathtaking display that lasts for months.",
+            "price": 165.00,
+            "original_price": None,
             "category_id": categories[5]["id"],
             "images": ["https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=600"],
-            "sizes": [{"name": "Single Stem", "price_modifier": 0}, {"name": "Double Stem", "price_modifier": 25}],
+            "sizes": [{"name": "Double Stem", "price_modifier": 0}, {"name": "Triple Stem", "price_modifier": 60}, {"name": "Cascade", "price_modifier": 120}],
             "in_stock": True,
             "featured": True,
-            "occasion_tags": ["birthday", "anniversary", "thank-you"]
+            "occasion_tags": ["birthday", "thank-you", "corporate"]
         },
         {
             "id": str(uuid.uuid4()),
-            "name": "Pastel Dreams",
-            "description": "Soft pastel blooms in pink, lavender, and cream for a gentle touch.",
-            "price": 42.99,
+            "name": "Midnight Garden",
+            "description": "Deep burgundy dahlias, black calla lilies, and dark foliage create a dramatic, moody arrangement for those with distinctive taste.",
+            "price": 135.00,
             "original_price": None,
             "category_id": categories[0]["id"],
-            "images": ["https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=600"],
-            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Premium", "price_modifier": 18}],
+            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/90a90391c07e0c35d79733aaf9fde040095ee04bb0fae08557c56af10e0dc600.png"],
+            "sizes": [{"name": "Signature", "price_modifier": 0}, {"name": "Statement", "price_modifier": 55}],
             "in_stock": True,
             "featured": False,
-            "occasion_tags": ["birthday", "thank-you"]
+            "occasion_tags": ["birthday", "anniversary", "celebration"]
         },
         {
             "id": str(uuid.uuid4()),
-            "name": "Golden Anniversary",
-            "description": "Luxurious golden and cream roses for milestone celebrations.",
-            "price": 79.99,
-            "original_price": 99.99,
-            "category_id": categories[1]["id"],
-            "images": ["https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=600"],
-            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Grand", "price_modifier": 40}],
+            "name": "Celebration Luxe",
+            "description": "A joyful explosion of premium seasonal blooms in vibrant jewel tones. Perfect for milestone birthdays and achievements worth celebrating.",
+            "price": 95.00,
+            "original_price": None,
+            "category_id": categories[3]["id"],
+            "images": ["https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/c3e02374003409a1a8a8529e9e73dcbdf29e00fe424556c11b7c8e1bb19d37eb.png"],
+            "sizes": [{"name": "Luxe", "price_modifier": 0}, {"name": "Grande", "price_modifier": 45}, {"name": "Extraordinaire", "price_modifier": 90}],
             "in_stock": True,
             "featured": True,
-            "occasion_tags": ["anniversary"]
+            "occasion_tags": ["birthday", "congratulations", "celebration"]
         }
     ]
     
@@ -968,20 +968,20 @@ async def seed_data():
     admin_id = str(uuid.uuid4())
     admin_doc = {
         "id": admin_id,
-        "email": "admin@petals.com",
+        "email": "admin@petalsatelier.com",
         "password": hash_password("admin123"),
-        "name": "Admin User",
+        "name": "Admin",
         "is_admin": True,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(admin_doc)
     
-    return {"message": "Data seeded successfully", "categories": len(categories), "products": len(products)}
+    return {"message": "Premium data seeded successfully", "categories": len(categories), "products": len(products)}
 
 # Root endpoint
 @api_router.get("/")
 async def root():
-    return {"message": "Petals Online Florist API"}
+    return {"message": "Petals Atelier - Luxury Floristry API"}
 
 # Include the router in the main app
 app.include_router(api_router)

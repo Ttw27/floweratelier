@@ -74,7 +74,7 @@ class FloristAPITester:
             "POST",
             "api/auth/login",
             200,
-            data={"email": "admin@petals.com", "password": "admin123"}
+            data={"email": "admin@petalsatelier.com", "password": "admin123"}
         )
         if success and 'access_token' in response:
             self.admin_token = response['access_token']
@@ -109,7 +109,7 @@ class FloristAPITester:
             "POST",
             "api/auth/login",
             200,
-            data={"email": "admin@petals.com", "password": "admin123"}
+            data={"email": "admin@petalsatelier.com", "password": "admin123"}
         )
         if success and 'access_token' in response:
             self.token = response['access_token']
