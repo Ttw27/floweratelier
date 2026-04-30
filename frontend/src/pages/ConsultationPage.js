@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 import { Calendar, Clock, Phone, Mail, CheckCircle } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -19,9 +22,10 @@ export default function ConsultationPage() {
 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [eventDate, setEventDate] = useState(null);
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", service_type: defaultService,
-    event_date: "", budget: "", message: portfolioTitle ? `Interest in: ${portfolioTitle}\n\n` : "",
+    budget: "", message: portfolioTitle ? `Interest in: ${portfolioTitle}\n\n` : "",
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,7 +39,7 @@ export default function ConsultationPage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        event_date: formData.event_date || null,
+        event_date: eventDate ? format(eventDate, "yyyy-MM-dd") : null,
         budget: formData.budget || null,
         message: formData.message,
         service_type: formData.service_type || null,
@@ -130,7 +134,29 @@ export default function ConsultationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label className="accent-label text-[#1A1A1A]">Event date</Label>
-                  <Input type="date" name="event_date" value={formData.event_date} onChange={handleChange} className="mt-2 light-input rounded-none" data-testid="consultation-date" />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="mt-2 w-full light-input rounded-none h-10 px-3 text-left flex items-center justify-between font-body text-sm"
+                        data-testid="consultation-date"
+                      >
+                        <span className={eventDate ? "text-[#1A1A1A]" : "text-[#B3A89B]"}>
+                          {eventDate ? format(eventDate, "EEEE, d MMMM yyyy") : "Select a date"}
+                        </span>
+                        <Calendar size={14} strokeWidth={1.3} className="text-[#7A7A7A]" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-white border-[#E5E5E5] rounded-none" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={eventDate}
+                        onSelect={setEventDate}
+                        disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <Label className="accent-label text-[#1A1A1A]">Budget range</Label>
