@@ -1,111 +1,64 @@
-# Petals Online - Florist E-Commerce Platform PRD
+# Petals Atelier - Luxury Floristry PRD
 
 ## Original Problem Statement
-Build an online florist website inspired by Bloom & Wild, Bunches, and Prestige Flowers with:
-- Product catalog with flower arrangements
-- Shopping cart & checkout
-- Delivery date selection
-- User accounts/order history
-- Subscription/recurring flower deliveries
-- Gift messages with orders
-- Occasion-based categories (Birthday, Anniversary, Sympathy, etc.)
-- Admin functionality to manage products/orders
-- Stripe payment integration
+Pivot from budget florist to premium luxury floristry brand targeting:
+1. **Wedding Floristry** - Bridal bouquets, venue decoration, full wedding packages
+2. **Sympathy & Funeral Tributes** - Elegant funeral arrangements and wreaths
+3. **Luxury Gift Bouquets** - Premium arrangements £80+ for spoiling recipients
 
-## Architecture
-
-### Backend (FastAPI + MongoDB)
-- **Authentication**: JWT-based with bcrypt password hashing
-- **Database Collections**: users, products, categories, carts, orders, subscriptions, payment_transactions
-- **Payment**: Stripe integration via emergentintegrations library
-
-### Frontend (React + Tailwind CSS)
-- **UI Components**: Shadcn UI with custom styling
-- **State Management**: React Context (Auth, Cart)
-- **Routing**: React Router DOM
+NOT targeting cheap budget flowers - "people who want cheap can go to supermarkets"
+Inspired by https://www.thegravesendflorist.co.uk/ - award-winning, bespoke service
 
 ## User Personas
-1. **Customer**: Browse products, add to cart, checkout, manage orders
-2. **Subscriber**: Set up recurring flower deliveries
-3. **Admin**: Manage products, view/update orders, see dashboard stats
+1. **Wedding Couples** - Planning luxury weddings, want bespoke floristry
+2. **Bereaved Families** - Need dignified, beautiful funeral tributes
+3. **Gift Givers** - Want to truly spoil someone with premium arrangements (not cheap supermarket flowers)
+4. **Corporate Clients** - Events and regular luxury floral displays
 
-## Core Requirements (Static)
-- Product catalog with categories and filters
-- Shopping cart with quantity management
-- Checkout with delivery date picker
-- User authentication (register/login)
-- Order history for logged-in users
-- Subscription management
-- Admin dashboard
+## Architecture
+- **Backend**: FastAPI + MongoDB
+- **Frontend**: React + Tailwind CSS
+- **Design**: Dark luxury theme (#0B0C0B), Gold accents (#C5A059), Playfair Display typography
+- **Payment**: Stripe integration
 
 ## What's Been Implemented (April 8, 2026)
 
-### Backend
-- [x] User authentication (register, login, JWT tokens)
-- [x] Product CRUD endpoints
-- [x] Category management
-- [x] Cart management (add, update, remove, gift message)
-- [x] Order creation and management
-- [x] Subscription plans and management
-- [x] Stripe checkout integration
-- [x] Admin stats and order management endpoints
-- [x] Seed data for initial products/categories
-- [x] **NEW: Delivery date restrictions (min 2 days, no Sundays)**
-- [x] **NEW: Saturday premium delivery (£8.99 vs £5.99 standard)**
-- [x] **NEW: Box personalization options API**
+### Complete Rebrand
+- [x] New brand identity: "Petals Atelier"
+- [x] Dark luxury theme with gold (#C5A059) accents
+- [x] Playfair Display (headings) + Manrope (body) typography
+- [x] Full-screen hero with dramatic floral imagery
 
-### Frontend
-- [x] Homepage with hero, categories, featured products
-- [x] Product catalog with category filters and sorting
-- [x] Product detail page with size selection
-- [x] Shopping cart with quantity controls and gift message
-- [x] Checkout with delivery date picker (calendar)
-- [x] Order success page with payment verification
-- [x] User registration and login
-- [x] Account page with order history
-- [x] Subscription plans page
-- [x] Admin dashboard with orders and products management
-- [x] **NEW: Delivery date selector showing available dates (no Sundays, min 2 days)**
-- [x] **NEW: Saturday delivery with premium pricing badge**
-- [x] **NEW: Box personalization on PRODUCT PAGES (color, ribbon, message)**
-- [x] **NEW: Cart displays personalized box details for each item**
+### New Pages
+- [x] **Homepage** - Luxury hero, services showcase, testimonials
+- [x] **Collection** - Premium products with category filtering
+- [x] **Weddings** - Wedding services, process steps, consultation CTA
+- [x] **Sympathy** - Funeral tributes, compassionate approach, tribute types
+- [x] **Consultation** - Inquiry form for bespoke orders
 
-### Design
-- Custom color palette (earthy tones with terracotta accents)
-- Cormorant Garamond (headings) + Manrope (body) fonts
-- Elegant product cards with hover effects
-- Responsive design for all screen sizes
+### Products (All £80+)
+- The Grand Gesture - £185 (up to £305)
+- Eternal Elegance - £125 (up to £210)
+- Bridal Dreams Bouquet - £195 (up to £270)
+- Peaceful Remembrance - £145 (up to £240)
+- Centenary Rose Collection - £295 (50-150 roses)
+- Orchid Majesty - £165 (up to £285)
+- Midnight Garden - £135 (up to £190)
+- Celebration Luxe - £95 (up to £185)
 
-## Prioritized Backlog
-
-### P0 (Critical) - DONE
-- Product catalog ✓
-- Cart functionality ✓
-- Checkout with payment ✓
-- User authentication ✓
-
-### P1 (High Priority)
-- Email notifications for orders
-- Order tracking/status updates
-- Inventory management
-
-### P2 (Medium Priority)
-- Reviews and ratings
-- Wishlist functionality
-- Discount codes/coupons
-- Search functionality with autocomplete
-
-### P3 (Nice to Have)
-- Social login (Google)
-- Product recommendations
-- Recently viewed products
-- Blog/content section
+### Retained Features
+- [x] Box personalization (color, ribbon, message)
+- [x] Delivery date selection (min 2 days, no Sundays)
+- [x] Saturday premium delivery (£8.99 vs £5.99)
+- [x] Shopping cart and Stripe checkout
+- [x] User accounts and order history
+- [x] Admin dashboard
 
 ## Test Credentials
-- **Admin**: admin@petals.com / admin123
+- **Admin**: admin@petalsatelier.com / admin123
 
 ## Next Tasks
-1. Implement email notifications for order confirmations
-2. Add product search functionality
-3. Implement discount/coupon codes
-4. Add customer reviews feature
+1. Add gallery of past work (weddings, events)
+2. Integrate inquiry emails for consultation requests
+3. Add blog/inspiration section
+4. Customer testimonials with photos
