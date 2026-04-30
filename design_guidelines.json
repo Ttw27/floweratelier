@@ -1,116 +1,110 @@
 {
-  "theme": "dark",
-  "archetype": "5 (Jewel & Luxury)",
-  "vibe": "Expensive, cinematic, moody, elegant, bespoke, high-end editorial",
+  "theme": "LIGHT",
+  "archetype": "Archetype 5: Jewel & Luxury (Light Variant)",
+  "emotional_tone": "Airy, High-Fashion, Understated Elegance, Editorial, Ultra-Premium",
   "typography": {
-    "headings_font": "Playfair Display",
-    "body_font": "Manrope",
+    "fonts": {
+      "headings": "Cormorant Garamond",
+      "body": "Montserrat",
+      "accent_labels": "Montserrat (Uppercase, tracking-[0.2em], Light weight)"
+    },
     "hierarchy": {
-      "h1": "text-5xl md:text-6xl lg:text-7xl font-light tracking-tight text-[#F4F0E6]",
-      "h2": "text-4xl md:text-5xl font-light tracking-tight text-[#F4F0E6]",
-      "h3": "text-2xl md:text-3xl font-normal text-[#F4F0E6]",
-      "h4": "text-xl font-medium text-[#F4F0E6]",
-      "body": "text-base leading-relaxed text-[#A3A6A1]",
-      "small": "text-sm uppercase tracking-[0.2em] text-[#C5A059]"
-    },
-    "guidelines": "Headings must use Playfair Display and should NOT be bold; use font-light or font-normal. Body text must use Manrope. Subtitles/labels should be uppercase with wide letter-spacing. Never use Inter, Roboto, or Open Sans."
-  },
-  "colors": {
-    "background_primary": "#0B0C0B",
-    "background_secondary": "#121413",
-    "surface": "#161A18",
-    "primary_accent": "#C5A059",
-    "primary_accent_hover": "#DFBB73",
-    "text_primary": "#F4F0E6",
-    "text_secondary": "#A3A6A1",
-    "border": "#252825",
-    "glass_background": "rgba(11, 12, 11, 0.6)",
-    "glass_border": "rgba(244, 240, 230, 0.05)"
-  },
-  "spacing_and_layout": {
-    "section_padding": "py-24 md:py-32",
-    "container_padding": "px-6 md:px-12",
-    "grid_strategy": "Asymmetric layouts, bento box grids with breathing room. Avoid perfect symmetry to create an editorial, artistic feel.",
-    "border_radius": "rounded-none md:rounded-sm",
-    "guidelines": "Use generous spacing. For hero, allow the image to breathe. Use negative space to emphasize luxury."
-  },
-  "components": {
-    "header": {
-      "style": "Sticky top, crystal glassmorphism: backdrop-blur-xl bg-[#0B0C0B]/60 border-b border-[#252825]. Navigation must be visible on desktop. Elegant brand text on left, links in center, primary CTA on right.",
-      "cta_button": "bg-[#C5A059] text-[#0B0C0B] hover:bg-[#DFBB73] transition-colors"
-    },
-    "hero": {
-      "style": "Cinematic. Large hero image with max bg-black/40 overlay. Text must be readable. Include an elegant overline, massive H1, and primary CTA.",
-      "alignment": "Left or center aligned."
-    },
-    "cards_services": {
-      "style": "Moody and tactile. bg-[#161A18] with 1px border-[#252825]. Do not use heavy box-shadows. On hover: border tints slightly gold, image inside scales up slowly.",
-      "image": "Images should have max-h-[60vh] to avoid overwhelming the screen. Use object-cover."
-    },
-    "buttons": {
-      "primary": "bg-[#C5A059] text-[#0B0C0B] px-8 py-3 rounded-none font-medium hover:bg-[#DFBB73] transition-colors",
-      "secondary": "border border-[#C5A059] text-[#C5A059] px-8 py-3 rounded-none hover:bg-[#C5A059] hover:text-[#0B0C0B] transition-colors",
-      "ghost": "text-[#F4F0E6] hover:text-[#C5A059] transition-colors"
-    },
-    "forms": {
-      "style": "Use Shadcn components but override styling. Inputs should be dark: bg-[#121413] border-[#252825] focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]. Text should be #F4F0E6."
-    },
-    "footer": {
-      "style": "Massive padding py-32. Border top border-[#252825]. Big typographic brand name text-[8vw] at the bottom in Playfair Display."
+      "h1": "text-5xl sm:text-6xl tracking-tighter font-light",
+      "h2": "text-3xl sm:text-4xl tracking-tight font-light",
+      "h3": "text-xl sm:text-2xl font-normal",
+      "h4": "text-lg sm:text-xl font-normal",
+      "body": "text-base leading-relaxed font-light text-stone-600",
+      "labels": "text-xs tracking-[0.2em] uppercase font-medium text-stone-400"
     }
   },
-  "interactions_and_motion": {
-    "hover": "Images inside containers should have scale-105 duration-700 ease-in-out on container hover. Borders transition to a subtle gold.",
-    "scroll": "Use Lenis for smooth momentum scrolling. Entrance animations should be subtle fade-ups with 0.8s duration.",
-    "links": "Underline expand on hover or color shift to gold."
+  "colors": {
+    "background": {
+      "primary": "#FAFAF7", 
+      "card": "#FFFFFF",
+      "accent": "#F2EFEB"
+    },
+    "text": {
+      "primary": "#1A1A1A",
+      "secondary": "#7A7A7A",
+      "accent": "#B3A89B"
+    },
+    "brand_accents": {
+      "blush": "#E8D8D0",
+      "sage": "#C4CFC0",
+      "taupe": "#B3A89B",
+      "dark_forest": "#2A3A2C"
+    },
+    "borders": {
+      "subtle": "#E5E5E5",
+      "focus": "#1A1A1A"
+    }
   },
-  "media": {
-    "hero_background": {
-      "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/18c3dcb9dbd05cb6efcfadb79429357816a868d87bf9d53dabd71b73756e5bac.png",
-      "description": "Opulent moody floral arrangement with deep red peonies and dark purple orchids, cinematic lighting."
-    },
-    "wedding_service": {
-      "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/12a142ed2b28feae7d2b9e1bd97279a7c9bf8aaf7fae184fe9d56aa279456ed3.png",
-      "description": "High-end bespoke bridal bouquet with cream roses and white anemones against silk wedding dress."
-    },
-    "funeral_sympathy": {
-      "url": "https://images.unsplash.com/photo-1602285415607-faa4007a0bca",
-      "description": "Elegant white, purple, and green floral sympathy wreath for premium funeral service."
-    },
-    "premium_bouquets": {
-      "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/f27037e690ea606fe6fdfcd8e721d768249ffa5685c08d3c2b65680492c5a13e.png",
-      "description": "Massive, luxurious gift bouquet on a dark marble table, wrapped in premium matte paper."
-    },
-    "about_storefront": {
-      "url": "https://images.unsplash.com/photo-1575081838238-d06e716afa28",
-      "description": "Elegant dark storefront of the flower shop."
-    },
-    "gallery_images": [
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing (p-8 to p-24), Negative Space, Asymmetry",
+    "grids": "Use The 'Bento' Grid Protocol or Swiss Grid. grid-cols-1 md:grid-cols-12 with gap-8 to gap-12. Let imagery span wide columns.",
+    "section_padding": "py-20 md:py-32",
+    "container_padding": "px-6 md:px-12 lg:px-24"
+  },
+  "surface_strategies": {
+    "cards": "Flat solid surfaces. No shadow or very subtle shadow-sm. Sharp edges (rounded-none) or very minimal 2px rounding. 1px delicate borders in border-stone-200.",
+    "headers": "Crystal Glass or Solid Background. backdrop-blur-xl bg-white/70, 1px delicate inner stroke border-white/40.",
+    "buttons": "Primary CTA: bg-[#1A1A1A] text-white hover:bg-[#333333]. Secondary: bg-transparent text-[#1A1A1A] border border-[#1A1A1A] hover:bg-[#F2EFEB]. Sharp corners or rounded-none. uppercase text-xs tracking-widest."
+  },
+  "motion_and_interaction": {
+    "hover_states": "Images slightly scale up inside overflow-hidden containers (duration-700 ease-out). Buttons translate-y-[-1px] with shadow-md.",
+    "scroll": "Use Lenis for smooth momentum scrolling. Elements fade up on scroll entry.",
+    "microinteractions": "Delicate line expansions on hover for nav links. Image overlays fade to clear."
+  },
+  "page_specific_directions": {
+    "homepage": "Hero should be a massive editorial image. Overlay should be very subtle gradient, not a solid mask. Feature sections should alternate between wide image blocks and generous text areas with delicate typography.",
+    "shop_grid": "Clean grid, emphasis on high-quality product photography. Minimal details under the product (Title in Serif, Price in Sans). Hover shows 'Add to Cart' or second image.",
+    "product_detail": "Editorial 50/50 split. Massive sticky image on left. Right side: Title, Price, Box personalization form (Shadcn customized forms), Delivery date logic with Shadcn Calendar. Use thin dividing lines between options.",
+    "weddings_services": "Gallery style layout. Staggered imagery. Large typography sections describing the bespoke process. Inquiry form at the bottom.",
+    "sympathy_tributes": "Subtle, quiet design. More negative space. Pale sage accents.",
+    "corporate_events": "Structured bento grid. Professional yet luxurious.",
+    "house_installs": "Full-width immersive imagery. Storytelling format.",
+    "bespoke_portfolio": "Masonry gallery. Hover to reveal 'Enquire similar'. Filterable tabs."
+  },
+  "icons_and_assets": {
+    "icon_library": "@phosphor-icons/react (Duotone weight for high-end look)",
+    "image_urls": [
       {
-        "url": "https://images.unsplash.com/photo-1771099077435-6dbcac9fd65e",
-        "description": "Dark red orchids illuminated by spotlight."
+        "category": "hero_banner",
+        "url": "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png",
+        "description": "Hero delicate blush roses wrapped elegantly."
       },
       {
-        "url": "https://images.unsplash.com/photo-1768586471676-6af1d219e99e",
-        "description": "Luxury bride on grand staircase."
+        "category": "portfolio_floral_arch",
+        "url": "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwZmxvcmFsJTIwYXJjaCUyMHdoaXRlJTIwYmx1c2h8ZW58MHx8fHwxNzc3NTU1Nzc3fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Elegant wedding floral arch."
       },
       {
-        "url": "https://images.unsplash.com/photo-1771099077123-e9795202de0c",
-        "description": "Dark red orchids and roses arrangement."
+        "category": "corporate_event",
+        "url": "https://images.unsplash.com/photo-1768508949823-26255327c264?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBldmVudCUyMGZsb3JhbCUyMGFycmFuZ2VtZW50fGVufDB8fHx8MTc3NzU1NTc5NHww&ixlib=rb-4.1.0&q=85",
+        "description": "Elegant table setting with floral centerpiece."
+      },
+      {
+        "category": "bouquet_product_1",
+        "url": "https://images.unsplash.com/photo-1760373071711-960143464e34?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjByb3NlJTIwYm91cXVldCUyMGVsZWdhbnR8ZW58MHx8fHwxNzc3NTU1Nzc4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Dewy luxury red and white roses close up."
+      },
+      {
+        "category": "bouquet_product_2",
+        "url": "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png",
+        "description": "Pink roses in lavender wrap."
+      },
+      {
+        "category": "texture_background",
+        "url": "https://images.unsplash.com/photo-1737276681566-bd86b399dafe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwZmxvcmFsJTIwdGV4dHVyZSUyMHdoaXRlJTIwYmx1c2h8ZW58MHx8fHwxNzc3NTU1Nzk0fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Pale pink textured background."
       }
     ]
   },
-  "testing_and_accessibility": {
-    "attributes": "All interactive elements, forms, and navigation links MUST include data-testid attributes (e.g., data-testid='hero-cta-button').",
-    "contrast": "Ensure text over images has sufficient contrast or uses drop shadows. Do not use fully transparent headers."
+  "testing_attributes": {
+    "rule": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case."
   },
-  "instructions_to_main_agent": [
-    "Strictly adhere to the dark theme and Jewel & Luxury archetype. Avoid 'cheap' brightly colored UI elements.",
-    "Use Playfair Display for headings and Manrope for body text. Install these via Google Fonts.",
-    "Build custom asymmetric grids for the Services and Gallery sections using raw Tailwind classes, prioritizing generous spacing (py-24 or py-32).",
-    "The hero section should feature the moody floral image with a subtle overlay, never exceeding bg-black/40.",
-    "Implement the bespoke consultation form using Shadcn but customize it to fit the dark luxury theme.",
-    "Include a marquee or elegant slider for testimonials, keeping typography low-contrast and refined.",
-    "Ensure all images are sourced from the provided media URLs, with no generic placeholder URLs used."
-  ]
+  "component_instructions": {
+    "shadcn_overrides": "Do not build native HTML advanced inputs. Heavily customize Shadcn Dialog, Select, Calendar, Tabs. Override border radius (rounded-none), change ring colors to stone-200, use Playfair Display or Montserrat appropriately.",
+    "cards": "Do not overuse the Card component for product layout. Use raw HTML div for more asymmetrical layout freedom."
+  }
 }
