@@ -1,114 +1,116 @@
 {
-  "theme": "LIGHT",
-  "archetype": "1_Organic_Earthy",
+  "theme": "dark",
+  "archetype": "5 (Jewel & Luxury)",
+  "vibe": "Expensive, cinematic, moody, elegant, bespoke, high-end editorial",
   "typography": {
-    "fonts": {
-      "heading": "Cormorant Garamond",
-      "body": "Manrope",
-      "accent": "Caveat"
-    },
+    "headings_font": "Playfair Display",
+    "body_font": "Manrope",
     "hierarchy": {
-      "h1": "text-4xl sm:text-5xl lg:text-6xl font-light tracking-tight text-foreground",
-      "h2": "text-2xl sm:text-3xl lg:text-4xl font-light tracking-tight text-foreground",
-      "h3": "text-xl sm:text-2xl font-normal text-foreground",
-      "body": "text-base font-normal leading-relaxed text-foreground/80",
-      "small": "text-sm uppercase tracking-[0.2em] font-medium text-foreground/60"
-    }
+      "h1": "text-5xl md:text-6xl lg:text-7xl font-light tracking-tight text-[#F4F0E6]",
+      "h2": "text-4xl md:text-5xl font-light tracking-tight text-[#F4F0E6]",
+      "h3": "text-2xl md:text-3xl font-normal text-[#F4F0E6]",
+      "h4": "text-xl font-medium text-[#F4F0E6]",
+      "body": "text-base leading-relaxed text-[#A3A6A1]",
+      "small": "text-sm uppercase tracking-[0.2em] text-[#C5A059]"
+    },
+    "guidelines": "Headings must use Playfair Display and should NOT be bold; use font-light or font-normal. Body text must use Manrope. Subtitles/labels should be uppercase with wide letter-spacing. Never use Inter, Roboto, or Open Sans."
   },
   "colors": {
-    "background": "#FAFAF7",
-    "foreground": "#233520",
-    "primary": "#C07A65",
-    "primary_foreground": "#FFFFFF",
-    "secondary": "#E8ECE1",
-    "secondary_foreground": "#233520",
-    "accent": "#F2CFC0",
-    "accent_foreground": "#233520",
-    "muted": "#F0F0EA",
-    "muted_foreground": "#788275",
-    "card": "#FFFFFF",
-    "card_foreground": "#233520",
-    "border": "#E3E5DF"
+    "background_primary": "#0B0C0B",
+    "background_secondary": "#121413",
+    "surface": "#161A18",
+    "primary_accent": "#C5A059",
+    "primary_accent_hover": "#DFBB73",
+    "text_primary": "#F4F0E6",
+    "text_secondary": "#A3A6A1",
+    "border": "#252825",
+    "glass_background": "rgba(11, 12, 11, 0.6)",
+    "glass_border": "rgba(244, 240, 230, 0.05)"
   },
-  "spacing": {
-    "section": "py-20 md:py-32",
-    "container": "px-4 md:px-8 max-w-7xl mx-auto",
-    "grid_gap": "gap-8 md:gap-12"
+  "spacing_and_layout": {
+    "section_padding": "py-24 md:py-32",
+    "container_padding": "px-6 md:px-12",
+    "grid_strategy": "Asymmetric layouts, bento box grids with breathing room. Avoid perfect symmetry to create an editorial, artistic feel.",
+    "border_radius": "rounded-none md:rounded-sm",
+    "guidelines": "Use generous spacing. For hero, allow the image to breathe. Use negative space to emphasize luxury."
   },
   "components": {
-    "button": {
-      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-none px-8 py-4 transition-colors",
-      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-none px-8 py-4 transition-colors",
-      "outline": "border border-foreground text-foreground hover:bg-foreground hover:text-white rounded-none px-8 py-4 transition-colors"
+    "header": {
+      "style": "Sticky top, crystal glassmorphism: backdrop-blur-xl bg-[#0B0C0B]/60 border-b border-[#252825]. Navigation must be visible on desktop. Elegant brand text on left, links in center, primary CTA on right.",
+      "cta_button": "bg-[#C5A059] text-[#0B0C0B] hover:bg-[#DFBB73] transition-colors"
     },
-    "card": {
-      "product": "bg-card border border-border group overflow-hidden cursor-pointer",
-      "image_wrapper": "aspect-[4/5] overflow-hidden bg-muted",
-      "image": "w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    "hero": {
+      "style": "Cinematic. Large hero image with max bg-black/40 overlay. Text must be readable. Include an elegant overline, massive H1, and primary CTA.",
+      "alignment": "Left or center aligned."
     },
-    "header": "sticky top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border transition-all",
-    "footer": "bg-foreground text-white py-20 px-8"
+    "cards_services": {
+      "style": "Moody and tactile. bg-[#161A18] with 1px border-[#252825]. Do not use heavy box-shadows. On hover: border tints slightly gold, image inside scales up slowly.",
+      "image": "Images should have max-h-[60vh] to avoid overwhelming the screen. Use object-cover."
+    },
+    "buttons": {
+      "primary": "bg-[#C5A059] text-[#0B0C0B] px-8 py-3 rounded-none font-medium hover:bg-[#DFBB73] transition-colors",
+      "secondary": "border border-[#C5A059] text-[#C5A059] px-8 py-3 rounded-none hover:bg-[#C5A059] hover:text-[#0B0C0B] transition-colors",
+      "ghost": "text-[#F4F0E6] hover:text-[#C5A059] transition-colors"
+    },
+    "forms": {
+      "style": "Use Shadcn components but override styling. Inputs should be dark: bg-[#121413] border-[#252825] focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059]. Text should be #F4F0E6."
+    },
+    "footer": {
+      "style": "Massive padding py-32. Border top border-[#252825]. Big typographic brand name text-[8vw] at the bottom in Playfair Display."
+    }
   },
-  "layout": {
-    "product_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8",
-    "bento_grid": "grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8"
-  },
-  "motion": {
-    "hover": "transition-all duration-300 ease-in-out",
-    "page_load": "framer-motion fade-in and slide-up for sections"
+  "interactions_and_motion": {
+    "hover": "Images inside containers should have scale-105 duration-700 ease-in-out on container hover. Borders transition to a subtle gold.",
+    "scroll": "Use Lenis for smooth momentum scrolling. Entrance animations should be subtle fade-ups with 0.8s duration.",
+    "links": "Underline expand on hover or color shift to gold."
   },
   "media": {
-    "images": [
+    "hero_background": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/18c3dcb9dbd05cb6efcfadb79429357816a868d87bf9d53dabd71b73756e5bac.png",
+      "description": "Opulent moody floral arrangement with deep red peonies and dark purple orchids, cinematic lighting."
+    },
+    "wedding_service": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/12a142ed2b28feae7d2b9e1bd97279a7c9bf8aaf7fae184fe9d56aa279456ed3.png",
+      "description": "High-end bespoke bridal bouquet with cream roses and white anemones against silk wedding dress."
+    },
+    "funeral_sympathy": {
+      "url": "https://images.unsplash.com/photo-1602285415607-faa4007a0bca",
+      "description": "Elegant white, purple, and green floral sympathy wreath for premium funeral service."
+    },
+    "premium_bouquets": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/f27037e690ea606fe6fdfcd8e721d768249ffa5685c08d3c2b65680492c5a13e.png",
+      "description": "Massive, luxurious gift bouquet on a dark marble table, wrapped in premium matte paper."
+    },
+    "about_storefront": {
+      "url": "https://images.unsplash.com/photo-1575081838238-d06e716afa28",
+      "description": "Elegant dark storefront of the flower shop."
+    },
+    "gallery_images": [
       {
-        "category": "hero",
-        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/a4d1e9ab6b2b8addbe3535569ddca8a3431d60bfbb52e5d0caffc28093e2def0.png",
-        "description": "florist studio hero image, wide landscape"
+        "url": "https://images.unsplash.com/photo-1771099077435-6dbcac9fd65e",
+        "description": "Dark red orchids illuminated by spotlight."
       },
       {
-        "category": "product_1",
-        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/90a90391c07e0c35d79733aaf9fde040095ee04bb0fae08557c56af10e0dc600.png",
-        "description": "elegant vase arrangement"
+        "url": "https://images.unsplash.com/photo-1768586471676-6af1d219e99e",
+        "description": "Luxury bride on grand staircase."
       },
       {
-        "category": "product_2",
-        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/c3e02374003409a1a8a8529e9e73dcbdf29e00fe424556c11b7c8e1bb19d37eb.png",
-        "description": "wrapped bouquet"
-      },
-      {
-        "category": "product_3",
-        "url": "https://images.unsplash.com/photo-1603983856087-c175061451de?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHw0fHxmbG93ZXIlMjBib3VxdWV0JTIwZWxlZ2FudHxlbnwwfHx8fDE3NzU2NTQ1OTR8MA&ixlib=rb-4.1.0&q=85",
-        "description": "pink and orange flowers"
-      },
-      {
-        "category": "product_4",
-        "url": "https://images.unsplash.com/photo-1774959725056-9556b06c8806?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwzfHxmbG93ZXIlMjBib3VxdWV0JTIwZWxlZ2FudHxlbnwwfHx8fDE3NzU2NTQ1OTR8MA&ixlib=rb-4.1.0&q=85",
-        "description": "white calla lilies"
-      },
-      {
-        "category": "background_texture",
-        "url": "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/0f7137e5b8f9db23515daaa83a6ce033d0860190f2e6e9c41ffec8d0a2c82a5a.png",
-        "description": "organic paper texture"
-      },
-      {
-        "category": "about_florist",
-        "url": "https://images.pexels.com/photos/5414006/pexels-photo-5414006.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-        "description": "florist working smiling"
+        "url": "https://images.unsplash.com/photo-1771099077123-e9795202de0c",
+        "description": "Dark red orchids and roses arrangement."
       }
     ]
   },
+  "testing_and_accessibility": {
+    "attributes": "All interactive elements, forms, and navigation links MUST include data-testid attributes (e.g., data-testid='hero-cta-button').",
+    "contrast": "Ensure text over images has sufficient contrast or uses drop shadows. Do not use fully transparent headers."
+  },
   "instructions_to_main_agent": [
-    "Use pure HTML/Tailwind for the landing page hero and product grids. Avoid Shadcn Cards for creative layout sections, just use semantic HTML.",
-    "For the e-commerce checkout, cart, user dashboard, and admin panel, use Shadcn UI components but heavily customize them to remove the default tech 'Vercel' look (e.g., replace radii, add custom colors).",
-    "Ensure all interactive elements have data-testid attributes for testing.",
-    "Implement a generous spacing scale. Don't cramp the layout.",
-    "The hero section should use 'florist_hero' as background with 'bg-black/30' overlay max. Use text-shadow if needed.",
-    "Load 'Cormorant Garamond' and 'Manrope' fonts.",
-    "Product images must have a 4:5 aspect ratio.",
-    "Avoid center-alignment for everything; use left-alignment for product details and dense text.",
-    "Integrate Lucide-react for icons. Size them elegantly.",
-    "For date selection in checkout, use Shadcn Calendar but style it warmly.",
-    "DO NOT use Inter or standard sans-serif for headings.",
-    "Ensure hover states are clearly defined with color shifts, not just opacity.",
-    "All components must be accessible and include aria labels where necessary."
+    "Strictly adhere to the dark theme and Jewel & Luxury archetype. Avoid 'cheap' brightly colored UI elements.",
+    "Use Playfair Display for headings and Manrope for body text. Install these via Google Fonts.",
+    "Build custom asymmetric grids for the Services and Gallery sections using raw Tailwind classes, prioritizing generous spacing (py-24 or py-32).",
+    "The hero section should feature the moody floral image with a subtle overlay, never exceeding bg-black/40.",
+    "Implement the bespoke consultation form using Shadcn but customize it to fit the dark luxury theme.",
+    "Include a marquee or elegant slider for testimonials, keeping typography low-contrast and refined.",
+    "Ensure all images are sourced from the provided media URLs, with no generic placeholder URLs used."
   ]
 }
