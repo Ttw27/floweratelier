@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ShoppingBag, User, Menu, X, Phone } from "lucide-react";
+import { ShoppingBag, User, Menu, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import {
@@ -18,7 +18,7 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
 
   const handleLogout = () => {
     logout();
@@ -26,47 +26,47 @@ export default function Header() {
   };
 
   const navLinks = [
-    { name: "Collection", path: "/collection" },
+    { name: "Shop", path: "/collection" },
     { name: "Weddings", path: "/weddings" },
     { name: "Sympathy", path: "/sympathy" },
-    { name: "Consultation", path: "/consultation" },
+    { name: "Corporate", path: "/corporate" },
+    { name: "House Installs", path: "/house-installs" },
+    { name: "Portfolio", path: "/portfolio" },
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-effect" data-testid="header">
-      <div className="px-6 md:px-12 max-w-7xl mx-auto">
+    <header className="fixed top-0 left-0 right-0 z-50 glass-header" data-testid="header">
+      <div className="px-6 md:px-12 max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between h-20">
           {/* Mobile menu button */}
           <button
-            className="lg:hidden p-2 text-[#F4F0E6]"
+            className="lg:hidden p-2 text-[#1A1A1A]"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             data-testid="mobile-menu-toggle"
           >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
           {/* Logo */}
-          <Link to="/" className="flex items-center" data-testid="logo-link">
-            <span className="font-heading text-2xl md:text-3xl font-light text-[#F4F0E6] tracking-wide">
+          <Link to="/" className="flex items-baseline gap-2" data-testid="logo-link">
+            <span className="font-heading text-2xl md:text-[28px] font-light text-[#1A1A1A] tracking-tight">
               Petals
             </span>
-            <span className="font-heading text-2xl md:text-3xl font-light text-[#C5A059] italic ml-2">
+            <span className="font-heading text-2xl md:text-[28px] font-light italic text-[#B3A89B]">
               Atelier
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-10" data-testid="desktop-nav">
+          <nav className="hidden lg:flex items-center gap-9" data-testid="desktop-nav">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`font-body text-sm uppercase tracking-[0.15em] transition-colors duration-300 ${
-                  isActive(link.path)
-                    ? "text-[#C5A059]"
-                    : "text-[#F4F0E6]/80 hover:text-[#C5A059]"
+                className={`nav-link font-body text-[11px] uppercase tracking-[0.22em] font-medium transition-colors ${
+                  isActive(link.path) ? "text-[#1A1A1A] active" : "text-[#7A7A7A] hover:text-[#1A1A1A]"
                 }`}
-                data-testid={`nav-${link.name.toLowerCase()}`}
+                data-testid={`nav-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {link.name}
               </Link>
@@ -74,55 +74,53 @@ export default function Header() {
           </nav>
 
           {/* Right side */}
-          <div className="flex items-center space-x-4">
-            {/* Phone - Desktop only */}
-            <a
-              href="tel:+441234567890"
-              className="hidden md:flex items-center space-x-2 text-[#A3A6A1] hover:text-[#C5A059] transition-colors"
-              data-testid="phone-link"
+          <div className="flex items-center gap-3">
+            <Link
+              to="/consultation"
+              className="hidden md:inline-block font-body text-[11px] uppercase tracking-[0.22em] text-[#1A1A1A] border-b border-[#1A1A1A] pb-0.5 hover:border-transparent transition-all"
+              data-testid="header-enquire"
             >
-              <Phone size={16} />
-              <span className="font-body text-sm">01onal 567 890</span>
-            </a>
+              Enquire
+            </Link>
 
             {/* User menu */}
             <DropdownMenu>
-              <DropdownMenuTrigger className="p-2 text-[#F4F0E6]/80 hover:text-[#C5A059] transition-colors" data-testid="user-menu-trigger">
-                <User size={20} />
+              <DropdownMenuTrigger className="p-2 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="user-menu-trigger">
+                <User size={19} strokeWidth={1.3} />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48 bg-[#161A18] border border-[#252825] text-[#F4F0E6]">
+              <DropdownMenuContent className="w-48 bg-white border border-[#E5E5E5] rounded-none text-[#1A1A1A]">
                 {user ? (
                   <>
-                    <DropdownMenuItem disabled className="text-[#A3A6A1] text-sm">
+                    <DropdownMenuItem disabled className="text-[#7A7A7A] text-xs">
                       {user.name}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-[#252825]" />
+                    <DropdownMenuSeparator className="bg-[#E5E5E5]" />
                     <DropdownMenuItem asChild>
-                      <Link to="/account" className="cursor-pointer" data-testid="account-link">
+                      <Link to="/account" className="cursor-pointer font-body text-xs uppercase tracking-wider" data-testid="account-link">
                         My Account
                       </Link>
                     </DropdownMenuItem>
                     {user.is_admin && (
                       <DropdownMenuItem asChild>
-                        <Link to="/admin" className="cursor-pointer" data-testid="admin-link">
+                        <Link to="/admin" className="cursor-pointer font-body text-xs uppercase tracking-wider" data-testid="admin-link">
                           Admin
                         </Link>
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuSeparator className="bg-[#252825]" />
-                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer" data-testid="logout-button">
+                    <DropdownMenuSeparator className="bg-[#E5E5E5]" />
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer font-body text-xs uppercase tracking-wider" data-testid="logout-button">
                       Sign Out
                     </DropdownMenuItem>
                   </>
                 ) : (
                   <>
                     <DropdownMenuItem asChild>
-                      <Link to="/login" className="cursor-pointer" data-testid="login-link">
+                      <Link to="/login" className="cursor-pointer font-body text-xs uppercase tracking-wider" data-testid="login-link">
                         Sign In
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link to="/register" className="cursor-pointer" data-testid="register-link">
+                      <Link to="/register" className="cursor-pointer font-body text-xs uppercase tracking-wider" data-testid="register-link">
                         Create Account
                       </Link>
                     </DropdownMenuItem>
@@ -132,10 +130,10 @@ export default function Header() {
             </DropdownMenu>
 
             {/* Cart */}
-            <Link to="/cart" className="p-2 relative text-[#F4F0E6]/80 hover:text-[#C5A059] transition-colors" data-testid="cart-link">
-              <ShoppingBag size={20} />
+            <Link to="/cart" className="p-2 relative text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="cart-link">
+              <ShoppingBag size={19} strokeWidth={1.3} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#C5A059] text-[#0B0C0B] text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium" data-testid="cart-count">
+                <span className="absolute -top-1 -right-1 bg-[#1A1A1A] text-white text-[10px] w-5 h-5 flex items-center justify-center font-body font-medium" data-testid="cart-count">
                   {cartCount}
                 </span>
               )}
@@ -146,21 +144,29 @@ export default function Header() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0B0C0B] border-t border-[#252825]" data-testid="mobile-menu">
-          <nav className="px-6 py-6 space-y-4">
+        <div className="lg:hidden bg-[#FAFAF7] border-t border-[#E5E5E5]" data-testid="mobile-menu">
+          <nav className="px-6 py-8 space-y-5">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`block py-2 font-body text-sm uppercase tracking-wider ${
-                  isActive(link.path) ? "text-[#C5A059]" : "text-[#F4F0E6]/80"
+                className={`block font-body text-xs uppercase tracking-[0.22em] ${
+                  isActive(link.path) ? "text-[#1A1A1A]" : "text-[#7A7A7A]"
                 }`}
                 onClick={() => setMobileMenuOpen(false)}
-                data-testid={`mobile-nav-${link.name.toLowerCase()}`}
+                data-testid={`mobile-nav-${link.name.toLowerCase().replace(/\s+/g, "-")}`}
               >
                 {link.name}
               </Link>
             ))}
+            <Link
+              to="/consultation"
+              className="block font-body text-xs uppercase tracking-[0.22em] text-[#1A1A1A] pt-4 border-t border-[#E5E5E5]"
+              onClick={() => setMobileMenuOpen(false)}
+              data-testid="mobile-nav-enquire"
+            >
+              Enquire
+            </Link>
           </nav>
         </div>
       )}

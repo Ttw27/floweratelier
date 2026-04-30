@@ -10,6 +10,9 @@ import CollectionPage from "./pages/CollectionPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import WeddingsPage from "./pages/WeddingsPage";
 import SympathyPage from "./pages/SympathyPage";
+import CorporatePage from "./pages/CorporatePage";
+import HouseInstallsPage from "./pages/HouseInstallsPage";
+import BespokePortfolioPage from "./pages/BespokePortfolioPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
@@ -28,7 +31,7 @@ function App() {
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
-          <div className="min-h-screen flex flex-col bg-[#0B0C0B]">
+          <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#1A1A1A]">
             <Header />
             <main className="flex-1">
               <Routes>
@@ -38,6 +41,9 @@ function App() {
                 <Route path="/product/:productId" element={<ProductDetailPage />} />
                 <Route path="/weddings" element={<WeddingsPage />} />
                 <Route path="/sympathy" element={<SympathyPage />} />
+                <Route path="/corporate" element={<CorporatePage />} />
+                <Route path="/house-installs" element={<HouseInstallsPage />} />
+                <Route path="/portfolio" element={<BespokePortfolioPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/order-success" element={<OrderSuccessPage />} />
@@ -50,7 +56,7 @@ function App() {
             </main>
             <Footer />
           </div>
-          <Toaster position="top-right" theme="dark" />
+          <Toaster position="top-right" theme="light" />
         </BrowserRouter>
       </CartProvider>
     </AuthProvider>

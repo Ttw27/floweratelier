@@ -1,94 +1,66 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Heart, Calendar, Users, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+
+const HERO = "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1800";
+const IMG_1 = "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200";
+const IMG_2 = "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=1200";
 
 export default function WeddingsPage() {
   const services = [
-    {
-      title: "Bridal Bouquet",
-      description: "Your crowning glory, designed to complement your dress and personal style",
-      price: "from £195",
-      image: "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/12a142ed2b28feae7d2b9e1bd97279a7c9bf8aaf7fae184fe9d56aa279456ed3.png"
-    },
-    {
-      title: "Bridesmaids & Flower Girls",
-      description: "Coordinated arrangements for your bridal party",
-      price: "from £65 each",
-      image: "https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/f27037e690ea606fe6fdfcd8e721d768249ffa5685c08d3c2b65680492c5a13e.png"
-    },
-    {
-      title: "Venue Decoration",
-      description: "Table centres, ceremony arrangements, and statement installations",
-      price: "from £500",
-      image: "https://images.unsplash.com/photo-1519741497674-611481863552?w=600"
-    },
-    {
-      title: "Buttonholes & Corsages",
-      description: "Elegant accessories for the wedding party",
-      price: "from £25 each",
-      image: "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=600"
-    }
+    { title: "Bridal Couture Bouquet", description: "The crowning composition — garden roses, ranunculus and sweet peas, hand-tied with silk.", price: "from £245", image: IMG_1 },
+    { title: "Bridesmaids & Attendants", description: "Coordinated miniature editions for the wedding party.", price: "from £95 each", image: IMG_2 },
+    { title: "Ceremony Installations", description: "Altars, arches, chuppahs and statement pedestals.", price: "from £2,500", image: "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png" },
+    { title: "Reception Tablescapes", description: "Low runners, elevated centrepieces and candlescape design.", price: "from £1,800", image: "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0B0C0B] pt-20" data-testid="weddings-page">
-      {/* Hero */}
-      <section 
-        className="relative min-h-[70vh] flex items-center"
-        style={{
-          backgroundImage: `url(https://static.prod-images.emergentagent.com/jobs/77ed8462-0ac3-44b4-858b-fec4491532f7/images/12a142ed2b28feae7d2b9e1bd97279a7c9bf8aaf7fae184fe9d56aa279456ed3.png)`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-      >
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="relative z-10 px-6 md:px-12 max-w-7xl mx-auto">
-          <p className="font-body text-sm uppercase tracking-[0.3em] text-[#C5A059] mb-4">
-            Wedding Floristry
-          </p>
-          <h1 className="font-heading text-5xl md:text-6xl lg:text-7xl font-light text-[#F4F0E6] mb-6 max-w-3xl" data-testid="weddings-title">
-            Your Perfect Day,<br />
-            <span className="italic">Blossoming Beautifully</span>
-          </h1>
-          <p className="font-body text-lg text-[#F4F0E6]/80 mb-8 max-w-xl">
-            From intimate ceremonies to grand celebrations, we create bespoke 
-            wedding flowers that tell your unique love story.
-          </p>
-          <Link to="/consultation">
-            <Button className="btn-gold text-base" data-testid="book-wedding-consultation">
-              Book Wedding Consultation
-              <ArrowRight className="ml-2" size={18} />
-            </Button>
-          </Link>
+    <div className="pt-20" data-testid="weddings-page">
+      {/* Editorial hero */}
+      <section className="relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[70vh]">
+          <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-16 lg:py-0 order-2 lg:order-1 bg-[#FAFAF7]">
+            <div className="max-w-md">
+              <p className="accent-label mb-8"><span className="thin-rule" />Weddings</p>
+              <h1 className="font-heading text-5xl md:text-7xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight mb-10" data-testid="weddings-title">
+                Your day, <br />in <span className="italic text-[#B3A89B]">bloom.</span>
+              </h1>
+              <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
+                From intimate ceremonies to destination weddings across the UK and Europe —
+                we design, install and dismantle entirely in-house. One florist. One vision.
+                Impeccably executed.
+              </p>
+              <Link to="/consultation">
+                <Button className="btn-dark rounded-none inline-flex items-center gap-3" data-testid="book-wedding-consultation">
+                  Book a wedding consultation <ArrowRight size={14} />
+                </Button>
+              </Link>
+            </div>
+          </div>
+          <div className="lg:col-span-7 order-1 lg:order-2 h-[55vh] lg:h-auto">
+            <img src={HERO} alt="Wedding floristry" className="w-full h-full object-cover" />
+          </div>
         </div>
       </section>
 
       {/* Process */}
-      <section className="py-24 md:py-32 px-6 md:px-12 border-b border-[#252825]">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="font-body text-sm uppercase tracking-[0.3em] text-[#C5A059] mb-4">
-              Our Process
-            </p>
-            <h2 className="font-heading text-4xl md:text-5xl font-light text-[#F4F0E6]">
-              How We Work Together
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
+        <div className="max-w-[1400px] mx-auto">
+          <p className="accent-label mb-5"><span className="thin-rule" />The Process</p>
+          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
+            Four deliberate<br /><span className="italic">stages.</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-14">
             {[
-              { icon: Calendar, title: "Consultation", desc: "We meet to discuss your vision, venue, and style" },
-              { icon: Heart, title: "Design", desc: "We create a bespoke proposal tailored to you" },
-              { icon: Sparkles, title: "Creation", desc: "Our florists craft your flowers with care" },
-              { icon: Users, title: "Your Day", desc: "We deliver and style, you enjoy your celebration" }
-            ].map((step, idx) => (
-              <div key={idx} className="text-center">
-                <div className="w-16 h-16 bg-[#161A18] border border-[#252825] flex items-center justify-center mx-auto mb-6">
-                  <step.icon size={24} className="text-[#C5A059]" />
-                </div>
-                <p className="font-body text-sm text-[#C5A059] mb-2">Step {idx + 1}</p>
-                <h3 className="font-heading text-xl text-[#F4F0E6] mb-2">{step.title}</h3>
-                <p className="font-body text-sm text-[#A3A6A1]">{step.desc}</p>
+              { step: "01", title: "Consultation", desc: "A quiet conversation — your venue, your style, your season." },
+              { step: "02", title: "Design", desc: "A bespoke mood-board and transparent, fixed-fee proposal." },
+              { step: "03", title: "Creation", desc: "Hand-tied in our atelier the evening before your day." },
+              { step: "04", title: "Installation", desc: "We install, style, photograph and break down." },
+            ].map((step) => (
+              <div key={step.step}>
+                <p className="font-heading text-6xl font-light text-[#B3A89B] mb-4">{step.step}</p>
+                <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-3">{step.title}</h3>
+                <p className="font-body text-sm text-[#7A7A7A] leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -96,32 +68,21 @@ export default function WeddingsPage() {
       </section>
 
       {/* Services */}
-      <section className="py-24 md:py-32 px-6 md:px-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="font-body text-sm uppercase tracking-[0.3em] text-[#C5A059] mb-4">
-              Wedding Services
-            </p>
-            <h2 className="font-heading text-4xl md:text-5xl font-light text-[#F4F0E6]">
-              Complete Wedding Floristry
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">
+        <div className="max-w-[1400px] mx-auto">
+          <p className="accent-label mb-5"><span className="thin-rule" />Services</p>
+          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
+            Complete wedding<br /><span className="italic">floristry.</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
             {services.map((service, idx) => (
-              <div key={idx} className="luxury-card overflow-hidden group" data-testid={`wedding-service-${idx}`}>
-                <div className="grid grid-cols-1 md:grid-cols-2">
-                  <div className="aspect-square image-hover-container">
-                    <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-8 flex flex-col justify-center">
-                    <h3 className="font-heading text-2xl text-[#F4F0E6] mb-3 group-hover:text-[#C5A059] transition-colors">
-                      {service.title}
-                    </h3>
-                    <p className="font-body text-sm text-[#A3A6A1] mb-4">{service.description}</p>
-                    <p className="font-body text-[#C5A059]">{service.price}</p>
-                  </div>
+              <div key={idx} className="group" data-testid={`wedding-service-${idx}`}>
+                <div className="aspect-[4/3] image-hover-container mb-6 bg-white">
+                  <img src={service.image} alt={service.title} className="w-full h-full object-cover" />
                 </div>
+                <h3 className="font-heading text-3xl font-light text-[#1A1A1A] mb-3 group-hover:italic transition-all">{service.title}</h3>
+                <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-3">{service.description}</p>
+                <p className="accent-label text-[#1A1A1A]">{service.price}</p>
               </div>
             ))}
           </div>
@@ -129,23 +90,14 @@ export default function WeddingsPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 md:py-32 px-6 md:px-12 bg-[#121413]">
+      <section className="py-24 md:py-32 px-6 md:px-12">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="font-body text-sm uppercase tracking-[0.3em] text-[#C5A059] mb-4">
-            Let's Create Magic
-          </p>
-          <h2 className="font-heading text-3xl md:text-5xl font-light text-[#F4F0E6] mb-6">
-            Ready to Discuss Your Wedding Flowers?
+          <p className="accent-label mb-8"><span className="thin-rule" />Begin</p>
+          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1] mb-12">
+            Your wedding,<br /><span className="italic">our hands.</span>
           </h2>
-          <p className="font-body text-[#A3A6A1] mb-8">
-            Book a complimentary consultation to share your vision. We'll guide you 
-            through options, discuss your venue, and create a proposal as unique as your love story.
-          </p>
           <Link to="/consultation">
-            <Button className="btn-gold text-base" data-testid="cta-wedding-consultation">
-              Book Your Consultation
-              <ArrowRight className="ml-2" size={18} />
-            </Button>
+            <Button className="btn-dark rounded-none" data-testid="cta-wedding-consultation">Begin a consultation</Button>
           </Link>
         </div>
       </section>

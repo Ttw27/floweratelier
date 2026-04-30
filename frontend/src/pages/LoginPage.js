@@ -21,66 +21,42 @@ export default function LoginPage() {
       navigate("/");
     } catch (error) {
       toast.error(error.response?.data?.detail || "Invalid credentials");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0C0B] pt-20 flex items-center justify-center" data-testid="login-page">
+    <div className="min-h-screen pt-20 flex items-center justify-center py-16" data-testid="login-page">
       <div className="w-full max-w-md px-6">
-        <div className="text-center mb-10">
-          <h1 className="font-heading text-3xl font-light text-[#F4F0E6] mb-2" data-testid="login-title">
-            Welcome Back
-          </h1>
-          <p className="font-body text-[#A3A6A1]">Sign in to your account</p>
+        <div className="text-center mb-12">
+          <p className="accent-label mb-4">Atelier Account</p>
+          <h1 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] tracking-tight" data-testid="login-title">Welcome back</h1>
         </div>
 
-        <div className="bg-[#121413] border border-[#252825] p-8">
+        <div className="bg-white border border-[#E5E5E5] p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Label className="font-body text-[#F4F0E6] text-sm">Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mt-2 dark-input"
-                placeholder="you@example.com"
-                required
-                data-testid="login-email"
-              />
+              <Label className="accent-label text-[#1A1A1A]">Email</Label>
+              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="mt-2 light-input rounded-none" placeholder="you@example.com" required data-testid="login-email" />
             </div>
             <div>
-              <Label className="font-body text-[#F4F0E6] text-sm">Password</Label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="mt-2 dark-input"
-                placeholder="••••••••"
-                required
-                data-testid="login-password"
-              />
+              <Label className="accent-label text-[#1A1A1A]">Password</Label>
+              <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="mt-2 light-input rounded-none" placeholder="••••••••" required data-testid="login-password" />
             </div>
-
-            <Button type="submit" disabled={loading} className="w-full btn-gold py-4" data-testid="login-submit">
-              {loading ? "Signing in..." : "Sign In"}
+            <Button type="submit" disabled={loading} className="btn-dark w-full py-5 rounded-none" data-testid="login-submit">
+              {loading ? "Signing in…" : "Sign In"}
             </Button>
           </form>
-
-          <div className="mt-6 text-center">
-            <p className="font-body text-sm text-[#A3A6A1]">
-              Don't have an account?{" "}
-              <Link to="/register" className="text-[#C5A059] hover:text-[#DFBB73]" data-testid="register-link">
-                Create one
-              </Link>
+          <div className="mt-8 text-center">
+            <p className="font-body text-sm text-[#7A7A7A]">
+              New here?{" "}
+              <Link to="/register" className="text-[#1A1A1A] underline" data-testid="register-link">Create an account</Link>
             </p>
           </div>
         </div>
 
-        <div className="mt-6 p-4 bg-[#161A18] border border-[#252825] text-center">
-          <p className="font-body text-xs text-[#A3A6A1]">
-            <strong className="text-[#C5A059]">Demo:</strong> admin@petalsatelier.com / admin123
+        <div className="mt-6 p-4 bg-[#F2EFEB] text-center">
+          <p className="font-body text-[11px] uppercase tracking-[0.2em] text-[#7A7A7A]">
+            Demo · admin@petalsatelier.com / admin123
           </p>
         </div>
       </div>

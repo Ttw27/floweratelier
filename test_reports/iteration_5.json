@@ -1,0 +1,60 @@
+{
+  "summary": "End-to-end testing of Petals Atelier v2 light-luxury pivot. Backend 26/26 pytest pass. Frontend light theme (#FAFAF7) confirmed across pages, 6-item nav, portfolio grid+filter+lightbox+CTA, consultation prefill (service + ref_title), Collection→Product→AddToCart→Cart, admin login + dashboard with Orders/Inquiries/Products tabs. All critical flows working.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Consultation (/consultation)",
+        "issues": [
+          "Event Date field uses browser-native HTML5 date input (mm/dd/yyyy) rather than a shadcn Calendar / Popover component — inconsistent with premium brand styling used elsewhere (luxury aesthetic expects custom date picker)."
+        ]
+      }
+    ]
+  },
+  "passed_tests": [
+    "Seed idempotent + reset=true force (v2-light-luxury)",
+    "Admin login admin@petalsatelier.com/admin123 → is_admin=true",
+    "User register + login + duplicate register rejection",
+    "GET /api/categories, /api/products, /api/products?featured=true, /api/products/{id}",
+    "GET /api/portfolio returns 9+ items; filter by category (wedding/sympathy/corporate/house/window); /api/portfolio/{id}; 404 on unknown",
+    "POST /api/inquiries creates inquiry; /api/admin/inquiries requires admin",
+    "GET /api/delivery/options — no Sundays, >= today+2, Saturday £8.99, others £5.99, box/ribbon colors present",
+    "POST /api/orders rejects Sunday (400) and <2 days (400)",
+    "POST /api/orders creates order with standard / saturday fees (free when subtotal >= £50)",
+    "GET /api/admin/stats + /api/admin/orders",
+    "Frontend: homepage light bg rgb(250,250,247), nav has Shop/Weddings/Sympathy/Corporate/House Installs/Portfolio",
+    "Frontend: /portfolio — 9 cards, filter tabs All/Weddings/Sympathy/Corporate/House/Window, Weddings filter narrows to 2, lightbox dialog opens with title/tags/'Enquire a similar piece' CTA",
+    "Frontend: /consultation?service=corporate&ref_title=Test%20Ref — service dropdown prefilled 'Corporate / Event', ref_title injected as 'REFERENCE · TEST' and message textarea 'Interest in: Test Ref'",
+    "Frontend: /collection shows 8 products, click → /product/:id, Product detail exposes box color / ribbon / message personalization, Add to Basket persists, Cart shows item with Proceed to Checkout",
+    "Frontend: Admin login flow → /admin dashboard renders stats (ORDERS 15, PRODUCTS 8, CLIENTS 7, REVENUE £0) + Orders/Inquiries/Products tabs"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Low priority / optional) Replace native <input type='date'> in ConsultationPage Event Date with shadcn Calendar + Popover to match luxury brand tone.",
+    "(Info) Admin Revenue is £0 because all orders are status=pending / payment_status!=paid — this is expected (Stripe test key). Consider seeding one paid order to demonstrate revenue in the dashboard."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/server.py is 1117 lines — approaching the 700-line guideline. Consider splitting into routers (auth, products, portfolio, orders, admin) for maintainability.",
+    "OrderCreate.delivery_address is Dict (unstructured) — consider a typed sub-model (line1, city, postcode, country) for validation.",
+    "Legacy /api/backend_test.py at /app root is no longer needed since tests moved to /app/backend/tests/backend_test.py.",
+    "Legacy /app/frontend/src/pages/SympathyPage.js / WeddingsPage.js were not specifically tested but routes exist — ensure light-theme consistency."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (new pytest suite, 26 tests)"
+  ],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "100% critical flows"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (confirmed working). TEST_ prefix used for new users.",
+  "seed_data_creation": "None — relied on existing seed v2-light-luxury. Portfolio contains 9 items, products 8, admin dashboard reports 15 orders / 7 clients.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite at /app/backend/tests/backend_test.py covers auth, catalog, portfolio, inquiries, delivery, orders (Sunday/too-soon/Saturday/standard-fee), admin. Delivery address is a dict, not a string. Free-delivery kicks in at subtotal >= £50 so many luxury orders get delivery_fee=0. Portfolio categories in seed: wedding/sympathy/corporate/house/window.",
+  "rca of the issue": "N/A — no bugs found."
+}
