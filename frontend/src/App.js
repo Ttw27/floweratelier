@@ -21,6 +21,7 @@ import RegisterPage from "./pages/RegisterPage";
 import AccountPage from "./pages/AccountPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import AdminPage from "./pages/AdminPage";
+import ThemePreviewPage from "./pages/ThemePreviewPage";
 
 // Layout
 import Header from "./components/Header";
@@ -52,6 +53,7 @@ function App() {
                 <Route path="/account" element={<AccountPage />} />
                 <Route path="/consultation" element={<ConsultationPage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/themes" element={<ThemePreviewPage />} />
               </Routes>
             </main>
             <Footer />
