@@ -107,42 +107,41 @@ export default function HomePage() {
 
   return (
     <div data-testid="home-page">
-      {/* ── HERO — Bloom & Wild style: large promotional image + clear CTA ── */}
+      {/* ── HERO — compact, focused ── */}
       <section className="relative bg-[#F2EFEB]" data-testid="hero-section">
-        <div className="grid grid-cols-1 lg:grid-cols-2 lg:min-h-[70vh]">
-          <div className="flex items-center px-6 md:px-12 lg:px-20 py-14 lg:py-16 order-2 lg:order-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 lg:min-h-[520px]">
+          <div className="flex items-center px-6 md:px-12 lg:px-16 py-10 lg:py-12 order-2 lg:order-1">
             <div className="max-w-lg animate-fade-in-up">
-              <p className="accent-label mb-5"><span className="thin-rule" />New · Spring Collection 2026</p>
-              <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-light leading-[0.95] text-[#1A1A1A] mb-6 tracking-tight" data-testid="hero-title">
+              <p className="accent-label mb-4"><span className="thin-rule" />New · Spring Collection 2026</p>
+              <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-light leading-[0.98] text-[#1A1A1A] mb-5 tracking-tight" data-testid="hero-title">
                 Flowers,<br />
-                <em className="text-[#B3A89B]">artfully</em><br />
-                composed.
+                <em className="text-[#B3A89B]">artfully</em> composed.
               </h1>
-              <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-8 max-w-md">
+              <p className="font-body text-sm md:text-base text-[#7A7A7A] leading-relaxed mb-6 max-w-md">
                 Editorial bouquets hand-tied in our Mayfair atelier — delivered across London
                 tomorrow, with bespoke services UK-wide.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 mb-7">
                 <Link to="/collection" data-testid="hero-shop-btn">
-                  <button className="btn-dark w-full sm:w-auto inline-flex items-center justify-center gap-3">
+                  <button className="btn-dark w-full sm:w-auto inline-flex items-center justify-center gap-3 py-3">
                     Shop the Collection <ArrowRight size={14} strokeWidth={1.3} />
                   </button>
                 </Link>
                 <Link to="/consultation" data-testid="hero-consultation-btn">
-                  <button className="btn-outline-dark w-full sm:w-auto">Bespoke Enquiry</button>
+                  <button className="btn-outline-dark w-full sm:w-auto py-3">Bespoke Enquiry</button>
                 </Link>
               </div>
               {/* Trust micro-row */}
-              <div className="grid grid-cols-3 gap-4 mt-10 pt-7 border-t border-[#E5E5E5]">
-                <div><Truck size={16} strokeWidth={1.3} className="text-[#1A1A1A] mb-2" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Next-day London</p></div>
-                <div><Award size={16} strokeWidth={1.3} className="text-[#1A1A1A] mb-2" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Mayfair atelier</p></div>
-                <div><Leaf size={16} strokeWidth={1.3} className="text-[#1A1A1A] mb-2" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">7-day freshness</p></div>
+              <div className="grid grid-cols-3 gap-4 pt-5 border-t border-[#E5E5E5]">
+                <div><Truck size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Next-day London</p></div>
+                <div><Award size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Mayfair atelier</p></div>
+                <div><Leaf size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">7-day freshness</p></div>
               </div>
             </div>
           </div>
-          <div className="relative order-1 lg:order-2 h-[45vh] lg:h-auto overflow-hidden">
+          <div className="relative order-1 lg:order-2 h-[320px] sm:h-[380px] lg:h-auto overflow-hidden">
             <img src={IMG.hero} alt="Signature bouquet" className="w-full h-full object-cover" />
-            <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md px-5 py-3 hidden md:block">
+            <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 hidden md:block">
               <p className="accent-label text-[#1A1A1A]">The Mayfair · from £185</p>
             </div>
           </div>
