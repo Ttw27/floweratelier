@@ -30,7 +30,7 @@ export default function SympathyPage() {
   ];
 
   return (
-    <div className="pt-20" data-testid="sympathy-page">
+    <div className="pt-28" data-testid="sympathy-page">
       {/* Quiet hero */}
       <section className="py-20 md:py-28 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">

@@ -50,7 +50,7 @@ export default function CollectionPage() {
   }, [category, sortBy]);
 
   return (
-    <div className="min-h-screen pt-20" data-testid="collection-page">
+    <div className="min-h-screen pt-28" data-testid="collection-page">
       {/* Header */}
       <section className="py-20 md:py-28 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto">

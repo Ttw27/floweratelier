@@ -55,7 +55,7 @@ export default function OrderSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen pt-20 py-16" data-testid="order-success-page">
+    <div className="min-h-screen pt-28 py-16" data-testid="order-success-page">
       <div className="px-6 max-w-2xl mx-auto text-center py-8">
         <div className="w-20 h-20 border border-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-10">
           <CheckCircle size={36} strokeWidth={1.3} className="text-[#1A1A1A]" />

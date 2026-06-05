@@ -38,11 +38,11 @@ export default function AccountPage() {
   };
 
   if (authLoading || !user) {
-    return <div className="min-h-[60vh] flex items-center justify-center pt-20"><div className="spinner" /></div>;
+    return <div className="min-h-[60vh] flex items-center justify-center pt-28"><div className="spinner" /></div>;
   }
 
   return (
-    <div className="min-h-screen pt-20 py-12" data-testid="account-page">
+    <div className="min-h-screen pt-28 py-12" data-testid="account-page">
       <div className="px-6 md:px-12 max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-12">
           <div>

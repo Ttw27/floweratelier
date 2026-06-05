@@ -35,7 +35,7 @@ export default function CartPage() {
 
   if (cart.items.length === 0) {
     return (
-      <div className="min-h-screen pt-20 flex flex-col items-center justify-center px-6" data-testid="empty-cart">
+      <div className="min-h-screen pt-28 flex flex-col items-center justify-center px-6" data-testid="empty-cart">
         <ShoppingBag size={56} strokeWidth={1} className="text-[#B3A89B] mb-8" />
         <h1 className="font-heading text-3xl font-light text-[#1A1A1A] mb-4">Your basket is empty</h1>
         <p className="font-body text-[#7A7A7A] mb-10">Discover the collection.</p>
@@ -47,7 +47,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen pt-20" data-testid="cart-page">
+    <div className="min-h-screen pt-28" data-testid="cart-page">
       <div className="px-6 md:px-12 max-w-[1400px] mx-auto py-16">
         <p className="accent-label mb-5"><span className="thin-rule" />Your Basket</p>
         <h1 className="font-heading text-5xl md:text-6xl font-light text-[#1A1A1A] mb-16 tracking-tight" data-testid="cart-title">

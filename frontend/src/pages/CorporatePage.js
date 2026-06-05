@@ -25,7 +25,7 @@ export default function CorporatePage() {
   ];
 
   return (
-    <div className="pt-20" data-testid="corporate-page">
+    <div className="pt-28" data-testid="corporate-page">
       {/* Hero */}
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[70vh]">

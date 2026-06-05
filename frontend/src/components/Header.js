@@ -35,7 +35,17 @@ export default function Header() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-header" data-testid="header">
+    <header className="fixed top-0 left-0 right-0 z-50" data-testid="header">
+      {/* Utility strip — Bloom & Wild style */}
+      <div className="bg-[#1A1A1A] text-[#FAFAF7] py-1.5 px-6 md:px-12" data-testid="utility-strip">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between text-[10px] uppercase tracking-[0.22em] font-body">
+          <span className="hidden md:inline">Complimentary London delivery over £100</span>
+          <span className="md:hidden">Free delivery over £100</span>
+          <span className="hidden lg:inline">Order by 2pm · Next-day delivery available</span>
+          <Link to="/consultation" className="hover:text-[#B3A89B] transition-colors">Enquire — bespoke →</Link>
+        </div>
+      </div>
+      <div className="glass-header">
       <div className="px-6 md:px-12 max-w-[1400px] mx-auto">
         <div className="flex items-center justify-between h-20">
           {/* Mobile menu button */}
@@ -140,6 +150,7 @@ export default function Header() {
             </Link>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Mobile menu */}

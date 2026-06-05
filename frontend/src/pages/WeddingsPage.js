@@ -15,7 +15,7 @@ export default function WeddingsPage() {
   ];
 
   return (
-    <div className="pt-20" data-testid="weddings-page">
+    <div className="pt-28" data-testid="weddings-page">
       {/* Editorial hero */}
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[70vh]">

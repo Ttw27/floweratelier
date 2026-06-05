@@ -461,7 +461,7 @@ export default function ThemePreviewPage() {
   }, []);
 
   return (
-    <div className="min-h-screen pt-20" data-testid="theme-preview-page">
+    <div className="min-h-screen pt-28" data-testid="theme-preview-page">
       <section className="py-16 md:py-24 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1500px] mx-auto">
           <p className="accent-label mb-6"><span className="thin-rule" />Direction Lab · v2</p>

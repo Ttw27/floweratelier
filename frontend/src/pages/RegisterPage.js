@@ -26,7 +26,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 flex items-center justify-center py-16" data-testid="register-page">
+    <div className="min-h-screen pt-28 flex items-center justify-center py-16" data-testid="register-page">
       <div className="w-full max-w-md px-6">
         <div className="text-center mb-12">
           <p className="accent-label mb-4">Atelier Account</p>

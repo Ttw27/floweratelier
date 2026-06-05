@@ -91,11 +91,11 @@ export default function CheckoutPage() {
   const total = cart.subtotal + deliveryFee;
 
   if (!deliveryOptions) {
-    return <div className="min-h-[60vh] flex items-center justify-center pt-20"><div className="spinner" /></div>;
+    return <div className="min-h-[60vh] flex items-center justify-center pt-28"><div className="spinner" /></div>;
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-16" data-testid="checkout-page">
+    <div className="min-h-screen pt-28 pb-16" data-testid="checkout-page">
       <div className="px-6 md:px-12 max-w-[1400px] mx-auto py-12">
         <p className="accent-label mb-5"><span className="thin-rule" />Checkout</p>
         <h1 className="font-heading text-5xl md:text-6xl font-light text-[#1A1A1A] mb-16 tracking-tight" data-testid="checkout-title">Complete your order</h1>

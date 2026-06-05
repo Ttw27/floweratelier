@@ -53,7 +53,7 @@ export default function ConsultationPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center py-16" data-testid="consultation-success">
+      <div className="min-h-screen pt-28 flex items-center justify-center py-16" data-testid="consultation-success">
         <div className="max-w-lg mx-auto text-center px-6">
           <div className="w-20 h-20 border border-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-10">
             <CheckCircle size={36} strokeWidth={1.3} className="text-[#1A1A1A]" />
@@ -74,7 +74,7 @@ export default function ConsultationPage() {
   }
 
   return (
-    <div className="min-h-screen pt-20" data-testid="consultation-page">
+    <div className="min-h-screen pt-28" data-testid="consultation-page">
       <section className="py-16 md:py-24 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto">
           <p className="accent-label mb-6"><span className="thin-rule" />Enquire</p>

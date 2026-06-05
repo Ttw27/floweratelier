@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-28 flex items-center justify-center">
         <div className="spinner" />
       </div>
     );
@@ -99,7 +99,7 @@ export default function ProductDetailPage() {
   const hasBoxCustomization = boxPersonalization.box_color || boxPersonalization.ribbon_color || boxPersonalization.box_message;
 
   return (
-    <div className="min-h-screen pt-20" data-testid="product-detail-page">
+    <div className="min-h-screen pt-28" data-testid="product-detail-page">
       <div className="px-6 md:px-12 max-w-[1400px] mx-auto py-12">
         <button
           onClick={() => navigate(-1)}
