@@ -109,16 +109,16 @@ export default function HomePage() {
     <div data-testid="home-page">
       {/* ── HERO — Bloom & Wild style: large promotional image + clear CTA ── */}
       <section className="relative bg-[#F2EFEB]" data-testid="hero-section">
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[calc(100vh-7rem)]">
-          <div className="flex items-center px-6 md:px-12 lg:px-20 py-16 lg:py-0 order-2 lg:order-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 lg:min-h-[70vh]">
+          <div className="flex items-center px-6 md:px-12 lg:px-20 py-14 lg:py-16 order-2 lg:order-1">
             <div className="max-w-lg animate-fade-in-up">
-              <p className="accent-label mb-6"><span className="thin-rule" />New · Spring Collection 2026</p>
-              <h1 className="font-heading text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-light leading-[0.95] text-[#1A1A1A] mb-8 tracking-tight" data-testid="hero-title">
+              <p className="accent-label mb-5"><span className="thin-rule" />New · Spring Collection 2026</p>
+              <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-light leading-[0.95] text-[#1A1A1A] mb-6 tracking-tight" data-testid="hero-title">
                 Flowers,<br />
                 <em className="text-[#B3A89B]">artfully</em><br />
                 composed.
               </h1>
-              <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10 max-w-md">
+              <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-8 max-w-md">
                 Editorial bouquets hand-tied in our Mayfair atelier — delivered across London
                 tomorrow, with bespoke services UK-wide.
               </p>
@@ -133,14 +133,14 @@ export default function HomePage() {
                 </Link>
               </div>
               {/* Trust micro-row */}
-              <div className="grid grid-cols-3 gap-4 mt-12 pt-8 border-t border-[#E5E5E5]">
+              <div className="grid grid-cols-3 gap-4 mt-10 pt-7 border-t border-[#E5E5E5]">
                 <div><Truck size={16} strokeWidth={1.3} className="text-[#1A1A1A] mb-2" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Next-day London</p></div>
                 <div><Award size={16} strokeWidth={1.3} className="text-[#1A1A1A] mb-2" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Mayfair atelier</p></div>
                 <div><Leaf size={16} strokeWidth={1.3} className="text-[#1A1A1A] mb-2" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">7-day freshness</p></div>
               </div>
             </div>
           </div>
-          <div className="relative order-1 lg:order-2 h-[60vh] lg:h-auto overflow-hidden">
+          <div className="relative order-1 lg:order-2 h-[45vh] lg:h-auto overflow-hidden">
             <img src={IMG.hero} alt="Signature bouquet" className="w-full h-full object-cover" />
             <div className="absolute bottom-6 right-6 bg-white/90 backdrop-blur-md px-5 py-3 hidden md:block">
               <p className="accent-label text-[#1A1A1A]">The Mayfair · from £185</p>
