@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, X } from "lucide-react";
@@ -16,10 +16,31 @@ const FILTERS = [
 ];
 
 export default function BespokePortfolioPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialCategory = searchParams.get("category") || "all";
+
   const [items, setItems] = useState([]);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState(initialCategory);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+
+  // Keep filter in sync with URL changes (e.g. clicking a link from another page)
+  useEffect(() => {
+    const urlCategory = searchParams.get("category") || "all";
+    if (urlCategory !== filter) setFilter(urlCategory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Write filter to URL when changed from inside the page
+  const handleFilterChange = (id) => {
+    setFilter(id);
+    if (id === "all") {
+      searchParams.delete("category");
+    } else {
+      searchParams.set("category", id);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -63,7 +84,7 @@ export default function BespokePortfolioPage() {
           {FILTERS.map((f) => (
             <button
               key={f.id}
-              onClick={() => setFilter(f.id)}
+              onClick={() => handleFilterChange(f.id)}
               className={`nav-link font-body text-[11px] uppercase tracking-[0.22em] transition-colors ${filter === f.id ? "text-[#1A1A1A] active" : "text-[#7A7A7A] hover:text-[#1A1A1A]"}`}
               data-testid={`portfolio-filter-${f.id}`}
             >

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone } from "lucide-react";
+import MiniPortfolio from "../components/MiniPortfolio";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -124,6 +125,13 @@ export default function SympathyPage() {
           </div>
         </section>
       )}
+
+      {/* Mini Portfolio — Sympathy works */}
+      <MiniPortfolio
+        category="sympathy"
+        title={<>Recent <em>sympathy</em> works.</>}
+        tone="white"
+      />
 
       {/* Contact */}
       <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">

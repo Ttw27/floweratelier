@@ -1,22 +1,11 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import MiniPortfolio from "../components/MiniPortfolio";
 
 const HERO = "https://images.unsplash.com/photo-1768508949823-26255327c264?w=1800";
 
 export default function CorporatePage() {
-  const [portfolioItems, setPortfolioItems] = useState([]);
-
-  useEffect(() => {
-    axios.get(`${API_URL}/api/portfolio`, { params: { category: "corporate" } })
-      .then((res) => setPortfolioItems(res.data))
-      .catch(() => {});
-  }, []);
-
   const offerings = [
     { title: "Weekly Install Programmes", desc: "Rotating seasonal arrangements for hotels, clubs, offices and showrooms — delivered weekly with account-managed continuity.", price: "from £1,200 / month" },
     { title: "Product Launches & Openings", desc: "Statement floral architecture — arches, pedestals, installations and press-wall floral detailing.", price: "from £3,500" },
@@ -73,33 +62,11 @@ export default function CorporatePage() {
         </div>
       </section>
 
-      {/* Past work */}
-      {portfolioItems.length > 0 && (
-        <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="flex flex-col md:flex-row justify-between md:items-end mb-14 gap-6">
-              <div>
-                <p className="accent-label mb-5"><span className="thin-rule" />Past works</p>
-                <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A]">Selected corporate projects</h2>
-              </div>
-              <Link to="/portfolio" className="font-body text-[11px] uppercase tracking-[0.22em] text-[#1A1A1A] border-b border-[#1A1A1A] pb-1">
-                Full portfolio →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {portfolioItems.slice(0, 2).map((item) => (
-                <Link key={item.id} to={`/consultation?service=corporate&portfolio_item_id=${item.id}&ref_title=${encodeURIComponent(item.title)}`} className="group block" data-testid={`corporate-project-${item.id}`}>
-                  <div className="aspect-[4/3] image-hover-container mb-5 bg-white">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                  </div>
-                  <p className="accent-label mb-2">{item.location}</p>
-                  <h3 className="font-heading text-2xl font-light text-[#1A1A1A] group-hover:italic transition-all">{item.title}</h3>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Mini Portfolio — Corporate projects */}
+      <MiniPortfolio
+        category="corporate"
+        title={<>Selected <em>corporate</em> projects.</>}
+      />
 
       {/* CTA */}
       <section className="py-24 md:py-32 px-6 md:px-12">

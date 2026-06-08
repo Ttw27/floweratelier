@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import MiniPortfolio from "../components/MiniPortfolio";
 
 const HERO = "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1800";
 const IMG_1 = "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200";
@@ -88,6 +89,12 @@ export default function WeddingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Mini Portfolio — Wedding works */}
+      <MiniPortfolio
+        category="wedding"
+        title={<>Recent <em>wedding</em> works.</>}
+      />
 
       {/* CTA */}
       <section className="py-24 md:py-32 px-6 md:px-12">

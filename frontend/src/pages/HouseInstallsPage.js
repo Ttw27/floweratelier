@@ -1,22 +1,11 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
+import MiniPortfolio from "../components/MiniPortfolio";
 
 const HERO = "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800";
 
 export default function HouseInstallsPage() {
-  const [projects, setProjects] = useState([]);
-
-  useEffect(() => {
-    axios.get(`${API_URL}/api/portfolio`, { params: { category: "house" } })
-      .then((res) => setProjects(res.data))
-      .catch(() => {});
-  }, []);
-
   const programmes = [
     { name: "Weekly Programme", freq: "Every week", desc: "Ever-changing seasonal floral programme across principal rooms — arranged in your own vessels or ours.", price: "from £450 / week" },
     { name: "Fortnightly", freq: "Every two weeks", desc: "A refreshed edit across entrance, kitchen and dining rooms.", price: "from £295 / visit" },
@@ -95,26 +84,12 @@ export default function HouseInstallsPage() {
         </div>
       </section>
 
-      {/* Selected residences */}
-      {projects.length > 0 && (
-        <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
-          <div className="max-w-[1400px] mx-auto">
-            <p className="accent-label mb-5"><span className="thin-rule" />Selected Residences</p>
-            <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] mb-16">Past installations</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {projects.slice(0, 2).map((item) => (
-                <Link key={item.id} to={`/consultation?service=house&portfolio_item_id=${item.id}&ref_title=${encodeURIComponent(item.title)}`} className="group block" data-testid={`house-project-${item.id}`}>
-                  <div className="aspect-[4/3] image-hover-container mb-5 bg-[#F2EFEB]">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                  </div>
-                  <p className="accent-label mb-2">{item.location}</p>
-                  <h3 className="font-heading text-2xl font-light text-[#1A1A1A] group-hover:italic transition-all">{item.title}</h3>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Mini Portfolio — Past residence installations */}
+      <MiniPortfolio
+        category="house"
+        title={<>Past <em>residence</em> installations.</>}
+        subtitle="Selected Residences"
+      />
 
       {/* CTA */}
       <section className="py-24 md:py-32 px-6 md:px-12">
