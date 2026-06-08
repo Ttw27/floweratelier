@@ -892,7 +892,7 @@ async def get_admin_inquiries(admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v2-light-luxury"
+    current_version = "v3-portfolio-expanded"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
@@ -987,8 +987,9 @@ async def seed_data(reset: bool = False):
         prod["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.products.insert_many(products)
 
-    # Bespoke portfolio items (past works)
+    # Bespoke portfolio items (past works) — 6 per category for a fuller mini-grid
     portfolio_items = [
+        # ───── WEDDINGS (6) ─────
         {
             "id": str(uuid.uuid4()), "title": "Kensington Orangery Wedding",
             "category": "wedding",
@@ -1006,6 +1007,40 @@ async def seed_data(reset: bool = False):
             "tags": ["tablescape", "reception", "runner"], "featured": True,
         },
         {
+            "id": str(uuid.uuid4()), "title": "Cotswolds Country House Wedding",
+            "category": "wedding",
+            "description": "Wild, garden-gathered florals across a marquee installation for a 200-guest country wedding.",
+            "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1400",
+            "location": "Stow-on-the-Wold, Cotswolds", "price_from": 7500.0,
+            "tags": ["marquee", "country", "wild"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Claridge's Ballroom Reception",
+            "category": "wedding",
+            "description": "Twelve elevated centrepieces of phalaenopsis, peony and trailing amaranthus for a black-tie ballroom dinner.",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
+            "location": "Claridge's, Mayfair", "price_from": 8500.0,
+            "tags": ["ballroom", "elevated", "black-tie"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Italian Villa Destination Wedding",
+            "category": "wedding",
+            "description": "A Mediterranean-inspired ceremony aisle and dinner installation for a destination wedding on Lake Como.",
+            "image": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1400",
+            "location": "Lake Como, Italy", "price_from": 12000.0,
+            "tags": ["destination", "italy", "aisle"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Intimate Chelsea Registry",
+            "category": "wedding",
+            "description": "A delicate bridal posy and matching boutonnière in cream garden roses and lily-of-the-valley.",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
+            "location": "Chelsea Old Town Hall", "price_from": 450.0,
+            "tags": ["intimate", "posy", "registry"], "featured": False,
+        },
+
+        # ───── SYMPATHY (6) ─────
+        {
             "id": str(uuid.uuid4()), "title": "Quiet Farewell Tribute",
             "category": "sympathy",
             "description": "A bespoke memorial piece in soft white and sage — created for a family who wished to honour a mother who loved English gardens.",
@@ -1021,6 +1056,40 @@ async def seed_data(reset: bool = False):
             "location": "Private service", "price_from": 650.0,
             "tags": ["tribute", "lettering", "ivory"], "featured": False,
         },
+        {
+            "id": str(uuid.uuid4()), "title": "Coffin Spray — Garden Whites",
+            "category": "sympathy",
+            "description": "A trailing coffin spray of white roses, lisianthus and seasonal greenery — soft, dignified, deeply considered.",
+            "image": "https://images.unsplash.com/photo-1572731073127-3c0d1d05c0d2?w=1400",
+            "location": "St. Marylebone Crematorium", "price_from": 350.0,
+            "tags": ["coffin spray", "white"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Standing Easel — Soft Lilac",
+            "category": "sympathy",
+            "description": "A standing easel tribute in soft lilac, white and silver-greens, designed for a celebration of life service.",
+            "image": "https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=1400",
+            "location": "Westminster", "price_from": 280.0,
+            "tags": ["easel", "lilac"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Heart Tribute — Eternal Love",
+            "category": "sympathy",
+            "description": "A classic heart-shaped tribute of red roses and white lily, finished with a hand-tied ribbon and personal card.",
+            "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
+            "location": "North London Cemetery", "price_from": 220.0,
+            "tags": ["heart", "classic", "red"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Wreath — Wild Meadow",
+            "category": "sympathy",
+            "description": "A circular wreath of wildflowers, seeded eucalyptus and ranunculus — for someone who loved the countryside.",
+            "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1400",
+            "location": "Devon", "price_from": 320.0,
+            "tags": ["wreath", "wild"], "featured": False,
+        },
+
+        # ───── CORPORATE (6) ─────
         {
             "id": str(uuid.uuid4()), "title": "Mayfair Private Members' Club",
             "category": "corporate",
@@ -1038,6 +1107,40 @@ async def seed_data(reset: bool = False):
             "tags": ["corporate", "launch", "event"], "featured": True,
         },
         {
+            "id": str(uuid.uuid4()), "title": "Royal Opera House Gala",
+            "category": "corporate",
+            "description": "Twenty-four cocktail-table arrangements and a grand foyer installation for a charity gala dinner.",
+            "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
+            "location": "Royal Opera House, Covent Garden", "price_from": 6800.0,
+            "tags": ["gala", "charity", "foyer"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Tech Awards — The Shard",
+            "category": "corporate",
+            "description": "A geometric, modern installation of structured greenery and white roses for an industry awards ceremony.",
+            "image": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1400",
+            "location": "The Shard, London", "price_from": 5200.0,
+            "tags": ["awards", "modern", "architectural"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Five-Star Hotel Lobby Programme",
+            "category": "corporate",
+            "description": "Bi-weekly grand lobby installations with seasonal palette rotation — ongoing two-year programme.",
+            "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1400",
+            "location": "Knightsbridge, London", "price_from": 2400.0,
+            "tags": ["hotel", "lobby", "programme"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Press Day — Mayfair Maison",
+            "category": "corporate",
+            "description": "A press-day floral styling with bouquet stations and a photogenic arch for a fashion house's press preview.",
+            "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
+            "location": "Mayfair, London", "price_from": 3200.0,
+            "tags": ["press", "fashion", "styling"], "featured": False,
+        },
+
+        # ───── HOUSE INSTALLS (6) ─────
+        {
             "id": str(uuid.uuid4()), "title": "Notting Hill Residence",
             "category": "house",
             "description": "A fortnightly house-floral programme across entrance hall, kitchen island and dining table for a private residence.",
@@ -1053,6 +1156,40 @@ async def seed_data(reset: bool = False):
             "location": "Chelsea, London", "price_from": 2800.0,
             "tags": ["house install", "statement", "cascade"], "featured": False,
         },
+        {
+            "id": str(uuid.uuid4()), "title": "Holland Park Drawing Room",
+            "category": "house",
+            "description": "A weekly drawing-room arrangement in a hand-thrown ceramic vessel — alongside fresh kitchen and bedside posies.",
+            "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400",
+            "location": "Holland Park, London", "price_from": 450.0,
+            "tags": ["weekly", "drawing room"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Belgravia Hallway Installation",
+            "category": "house",
+            "description": "A monumental entrance hallway installation for a private dinner — designed to greet guests on arrival.",
+            "image": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1400",
+            "location": "Belgravia, London", "price_from": 1850.0,
+            "tags": ["entrance", "statement"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Hampstead Country Kitchen",
+            "category": "house",
+            "description": "A bi-weekly kitchen-led programme: a large central arrangement plus smaller pieces for the breakfast nook and pantry.",
+            "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400",
+            "location": "Hampstead, London", "price_from": 380.0,
+            "tags": ["kitchen", "bi-weekly"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Country Estate — Annual Programme",
+            "category": "house",
+            "description": "A full annual programme across principal rooms of a country estate, including seasonal swap-outs and special-occasion installs.",
+            "image": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=1400",
+            "location": "Surrey", "price_from": 12000.0,
+            "tags": ["estate", "annual", "programme"], "featured": True,
+        },
+
+        # ───── SHOP / WINDOW ─────
         {
             "id": str(uuid.uuid4()), "title": "Atelier Window — Spring Edit",
             "category": "shop",
