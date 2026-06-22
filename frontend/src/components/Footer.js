@@ -46,11 +46,14 @@ export default function Footer() {
 
           {/* Services */}
           <div className="lg:col-span-2">
-            <h4 className="accent-label mb-6 text-[#1A1A1A]">Services</h4>
+            <h4 className="accent-label mb-6 text-[#1A1A1A]">Occasions</h4>
             <ul className="space-y-3">
               <li><Link to="/weddings" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-weddings">Weddings</Link></li>
+              <li><Link to="/traveller-weddings" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-traveller-weddings">Traveller Weddings</Link></li>
+              <li><Link to="/faith-weddings" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-faith-weddings">Faith Weddings</Link></li>
               <li><Link to="/sympathy" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-sympathy">Sympathy</Link></li>
-              <li><Link to="/corporate" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-corporate">Corporate Events</Link></li>
+              <li><Link to="/traveller-funerals" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-traveller-funerals">Traveller Funerals</Link></li>
+              <li><Link to="/corporate" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-corporate">Corporate</Link></li>
               <li><Link to="/house-installs" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-house-installs">House Installs</Link></li>
               <li><Link to="/portfolio" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-portfolio">Bespoke Portfolio</Link></li>
             </ul>

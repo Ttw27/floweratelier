@@ -9,7 +9,10 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 const FILTERS = [
   { id: "all", name: "All" },
   { id: "wedding", name: "Weddings" },
+  { id: "traveller_wedding", name: "Traveller Weddings" },
+  { id: "faith_wedding", name: "Faith & Cultural" },
   { id: "sympathy", name: "Sympathy" },
+  { id: "traveller_funeral", name: "Traveller Funerals" },
   { id: "corporate", name: "Corporate" },
   { id: "house", name: "House" },
   { id: "shop", name: "Window" },

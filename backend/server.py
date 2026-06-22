@@ -892,7 +892,7 @@ async def get_admin_inquiries(admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v3-portfolio-expanded"
+    current_version = "v4-occasions-extended"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
@@ -1187,6 +1187,156 @@ async def seed_data(reset: bool = False):
             "image": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=1400",
             "location": "Surrey", "price_from": 12000.0,
             "tags": ["estate", "annual", "programme"], "featured": True,
+        },
+
+        # ───── TRAVELLER WEDDINGS (6) ─────
+        {
+            "id": str(uuid.uuid4()), "title": "Cinderella Carriage Entrance",
+            "category": "traveller_wedding",
+            "description": "A 12-foot floral horse-drawn carriage centrepiece for a traveller wedding entrance — built in white roses, baby's breath and lily.",
+            "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
+            "location": "Essex", "price_from": 8500.0,
+            "tags": ["carriage", "grand entrance", "white"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "4ft Floral Light-Up Letters",
+            "category": "traveller_wedding",
+            "description": "Custom-built 4-foot light-up letters spelling the couple's names, hand-finished with roses, hydrangea and trailing greenery.",
+            "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
+            "location": "Kent", "price_from": 3200.0,
+            "tags": ["letters", "light-up", "names"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Castle Ceremony Backdrop",
+            "category": "traveller_wedding",
+            "description": "A fairytale-castle floral backdrop for the ceremony — towers, turrets and trailing roses in cream and pale pink.",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
+            "location": "Hertfordshire", "price_from": 12500.0,
+            "tags": ["castle", "backdrop", "fairytale"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Statement Top Table Run",
+            "category": "traveller_wedding",
+            "description": "A 30-foot continuous floral runner across the top table — peonies, garden roses, hydrangea and trailing amaranthus.",
+            "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1400",
+            "location": "Essex", "price_from": 4800.0,
+            "tags": ["top table", "runner", "statement"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Floral Cake Wall — 8ft",
+            "category": "traveller_wedding",
+            "description": "An 8-foot wide floral wall framing a 7-tier wedding cake — ivory roses, blush peonies and crystal accents.",
+            "image": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1400",
+            "location": "Surrey", "price_from": 3800.0,
+            "tags": ["cake wall", "backdrop", "ivory"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Horse & Carriage Floral Drape",
+            "category": "traveller_wedding",
+            "description": "A full floral drape for the bridal horse and carriage on arrival — to match the ceremony palette throughout.",
+            "image": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1400",
+            "location": "Surrey", "price_from": 1650.0,
+            "tags": ["horse", "carriage", "drape"], "featured": False,
+        },
+
+        # ───── TRAVELLER FUNERALS (6) ─────
+        {
+            "id": str(uuid.uuid4()), "title": "3ft 'DAD' Letter Tribute",
+            "category": "traveller_funeral",
+            "description": "A 3-foot floral letter tribute in red carnations and white chrysanthemum, set in a bespoke timber frame.",
+            "image": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1400",
+            "location": "London", "price_from": 650.0,
+            "tags": ["letter tribute", "3ft", "dad"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Floral Caravan Build",
+            "category": "traveller_funeral",
+            "description": "A 6-foot 3D floral caravan tribute — fully built on a steel frame with white chrysanthemum, red carnation detailing and a personalised registration plate.",
+            "image": "https://images.unsplash.com/photo-1502943693086-33b5b1cfdf2f?w=1400",
+            "location": "Essex", "price_from": 2800.0,
+            "tags": ["3D build", "caravan", "bespoke frame"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Floral Horse Tribute",
+            "category": "traveller_funeral",
+            "description": "A life-size 3D floral horse tribute with floral mane, in honour of a passionate horseman — white and pale blue carnations.",
+            "image": "https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?w=1400",
+            "location": "Kent", "price_from": 3500.0,
+            "tags": ["3D build", "horse", "white"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Gates of Heaven — 5ft",
+            "category": "traveller_funeral",
+            "description": "A 5-foot Gates of Heaven tribute with cross detailing, in white chrysanthemum with gold and silver ribbon work.",
+            "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
+            "location": "London", "price_from": 850.0,
+            "tags": ["gates of heaven", "tribute", "white"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Floral Pint & Glass Tribute",
+            "category": "traveller_funeral",
+            "description": "A bespoke 3-foot floral pint glass tribute for a beloved publican — finished with a foam-head detail and amber-tone carnations.",
+            "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1400",
+            "location": "Birmingham", "price_from": 580.0,
+            "tags": ["3D build", "personalised", "pint"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Football Crest Tribute",
+            "category": "traveller_funeral",
+            "description": "A 4-foot football club crest tribute in club colours — hand-built on bespoke timber frame, finished with the team name.",
+            "image": "https://images.unsplash.com/photo-1572731073127-3c0d1d05c0d2?w=1400",
+            "location": "Glasgow", "price_from": 720.0,
+            "tags": ["crest", "football", "personalised"], "featured": False,
+        },
+
+        # ───── FAITH & CULTURAL WEDDINGS (6) ─────
+        {
+            "id": str(uuid.uuid4()), "title": "Sikh Anand Karaj — Gurdwara Garlands",
+            "category": "faith_wedding",
+            "description": "Marigold and rose garlands for the gurdwara, palki canopy decoration, and mala for the groom and bride.",
+            "image": "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?w=1400",
+            "location": "Southall, London", "price_from": 4200.0,
+            "tags": ["sikh", "gurdwara", "garlands"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Hindu Mandap Installation",
+            "category": "faith_wedding",
+            "description": "A four-pillar floral mandap with marigold thoran, varmala for garland exchange, and full kalash decoration.",
+            "image": "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1400",
+            "location": "Wembley, London", "price_from": 6800.0,
+            "tags": ["hindu", "mandap", "marigold"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Jewish Chuppah Canopy",
+            "category": "faith_wedding",
+            "description": "A floral chuppah of white peonies, garden roses and orchids — with matching ketubah signing table arrangement.",
+            "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
+            "location": "Hampstead, London", "price_from": 5400.0,
+            "tags": ["jewish", "chuppah", "white"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Muslim Nikah — Cream & Gold",
+            "category": "faith_wedding",
+            "description": "A Nikah ceremony floral design in cream, gold and white — with a separate vibrant palette for the mehndi event.",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
+            "location": "Edgware Road, London", "price_from": 5800.0,
+            "tags": ["muslim", "nikah", "cream gold"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Greek Orthodox Stephana & Church Arch",
+            "category": "faith_wedding",
+            "description": "Crown stephana for the bride and groom, plus a floral arch at the church entrance in white and ivory.",
+            "image": "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1400",
+            "location": "Bayswater, London", "price_from": 3200.0,
+            "tags": ["greek orthodox", "stephana", "church"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Chinese Tea Ceremony — Red & Gold",
+            "category": "faith_wedding",
+            "description": "A tea ceremony floral installation in red and gold, with double-happiness symbolism and traditional peony arrangements.",
+            "image": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1400",
+            "location": "Chinatown, London", "price_from": 2800.0,
+            "tags": ["chinese", "tea ceremony", "red gold"], "featured": False,
         },
 
         # ───── SHOP / WINDOW ─────

@@ -1,0 +1,149 @@
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Phone, Heart, Sparkles, Crown } from "lucide-react";
+import MiniPortfolio from "../components/MiniPortfolio";
+
+const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
+
+export default function TravellerWeddingsPage() {
+  const signatures = [
+    { name: "Floral Light-Up Letters", desc: "4ft custom-built letters spelling family names — hand-finished with roses, hydrangea and trailing greenery.", price: "from £3,200", icon: Sparkles },
+    { name: "Castle & Carriage Backdrops", desc: "Fairytale-castle ceremony backdrops, Cinderella carriages and statement entrance arches.", price: "from £8,500", icon: Crown },
+    { name: "Cake Walls & Statement Florals", desc: "8ft floral cake walls, oversized hanging chandeliers and entrance-arch installations.", price: "from £3,800", icon: Heart },
+    { name: "Top Table & Hall Florals", desc: "30ft top-table runners, hall ceiling florals and full reception design.", price: "from £4,800", icon: Sparkles },
+    { name: "Horse-Drawn Carriage Florals", desc: "Full floral drapes for the bridal horse and carriage on arrival.", price: "from £1,650", icon: Crown },
+    { name: "Bridal Party Bouquets", desc: "Bridal bouquet, bridesmaids, flower girls, page boys, mothers and groomsmen.", price: "from £85 each", icon: Heart },
+  ];
+
+  return (
+    <div className="pt-28" data-testid="traveller-weddings-page">
+      {/* Hero */}
+      <section className="relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[60vh] lg:min-h-[70vh]">
+          <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 lg:order-1 bg-[#FAFAF7]">
+            <div className="max-w-md">
+              <p className="accent-label mb-8"><span className="thin-rule" />Traveller Weddings</p>
+              <h1 className="font-heading text-5xl md:text-7xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight mb-8" data-testid="traveller-weddings-title">
+                A wedding<br />worth the <span className="italic text-[#B3A89B]">whole town</span> seeing.
+              </h1>
+              <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
+                We&rsquo;ve been entrusted with traveller weddings across the UK and Ireland —
+                grand-scale florals built to match the size of the celebration.
+                Discreet, proud, generous, and never anything less than exceptional.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link to="/consultation?service=traveller_wedding">
+                  <Button className="btn-dark rounded-none inline-flex items-center gap-3" data-testid="traveller-wedding-consultation">
+                    Book a consultation <ArrowRight size={14} />
+                  </Button>
+                </Link>
+                <a href="tel:+442071234567">
+                  <Button className="btn-outline-dark rounded-none inline-flex items-center gap-3" data-testid="traveller-wedding-call">
+                    <Phone size={14} /> 020 7123 4567
+                  </Button>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-7 order-1 lg:order-2 h-[55vh] lg:h-auto">
+            <img src={HERO} alt="Traveller wedding floristry" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      </section>
+
+      {/* What we understand */}
+      <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="accent-label mb-8"><span className="thin-rule" />Our Promise</p>
+          <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] leading-[1.1] mb-10">
+            We understand<br /><span className="italic">what the day means.</span>
+          </h2>
+          <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-6">
+            We&rsquo;ve built statement florals for traveller weddings from 200 to 800+ guests.
+            We know how big it needs to be, how much it needs to mean, and how to talk to families
+            with the respect, pride and generosity the day deserves.
+          </p>
+          <p className="font-body text-base text-[#7A7A7A] leading-relaxed italic">
+            We listen, never assume, and never compromise on the scale or impact of the work.
+          </p>
+        </div>
+      </section>
+
+      {/* Signature Pieces */}
+      <section className="py-24 md:py-32 px-6 md:px-12">
+        <div className="max-w-[1400px] mx-auto">
+          <p className="accent-label mb-5"><span className="thin-rule" />Signature Pieces</p>
+          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
+            What we<br /><span className="italic">specialise in.</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#E5E5E5] border border-[#E5E5E5]">
+            {signatures.map((s, idx) => {
+              const Icon = s.icon;
+              return (
+                <div key={idx} className="bg-white p-10" data-testid={`traveller-wedding-signature-${idx}`}>
+                  <Icon size={20} strokeWidth={1.3} className="text-[#B3A89B] mb-5" />
+                  <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-3">{s.name}</h3>
+                  <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-4">{s.desc}</p>
+                  <p className="accent-label text-[#1A1A1A]">{s.price}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Budget Guide */}
+      <section className="py-24 md:py-32 px-6 md:px-12 bg-[#1A1A1A] text-[#FAFAF7]">
+        <div className="max-w-[1400px] mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end mb-14">
+            <div className="lg:col-span-7">
+              <p className="accent-label !text-[#B3A89B] mb-5"><span className="thin-rule !bg-[#B3A89B]" />Investment</p>
+              <h2 className="font-heading text-4xl md:text-6xl font-light leading-[1.05]">
+                A guide to<br /><span className="italic text-[#B3A89B]">scale.</span>
+              </h2>
+            </div>
+            <div className="lg:col-span-5">
+              <p className="font-body text-base text-[#FAFAF7]/75 leading-relaxed">
+                Every wedding is fully bespoke and quoted on consultation —
+                but here&rsquo;s a guide so we can have an open, honest conversation
+                from the start.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
+            {[
+              { tier: "Intimate", range: "£8,000 – £15,000", desc: "Bridal florals, key installations and ceremony backdrop." },
+              { tier: "Signature", range: "£15,000 – £25,000", desc: "Full ceremony & reception design, including statement letters and arches." },
+              { tier: "Full Experience", range: "£25,000 – £40,000+", desc: "End-to-end design — castle backdrop, carriage florals, cake wall, letters & full reception." },
+            ].map((b, i) => (
+              <div key={i} className="border border-[#FAFAF7]/15 p-8" data-testid={`traveller-budget-${i}`}>
+                <p className="accent-label !text-[#B3A89B] mb-3">{b.tier}</p>
+                <p className="font-heading text-3xl font-light mb-4">{b.range}</p>
+                <p className="font-body text-sm text-[#FAFAF7]/75 leading-relaxed">{b.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Mini Portfolio */}
+      <MiniPortfolio
+        category="traveller_wedding"
+        title={<>Recent <em>traveller wedding</em> works.</>}
+      />
+
+      {/* CTA */}
+      <section className="py-24 md:py-32 px-6 md:px-12">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="accent-label mb-8"><span className="thin-rule" />Begin</p>
+          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1] mb-12">
+            Let&rsquo;s plan<br /><span className="italic">your day.</span>
+          </h2>
+          <Link to="/consultation?service=traveller_wedding">
+            <Button className="btn-dark rounded-none">Begin a consultation</Button>
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}

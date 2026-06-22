@@ -9,7 +9,10 @@ import HomePage from "./pages/HomePage";
 import CollectionPage from "./pages/CollectionPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import WeddingsPage from "./pages/WeddingsPage";
+import TravellerWeddingsPage from "./pages/TravellerWeddingsPage";
+import FaithWeddingsPage from "./pages/FaithWeddingsPage";
 import SympathyPage from "./pages/SympathyPage";
+import TravellerFuneralsPage from "./pages/TravellerFuneralsPage";
 import CorporatePage from "./pages/CorporatePage";
 import HouseInstallsPage from "./pages/HouseInstallsPage";
 import BespokePortfolioPage from "./pages/BespokePortfolioPage";
@@ -26,12 +29,14 @@ import ThemePreviewPage from "./pages/ThemePreviewPage";
 // Layout
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#1A1A1A]">
             <Header />
             <main className="flex-1">
@@ -41,7 +46,10 @@ function App() {
                 <Route path="/collection/:category" element={<CollectionPage />} />
                 <Route path="/product/:productId" element={<ProductDetailPage />} />
                 <Route path="/weddings" element={<WeddingsPage />} />
+                <Route path="/traveller-weddings" element={<TravellerWeddingsPage />} />
+                <Route path="/faith-weddings" element={<FaithWeddingsPage />} />
                 <Route path="/sympathy" element={<SympathyPage />} />
+                <Route path="/traveller-funerals" element={<TravellerFuneralsPage />} />
                 <Route path="/corporate" element={<CorporatePage />} />
                 <Route path="/house-installs" element={<HouseInstallsPage />} />
                 <Route path="/portfolio" element={<BespokePortfolioPage />} />
