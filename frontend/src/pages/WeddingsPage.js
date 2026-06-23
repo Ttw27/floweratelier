@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
+import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
 
 const HERO = "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1800";
 const IMG_1 = "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200";
@@ -90,6 +91,13 @@ export default function WeddingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Bespoke Consultation — primary path */}
+      <BespokeConsultationCTA
+        service="wedding"
+        heading={<>We bring your wedding<br />to life — <em className="text-[#B3A89B]">at a budget that fits.</em></>}
+        subheading="Tell us about your venue, your colours, your guest count and your dream. From £8,000 intimate ceremonies to full destination weddings, we design and quote a bespoke proposal entirely around the budget that's right for you."
+      />
 
       {/* Ready Collection — buy direct */}
       <ReadyCollectionCTA

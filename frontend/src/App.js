@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import { SettingsProvider } from "./context/SettingsContext";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -33,16 +34,18 @@ import ThemePreviewPage from "./pages/ThemePreviewPage";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#1A1A1A]">
-            <Header />
-            <main className="flex-1">
+      <SettingsProvider>
+        <CartProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#1A1A1A]">
+              <Header />
+              <main className="flex-1">
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/collection" element={<CollectionPage />} />
@@ -71,10 +74,12 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <WhatsAppButton />
           </div>
           <Toaster position="top-right" theme="light" />
         </BrowserRouter>
       </CartProvider>
+      </SettingsProvider>
     </AuthProvider>
   );
 }

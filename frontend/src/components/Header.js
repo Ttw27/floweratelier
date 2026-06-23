@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ShoppingBag, User, Menu, X, ChevronDown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useSettings } from "../context/SettingsContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,7 @@ export default function Header() {
   const [mobileSubOpen, setMobileSubOpen] = useState({ occasions: false, services: false });
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,14 +51,20 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50" data-testid="header">
       {/* Utility strip */}
-      <div className="bg-[#1A1A1A] text-[#FAFAF7] py-1.5 px-6 md:px-12" data-testid="utility-strip">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between text-[10px] uppercase tracking-[0.22em] font-body">
-          <span className="hidden md:inline">Complimentary London delivery over £100</span>
-          <span className="md:hidden">Free delivery over £100</span>
-          <span className="hidden lg:inline">Order by 2pm · Next-day delivery available</span>
-          <Link to="/consultation" className="hover:text-[#B3A89B] transition-colors">Enquire — bespoke →</Link>
+      {settings?.utility_bar_enabled !== false && (
+        <div className="bg-[#1A1A1A] text-[#FAFAF7] py-1.5 px-6 md:px-12" data-testid="utility-strip">
+          <div className="max-w-[1400px] mx-auto flex items-center justify-end gap-4 sm:gap-6 text-[10px] uppercase tracking-[0.18em] sm:tracking-[0.22em] font-body">
+            {settings?.utility_bar_text ? (
+              <span className="text-[#FAFAF7]/85 truncate min-w-0" data-testid="utility-strip-text">
+                {settings.utility_bar_text}
+              </span>
+            ) : null}
+            <Link to="/consultation" className="hover:text-[#B3A89B] transition-colors whitespace-nowrap shrink-0" data-testid="utility-enquire-link">
+              Enquire — bespoke →
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="glass-header">
         <div className="px-6 md:px-12 max-w-[1400px] mx-auto">

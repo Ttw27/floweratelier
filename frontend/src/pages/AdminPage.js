@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
+import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -29,6 +30,36 @@ export default function AdminPage() {
     name: "", description: "", price: "", original_price: "", category_id: "",
     images: "", in_stock: true, featured: false, occasion_tags: "",
   });
+
+  const { settings, refresh: refreshSettings } = useSettings();
+  const [settingsForm, setSettingsForm] = useState(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setSettingsForm({
+        utility_bar_text: settings.utility_bar_text || "",
+        utility_bar_enabled: settings.utility_bar_enabled !== false,
+        whatsapp_number: settings.whatsapp_number || "",
+        whatsapp_enabled: settings.whatsapp_enabled !== false,
+        whatsapp_default_message: settings.whatsapp_default_message || "",
+      });
+    }
+  }, [settings]);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      await axios.put(`${API_URL}/api/settings`, settingsForm);
+      await refreshSettings();
+      toast.success("Settings saved");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to save settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate("/login"); }, [user, authLoading, navigate]);
 
@@ -140,6 +171,7 @@ export default function AdminPage() {
             <TabsTrigger value="orders" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-orders-tab">Orders</TabsTrigger>
             <TabsTrigger value="inquiries" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-inquiries-tab">Inquiries</TabsTrigger>
             <TabsTrigger value="products" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-products-tab">Products</TabsTrigger>
+            <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" data-testid="admin-orders-content">
@@ -327,6 +359,84 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings" data-testid="admin-settings-content">
+            <div className="bg-white border border-[#E5E5E5] p-8 max-w-3xl" data-testid="settings-form-card">
+              <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-2">Site settings</h3>
+              <p className="font-body text-sm text-[#7A7A7A] mb-8">Edit the global utility bar &amp; WhatsApp contact options. Changes go live instantly.</p>
+
+              {settingsForm && (
+                <form onSubmit={handleSaveSettings} className="space-y-7">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="accent-label text-[#1A1A1A]">Utility bar text</Label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.utility_bar_enabled}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, utility_bar_enabled: e.target.checked })}
+                          data-testid="settings-utility-enabled"
+                        />
+                        <span className="font-body text-xs text-[#7A7A7A] uppercase tracking-wider">Show bar</span>
+                      </label>
+                    </div>
+                    <Input
+                      value={settingsForm.utility_bar_text}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, utility_bar_text: e.target.value })}
+                      placeholder="e.g. Valentine's pre-orders now open · order by Fri 12 Feb"
+                      className="light-input rounded-none"
+                      data-testid="settings-utility-text"
+                    />
+                    <p className="font-body text-[11px] text-[#7A7A7A] mt-2">
+                      Leave blank to show only the &ldquo;Enquire — bespoke&rdquo; link. Use this strip for seasonal drops or occasion-led messages.
+                    </p>
+                  </div>
+
+                  <div className="pt-6 border-t border-[#E5E5E5]">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="accent-label text-[#1A1A1A]">WhatsApp number</Label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.whatsapp_enabled}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_enabled: e.target.checked })}
+                          data-testid="settings-whatsapp-enabled"
+                        />
+                        <span className="font-body text-xs text-[#7A7A7A] uppercase tracking-wider">Show WhatsApp button</span>
+                      </label>
+                    </div>
+                    <Input
+                      value={settingsForm.whatsapp_number}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number: e.target.value })}
+                      placeholder="e.g. 447123456789 (country code + number, no + or spaces)"
+                      className="light-input rounded-none"
+                      data-testid="settings-whatsapp-number"
+                    />
+                    <p className="font-body text-[11px] text-[#7A7A7A] mt-2">
+                      Use international format without &lsquo;+&rsquo; or spaces. UK example: 447123456789.
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label className="accent-label text-[#1A1A1A]">WhatsApp default message</Label>
+                    <Textarea
+                      value={settingsForm.whatsapp_default_message}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_default_message: e.target.value })}
+                      className="mt-2 light-input rounded-none"
+                      rows={3}
+                      data-testid="settings-whatsapp-message"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit" disabled={savingSettings} className="btn-dark rounded-none" data-testid="settings-save-btn">
+                      {savingSettings ? "Saving…" : "Save settings"}
+                    </Button>
+                  </div>
+                </form>
+              )}
             </div>
           </TabsContent>
         </Tabs>

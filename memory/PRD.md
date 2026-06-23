@@ -39,6 +39,18 @@ NOT targeting supermarket-tier gifting.
 
 ## What's Been Implemented
 
+### Site Settings (CMS-lite) — Feb 2026 (latest)
+- [x] New `site_settings` Mongo collection (singleton `_id: "global"`)
+- [x] `GET /api/settings` (public) + `PUT /api/settings` (admin)
+- [x] Header utility bar: removed hardcoded delivery copy; now shows only "Enquire — bespoke →" by default. Admin can add custom text (e.g. seasonal/occasion-led messaging) via Admin → Settings tab. Bar can be disabled entirely.
+- [x] Floating WhatsApp button (bottom-right) on every public page — number, default message and visibility all admin-controlled. Also added to Footer contact list.
+- [x] New `SettingsProvider` (React Context) loads + shares settings across Header / Footer / WhatsAppButton.
+- [x] New Admin "Settings" tab with utility-bar text + WhatsApp number/message + show/hide toggles.
+
+### Bug fixes — Feb 2026 (latest)
+- [x] Traveller Weddings hero: H1 was overflowing its column at 1024–1280px breakpoints and visually overlapping the hero image. Fixed by widening text col on lg, reducing responsive font size + tighter line-breaks. Other occasion/service pages verified clean.
+- [x] Mobile QA pass on homepage, collection, weddings, traveller-weddings, sympathy, traveller-funerals, faith, shop-front, consultation at 390px — all layouts render correctly.
+
 ### Light-Luxury Overhaul — Feb 2026
 - [x] Complete theme pivot: dark → light luxury (global CSS, all pages, Header, Footer, ProductCard)
 - [x] New typography stack: Cormorant Garamond + Montserrat
@@ -78,6 +90,8 @@ NOT targeting supermarket-tier gifting.
 Weddings · Sympathy · Corporate · House · Shop-window — with image, description, location, price_from, tags.
 
 ## API — Key Endpoints
+- `GET /api/settings` (public) — returns utility_bar_text, utility_bar_enabled, whatsapp_number, whatsapp_enabled, whatsapp_default_message
+- `PUT /api/settings` (admin) — update site settings
 - `POST /api/seed?reset=true` — force re-seed to v2-light-luxury
 - `GET /api/portfolio[?category=wedding|sympathy|corporate|house|shop]`
 - `POST /api/inquiries`
@@ -93,9 +107,10 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 - Pytest at `/app/backend/tests/backend_test.py`
 
 ## Next Tasks (P1)
-1. Replace legacy stock imagery on some pages with commissioned photography
-2. Seed a paid demo order so Admin Revenue shows non-zero
-3. Admin UI to manage portfolio items (currently seed-only)
+1. **CMS Layer (P0 / paused)** — extend Settings beyond utility-bar/WhatsApp to make service-page wording, tier pricing ("from £2,200" etc.) and Portfolio items fully admin-editable. Requires new `page_content` Mongo collection + dynamic load on service pages.
+2. Admin UI to manage Portfolio items (currently seed-only)
+3. Replace legacy stock imagery on some pages with commissioned photography
+4. Seed a paid demo order so Admin Revenue shows non-zero
 
 ## Backlog (P2)
 1. Instagram feed integration

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone, Heart, Sparkles, Crown } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
+import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
 
 const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
 
@@ -21,11 +22,11 @@ export default function TravellerWeddingsPage() {
       {/* Hero */}
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[60vh] lg:min-h-[70vh]">
-          <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 lg:order-1 bg-[#FAFAF7]">
+          <div className="lg:col-span-6 xl:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 lg:order-1 bg-[#FAFAF7]">
             <div className="max-w-md">
               <p className="accent-label mb-8"><span className="thin-rule" />Traveller Weddings</p>
-              <h1 className="font-heading text-5xl md:text-7xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight mb-8" data-testid="traveller-weddings-title">
-                A wedding<br />worth the <span className="italic text-[#B3A89B]">whole town</span> seeing.
+              <h1 className="font-heading text-[2.25rem] sm:text-5xl xl:text-6xl 2xl:text-7xl font-light text-[#1A1A1A] leading-[1.05] tracking-tight mb-8 break-words" data-testid="traveller-weddings-title">
+                A wedding<br />worth the <span className="italic text-[#B3A89B]">whole town</span><br />seeing.
               </h1>
               <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
                 We&rsquo;ve been entrusted with traveller weddings across the UK and Ireland —
@@ -46,7 +47,7 @@ export default function TravellerWeddingsPage() {
               </div>
             </div>
           </div>
-          <div className="lg:col-span-7 order-1 lg:order-2 h-[55vh] lg:h-auto">
+          <div className="lg:col-span-6 xl:col-span-7 order-1 lg:order-2 h-[55vh] lg:h-auto">
             <img src={HERO} alt="Traveller wedding floristry" className="w-full h-full object-cover" />
           </div>
         </div>
@@ -126,6 +127,13 @@ export default function TravellerWeddingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Bespoke Consultation — primary path, ties to the budget tiers above */}
+      <BespokeConsultationCTA
+        service="traveller_wedding"
+        heading={<>We bring your wedding<br />to life — <em className="text-[#B3A89B]">at a budget that fits.</em></>}
+        subheading="Whether it's £8,000 or £40,000+ — tell us your dream, your venue, your guest count and your scale. We design and quote a bespoke proposal that lands exactly on the budget that's right for you. No surprises, no compromise."
+      />
 
       {/* Ready Collection — buy direct */}
       <ReadyCollectionCTA

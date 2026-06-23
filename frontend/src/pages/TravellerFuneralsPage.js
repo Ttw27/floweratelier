@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone, Heart } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
+import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
 
 const HERO = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1800";
 
@@ -175,6 +176,13 @@ export default function TravellerFuneralsPage() {
           </a>
         </div>
       </section>
+
+      {/* Bespoke Consultation — primary path */}
+      <BespokeConsultationCTA
+        service="traveller_funeral"
+        heading={<>We bring their tribute<br />to life — <em className="text-[#B3A89B]">at a budget that fits.</em></>}
+        subheading="Whatever you have in mind — a 3ft letter tribute, a floral car, a horse, a caravan, or something else entirely — tell us their story and your vision. We'll design and quote a bespoke piece that fits the budget that's right for you."
+      />
 
       {/* Ready Collection — buy direct, no consultation needed */}
       <ReadyCollectionCTA

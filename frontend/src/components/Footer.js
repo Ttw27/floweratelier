@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
-import { Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { Instagram, Mail, Phone, MapPin, MessageCircle } from "lucide-react";
+import { useSettings } from "../context/SettingsContext";
 
 export default function Footer() {
+  const { settings } = useSettings();
+  const waDigits = (settings?.whatsapp_number || "").replace(/\D/g, "");
+  const waMsg = encodeURIComponent(settings?.whatsapp_default_message || "Hello");
+  const waHref = waDigits ? `https://wa.me/${waDigits}?text=${waMsg}` : null;
+
   return (
     <footer className="bg-[#FAFAF7] border-t border-[#E5E5E5]" data-testid="footer">
       {/* Main Footer */}
@@ -26,6 +32,18 @@ export default function Footer() {
                 <Mail size={15} strokeWidth={1.3} />
                 <span className="font-body text-sm">atelier@petalsatelier.com</span>
               </a>
+              {waHref && settings?.whatsapp_enabled !== false && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#25D366] transition-colors"
+                  data-testid="footer-whatsapp"
+                >
+                  <MessageCircle size={15} strokeWidth={1.3} />
+                  <span className="font-body text-sm">WhatsApp us</span>
+                </a>
+              )}
               <div className="flex items-center gap-3 text-[#7A7A7A]">
                 <MapPin size={15} strokeWidth={1.3} />
                 <span className="font-body text-sm">Mayfair, London</span>

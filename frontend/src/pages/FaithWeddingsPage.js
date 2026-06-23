@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
 
 const HERO = "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1800";
 
@@ -202,6 +203,13 @@ export default function FaithWeddingsPage() {
           </p>
         </div>
       </section>
+
+      {/* Bespoke Consultation — primary path */}
+      <BespokeConsultationCTA
+        service="faith_wedding"
+        heading={<>We bring your tradition<br />to life — <em className="text-[#B3A89B]">at a budget that fits.</em></>}
+        subheading="Whether it's an intimate Nikah, a grand Hindu mandap, or a destination Anand Karaj — tell us your tradition, your venue, your colours and your vision. We design and quote a bespoke proposal entirely around the budget that's right for you."
+      />
 
       {/* Mini Portfolio */}
       <MiniPortfolio

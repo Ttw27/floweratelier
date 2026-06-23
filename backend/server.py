@@ -1640,6 +1640,45 @@ async def seed_data(reset: bool = False):
         "portfolio_items": len(portfolio_items),
     }
 
+# ==================== SITE SETTINGS ====================
+
+class SiteSettings(BaseModel):
+    utility_bar_text: str = ""
+    utility_bar_enabled: bool = True
+    whatsapp_number: str = ""  # E.164 digits-only, e.g. "447123456789"
+    whatsapp_enabled: bool = True
+    whatsapp_default_message: str = "Hello Petals Atelier — I'd like to enquire about your floristry."
+
+DEFAULT_SETTINGS = SiteSettings(
+    utility_bar_text="",
+    whatsapp_number="447123456789",
+    whatsapp_default_message="Hello Petals Atelier — I'd like to enquire about your floristry.",
+).model_dump()
+
+@api_router.get("/settings")
+async def get_settings():
+    doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
+    if not doc:
+        await db.site_settings.update_one(
+            {"_id": "global"},
+            {"$set": DEFAULT_SETTINGS},
+            upsert=True,
+        )
+        return DEFAULT_SETTINGS
+    # Backfill missing keys (forward-compat)
+    merged = {**DEFAULT_SETTINGS, **doc}
+    return merged
+
+@api_router.put("/settings")
+async def update_settings(data: SiteSettings, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    await db.site_settings.update_one(
+        {"_id": "global"},
+        {"$set": payload},
+        upsert=True,
+    )
+    return payload
+
 # Root endpoint
 @api_router.get("/")
 async def root():

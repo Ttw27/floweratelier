@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
+import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
 
 export default function SympathyPage() {
   const tributeTypes = [
@@ -79,6 +80,14 @@ export default function SympathyPage() {
           </div>
         </div>
       </section>
+
+      {/* Bespoke Consultation — primary path */}
+      <BespokeConsultationCTA
+        service="sympathy"
+        heading={<>We bring your tribute<br />to life — <em className="text-[#B3A89B]">at a budget that fits.</em></>}
+        subheading="Tell us about your loved one — their life, their colours, the symbols that mattered. We'll design and quote a bespoke tribute that honours them perfectly, within the budget that's right for you."
+        tone="white"
+      />
 
       {/* Ready Collection — buy direct */}
       <ReadyCollectionCTA
