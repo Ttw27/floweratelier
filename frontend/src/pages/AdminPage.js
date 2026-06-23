@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
+import SEOAdmin from "../components/admin/SEOAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -43,6 +44,18 @@ export default function AdminPage() {
         whatsapp_number: settings.whatsapp_number || "",
         whatsapp_enabled: settings.whatsapp_enabled !== false,
         whatsapp_default_message: settings.whatsapp_default_message || "",
+        meta_pixel_id: settings.meta_pixel_id || "",
+        ga4_id: settings.ga4_id || "",
+        gtm_id: settings.gtm_id || "",
+        cookie_consent_required: settings.cookie_consent_required !== false,
+        delivery_min_lead_days: settings.delivery_min_lead_days ?? 4,
+        delivery_blocked_weekdays: settings.delivery_blocked_weekdays || [6],
+        delivery_blocked_dates: settings.delivery_blocked_dates || [],
+        delivery_window_days: settings.delivery_window_days ?? 28,
+        seo_default_title: settings.seo_default_title || "",
+        seo_default_description: settings.seo_default_description || "",
+        seo_default_og_image: settings.seo_default_og_image || "",
+        seo_site_name: settings.seo_site_name || "Petals Atelier",
       });
     }
   }, [settings]);
@@ -171,6 +184,7 @@ export default function AdminPage() {
             <TabsTrigger value="orders" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-orders-tab">Orders</TabsTrigger>
             <TabsTrigger value="inquiries" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-inquiries-tab">Inquiries</TabsTrigger>
             <TabsTrigger value="products" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-products-tab">Products</TabsTrigger>
+            <TabsTrigger value="seo" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-seo-tab">SEO</TabsTrigger>
             <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
           </TabsList>
 
@@ -362,16 +376,22 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
+          <TabsContent value="seo" data-testid="admin-seo-content">
+            <SEOAdmin />
+          </TabsContent>
+
           <TabsContent value="settings" data-testid="admin-settings-content">
-            <div className="bg-white border border-[#E5E5E5] p-8 max-w-3xl" data-testid="settings-form-card">
+            <div className="bg-white border border-[#E5E5E5] p-8 max-w-4xl" data-testid="settings-form-card">
               <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-2">Site settings</h3>
-              <p className="font-body text-sm text-[#7A7A7A] mb-8">Edit the global utility bar &amp; WhatsApp contact options. Changes go live instantly.</p>
+              <p className="font-body text-sm text-[#7A7A7A] mb-8">Global controls for messaging, contact, tracking, delivery and SEO defaults. Changes go live instantly.</p>
 
               {settingsForm && (
-                <form onSubmit={handleSaveSettings} className="space-y-7">
-                  <div>
+                <form onSubmit={handleSaveSettings} className="space-y-10">
+                  {/* === Utility bar === */}
+                  <section data-testid="settings-section-utility">
+                    <p className="accent-label mb-4"><span className="thin-rule" />Utility bar</p>
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="accent-label text-[#1A1A1A]">Utility bar text</Label>
+                      <Label className="text-[#1A1A1A] text-sm">Bar text</Label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -392,11 +412,13 @@ export default function AdminPage() {
                     <p className="font-body text-[11px] text-[#7A7A7A] mt-2">
                       Leave blank to show only the &ldquo;Enquire — bespoke&rdquo; link. Use this strip for seasonal drops or occasion-led messages.
                     </p>
-                  </div>
+                  </section>
 
-                  <div className="pt-6 border-t border-[#E5E5E5]">
+                  {/* === WhatsApp === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-whatsapp">
+                    <p className="accent-label mb-4"><span className="thin-rule" />WhatsApp</p>
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="accent-label text-[#1A1A1A]">WhatsApp number</Label>
+                      <Label className="text-[#1A1A1A] text-sm">Number</Label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -415,24 +437,232 @@ export default function AdminPage() {
                       data-testid="settings-whatsapp-number"
                     />
                     <p className="font-body text-[11px] text-[#7A7A7A] mt-2">
-                      Use international format without &lsquo;+&rsquo; or spaces. UK example: 447123456789.
+                      International format without &lsquo;+&rsquo; or spaces. UK example: 447123456789.
                     </p>
-                  </div>
+                    <div className="mt-4">
+                      <Label className="text-[#1A1A1A] text-sm">Default message</Label>
+                      <Textarea
+                        value={settingsForm.whatsapp_default_message}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_default_message: e.target.value })}
+                        className="mt-2 light-input rounded-none"
+                        rows={3}
+                        data-testid="settings-whatsapp-message"
+                      />
+                    </div>
+                  </section>
 
-                  <div>
-                    <Label className="accent-label text-[#1A1A1A]">WhatsApp default message</Label>
-                    <Textarea
-                      value={settingsForm.whatsapp_default_message}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_default_message: e.target.value })}
-                      className="mt-2 light-input rounded-none"
-                      rows={3}
-                      data-testid="settings-whatsapp-message"
-                    />
-                  </div>
+                  {/* === Tracking pixels === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-pixels">
+                    <p className="accent-label mb-4"><span className="thin-rule" />Tracking pixels</p>
+                    <p className="font-body text-[12px] text-[#7A7A7A] mb-4">
+                      Page views fire automatically on every route change. Pixels are blocked until the visitor accepts cookies (UK GDPR). Leave blank to disable.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Meta (Facebook) Pixel ID</Label>
+                        <Input
+                          value={settingsForm.meta_pixel_id}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, meta_pixel_id: e.target.value.trim() })}
+                          placeholder="e.g. 1234567890123456"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-meta-pixel-id"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Google Analytics 4 ID</Label>
+                        <Input
+                          value={settingsForm.ga4_id}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, ga4_id: e.target.value.trim() })}
+                          placeholder="e.g. G-XXXXXXXXXX"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-ga4-id"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Google Tag Manager ID <span className="text-[#7A7A7A] normal-case">(optional)</span></Label>
+                        <Input
+                          value={settingsForm.gtm_id}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, gtm_id: e.target.value.trim() })}
+                          placeholder="e.g. GTM-XXXXXX"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-gtm-id"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <label className="flex items-center gap-2 cursor-pointer pb-2">
+                          <input
+                            type="checkbox"
+                            checked={settingsForm.cookie_consent_required}
+                            onChange={(e) => setSettingsForm({ ...settingsForm, cookie_consent_required: e.target.checked })}
+                            data-testid="settings-consent-required"
+                          />
+                          <span className="font-body text-xs text-[#1A1A1A]">Require cookie consent before firing pixels (UK GDPR)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* === Delivery rules === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-delivery">
+                    <p className="accent-label mb-4"><span className="thin-rule" />Delivery rules</p>
+                    <p className="font-body text-[12px] text-[#7A7A7A] mb-4">
+                      Controls the calendar shown to customers on product pages, the cart, and checkout — and is enforced server-side when an order is placed.
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Minimum lead time (days)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={settingsForm.delivery_min_lead_days}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, delivery_min_lead_days: parseInt(e.target.value, 10) || 0 })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-delivery-lead"
+                        />
+                        <p className="text-[11px] text-[#7A7A7A] mt-1">Earliest the customer can choose. Default 4 days.</p>
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Days surfaced in calendar</Label>
+                        <Input
+                          type="number"
+                          min="7"
+                          value={settingsForm.delivery_window_days}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, delivery_window_days: parseInt(e.target.value, 10) || 28 })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-delivery-window"
+                        />
+                        <p className="text-[11px] text-[#7A7A7A] mt-1">How far ahead the calendar runs. Default 28 days.</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <Label className="text-[#1A1A1A] text-sm">Blocked weekdays (recurring)</Label>
+                      <div className="grid grid-cols-7 gap-2 mt-3">
+                        {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d, idx) => {
+                          const blocked = settingsForm.delivery_blocked_weekdays.includes(idx);
+                          return (
+                            <button
+                              type="button"
+                              key={idx}
+                              onClick={() => {
+                                const list = blocked
+                                  ? settingsForm.delivery_blocked_weekdays.filter((x) => x !== idx)
+                                  : [...settingsForm.delivery_blocked_weekdays, idx];
+                                setSettingsForm({ ...settingsForm, delivery_blocked_weekdays: list });
+                              }}
+                              data-testid={`settings-blocked-weekday-${idx}`}
+                              className={`py-2 text-xs uppercase tracking-[0.18em] border ${blocked ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" : "bg-white text-[#1A1A1A] border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-[#7A7A7A] mt-2">Tap to toggle. Default: Sunday closed.</p>
+                    </div>
+
+                    <div className="mt-5">
+                      <Label className="text-[#1A1A1A] text-sm">Blocked specific dates</Label>
+                      <div className="flex flex-wrap gap-2 mt-3 mb-2">
+                        {(settingsForm.delivery_blocked_dates || []).map((d) => (
+                          <span key={d} className="inline-flex items-center gap-2 px-3 py-1 bg-[#F2EFEB] text-[#1A1A1A] text-xs">
+                            {d}
+                            <button
+                              type="button"
+                              onClick={() => setSettingsForm({
+                                ...settingsForm,
+                                delivery_blocked_dates: settingsForm.delivery_blocked_dates.filter((x) => x !== d),
+                              })}
+                              className="text-[#7A7A7A] hover:text-red-600"
+                              data-testid={`settings-remove-date-${d}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        {(settingsForm.delivery_blocked_dates || []).length === 0 && (
+                          <span className="text-[11px] text-[#7A7A7A]">None set.</span>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="date"
+                          id="blockDateInput"
+                          className="light-input rounded-none max-w-[220px]"
+                          data-testid="settings-add-blocked-date"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-none"
+                          onClick={() => {
+                            const el = document.getElementById("blockDateInput");
+                            const v = el?.value;
+                            if (!v) return;
+                            if ((settingsForm.delivery_blocked_dates || []).includes(v)) return;
+                            setSettingsForm({ ...settingsForm, delivery_blocked_dates: [...settingsForm.delivery_blocked_dates, v] });
+                            if (el) el.value = "";
+                          }}
+                          data-testid="settings-add-blocked-date-btn"
+                        >
+                          Add date
+                        </Button>
+                      </div>
+                      <p className="text-[11px] text-[#7A7A7A] mt-2">e.g. Christmas Day, Boxing Day, public holidays.</p>
+                    </div>
+                  </section>
+
+                  {/* === SEO defaults === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-seo">
+                    <p className="accent-label mb-4"><span className="thin-rule" />SEO defaults</p>
+                    <p className="font-body text-[12px] text-[#7A7A7A] mb-4">
+                      Used when a route hasn&rsquo;t been individually customised under the SEO tab.
+                    </p>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Site name</Label>
+                        <Input
+                          value={settingsForm.seo_site_name}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, seo_site_name: e.target.value })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-seo-site-name"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Default title</Label>
+                        <Input
+                          value={settingsForm.seo_default_title}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, seo_default_title: e.target.value })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-seo-default-title"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Default meta description</Label>
+                        <Textarea
+                          rows={2}
+                          value={settingsForm.seo_default_description}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, seo_default_description: e.target.value })}
+                          className="mt-2 light-input rounded-none"
+                          data-testid="settings-seo-default-description"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Default OG image URL</Label>
+                        <Input
+                          value={settingsForm.seo_default_og_image}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, seo_default_og_image: e.target.value })}
+                          placeholder="https://… (1200×630 recommended)"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-seo-default-og"
+                        />
+                      </div>
+                    </div>
+                  </section>
 
                   <div className="flex gap-3 pt-2">
                     <Button type="submit" disabled={savingSettings} className="btn-dark rounded-none" data-testid="settings-save-btn">
-                      {savingSettings ? "Saving…" : "Save settings"}
+                      {savingSettings ? "Saving…" : "Save all settings"}
                     </Button>
                   </div>
                 </form>

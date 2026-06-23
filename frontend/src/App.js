@@ -1,5 +1,6 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
@@ -29,20 +30,27 @@ import AccountPage from "./pages/AccountPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import AdminPage from "./pages/AdminPage";
 import ThemePreviewPage from "./pages/ThemePreviewPage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 // Layout
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import WhatsAppButton from "./components/WhatsAppButton";
+import SEOHead from "./components/SEOHead";
+import Pixels from "./components/Pixels";
+import CookieConsent from "./components/CookieConsent";
 
 function App() {
   return (
+    <HelmetProvider>
     <AuthProvider>
       <SettingsProvider>
         <CartProvider>
           <BrowserRouter>
             <ScrollToTop />
+            <SEOHead />
+            <Pixels />
             <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#1A1A1A]">
               <Header />
               <main className="flex-1">
@@ -71,16 +79,19 @@ function App() {
                 <Route path="/consultation" element={<ConsultationPage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/themes" element={<ThemePreviewPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
               </Routes>
             </main>
             <Footer />
             <WhatsAppButton />
+            <CookieConsent />
           </div>
           <Toaster position="top-right" theme="light" />
         </BrowserRouter>
       </CartProvider>
       </SettingsProvider>
     </AuthProvider>
+    </HelmetProvider>
   );
 }
 

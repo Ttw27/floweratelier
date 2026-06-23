@@ -514,26 +514,38 @@ FREE_DELIVERY_THRESHOLD = 50.0
 
 @api_router.get("/delivery/options")
 async def get_delivery_options():
-    """Get delivery date options and box personalization choices"""
+    """Get delivery date options and box personalization choices.
+    Honours admin-configurable rules from site_settings:
+      - delivery_min_lead_days
+      - delivery_blocked_weekdays (0=Mon..6=Sun)
+      - delivery_blocked_dates (YYYY-MM-DD list)
+      - delivery_window_days
+    """
     from datetime import date
+    settings = await _get_settings_dict()
+    min_lead = max(0, int(settings.get("delivery_min_lead_days", 4)))
+    blocked_wkd = set(int(d) for d in settings.get("delivery_blocked_weekdays", [6]))
+    blocked_dates = set(settings.get("delivery_blocked_dates", []))
+    window = max(7, int(settings.get("delivery_window_days", 28)))
+
     today = date.today()
-    
-    # Calculate available dates (starting from 2 days ahead, excluding Sundays)
     available_dates = []
-    check_date = today + timedelta(days=2)
-    
-    for _ in range(14):  # Next 2 weeks
-        if check_date.weekday() != 6:  # Not Sunday (0=Monday, 6=Sunday)
+    check_date = today + timedelta(days=min_lead)
+
+    end_date = today + timedelta(days=min_lead + window)
+    while check_date <= end_date:
+        iso = check_date.isoformat()
+        if check_date.weekday() not in blocked_wkd and iso not in blocked_dates:
             is_saturday = check_date.weekday() == 5
             available_dates.append({
-                "date": check_date.isoformat(),
+                "date": iso,
                 "day_name": check_date.strftime("%A"),
                 "formatted": check_date.strftime("%B %d, %Y"),
                 "is_saturday": is_saturday,
                 "delivery_fee": SATURDAY_DELIVERY_FEE if is_saturday else STANDARD_DELIVERY_FEE
             })
         check_date += timedelta(days=1)
-    
+
     box_options = {
         "box_colors": [
             {"id": "classic-white", "name": "Classic White", "hex": "#FFFFFF"},
@@ -553,9 +565,14 @@ async def get_delivery_options():
         ],
         "max_box_message_length": 50
     }
-    
+
     return {
         "available_dates": available_dates,
+        "rules": {
+            "min_lead_days": min_lead,
+            "blocked_weekdays": sorted(list(blocked_wkd)),
+            "blocked_dates": sorted(list(blocked_dates)),
+        },
         "box_personalization": box_options,
         "delivery_fees": {
             "standard": STANDARD_DELIVERY_FEE,
@@ -582,14 +599,21 @@ async def create_order(data: OrderCreate, session_id: Optional[str] = None, user
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     
     today = date.today()
-    min_delivery_date = today + timedelta(days=2)
-    
+    settings = await _get_settings_dict()
+    min_lead = max(0, int(settings.get("delivery_min_lead_days", 4)))
+    blocked_wkd = set(int(d) for d in settings.get("delivery_blocked_weekdays", [6]))
+    blocked_dates = set(settings.get("delivery_blocked_dates", []))
+    min_delivery_date = today + timedelta(days=min_lead)
+
     if delivery_date < min_delivery_date:
-        raise HTTPException(status_code=400, detail="Delivery date must be at least 2 days from today")
-    
-    if delivery_date.weekday() == 6:  # Sunday
-        raise HTTPException(status_code=400, detail="Sunday delivery is not available")
-    
+        raise HTTPException(status_code=400, detail=f"Delivery date must be at least {min_lead} days from today")
+
+    if delivery_date.weekday() in blocked_wkd:
+        raise HTTPException(status_code=400, detail="Delivery is unavailable on this weekday")
+
+    if delivery_date.isoformat() in blocked_dates:
+        raise HTTPException(status_code=400, detail="Delivery is unavailable on this date")
+
     is_saturday = delivery_date.weekday() == 5
     
     # Calculate totals
@@ -1648,6 +1672,21 @@ class SiteSettings(BaseModel):
     whatsapp_number: str = ""  # E.164 digits-only, e.g. "447123456789"
     whatsapp_enabled: bool = True
     whatsapp_default_message: str = "Hello Petals Atelier — I'd like to enquire about your floristry."
+    # Tracking pixels
+    meta_pixel_id: str = ""
+    ga4_id: str = ""           # e.g. G-XXXXXXX
+    gtm_id: str = ""           # e.g. GTM-XXXXXX (optional)
+    cookie_consent_required: bool = True  # UK GDPR: hold pixels until user accepts
+    # Delivery rules (used by /delivery/options + order validation)
+    delivery_min_lead_days: int = 4
+    delivery_blocked_weekdays: List[int] = [6]   # 0=Mon..6=Sun, default Sun blocked
+    delivery_blocked_dates: List[str] = []       # ["2026-12-24", "2026-12-25"]
+    delivery_window_days: int = 28               # how many days ahead to surface
+    # Default SEO fallbacks (used when a route has no per-page override)
+    seo_default_title: str = "Petals Atelier — London Luxury Floristry"
+    seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in London. Editorial design, dignified service, delivered nationwide."
+    seo_default_og_image: str = ""
+    seo_site_name: str = "Petals Atelier"
 
 DEFAULT_SETTINGS = SiteSettings(
     utility_bar_text="",
@@ -1665,7 +1704,6 @@ async def get_settings():
             upsert=True,
         )
         return DEFAULT_SETTINGS
-    # Backfill missing keys (forward-compat)
     merged = {**DEFAULT_SETTINGS, **doc}
     return merged
 
@@ -1678,6 +1716,70 @@ async def update_settings(data: SiteSettings, admin=Depends(require_admin)):
         upsert=True,
     )
     return payload
+
+async def _get_settings_dict() -> dict:
+    doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
+    return {**DEFAULT_SETTINGS, **(doc or {})}
+
+# ==================== SEO ====================
+
+class SEOPage(BaseModel):
+    path: str          # e.g. "/", "/weddings", "/traveller-weddings"
+    title: str = ""
+    description: str = ""
+    keywords: str = ""
+    og_image: str = ""
+    canonical: str = ""
+    robots: str = "index,follow"
+    structured_data: Optional[Dict] = None
+
+@api_router.get("/seo")
+async def get_seo_for_path(path: str = "/"):
+    """Public — returns merged SEO meta for a given route, with defaults."""
+    settings = await _get_settings_dict()
+    fallback = {
+        "path": path,
+        "title": settings.get("seo_default_title", ""),
+        "description": settings.get("seo_default_description", ""),
+        "keywords": "",
+        "og_image": settings.get("seo_default_og_image", ""),
+        "canonical": "",
+        "robots": "index,follow",
+        "structured_data": None,
+        "site_name": settings.get("seo_site_name", "Petals Atelier"),
+    }
+    doc = await db.seo_pages.find_one({"path": path}, {"_id": 0})
+    if not doc:
+        return fallback
+    merged = {**fallback, **doc}
+    # Ensure non-empty title/description fall back to defaults
+    if not merged.get("title"):
+        merged["title"] = fallback["title"]
+    if not merged.get("description"):
+        merged["description"] = fallback["description"]
+    if not merged.get("og_image"):
+        merged["og_image"] = fallback["og_image"]
+    return merged
+
+@api_router.get("/admin/seo")
+async def list_seo_pages(admin=Depends(require_admin)):
+    docs = await db.seo_pages.find({}, {"_id": 0}).sort("path", 1).to_list(length=500)
+    return docs
+
+@api_router.put("/admin/seo")
+async def upsert_seo_page(data: SEOPage, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    await db.seo_pages.update_one(
+        {"path": payload["path"]},
+        {"$set": payload},
+        upsert=True,
+    )
+    return payload
+
+@api_router.delete("/admin/seo")
+async def delete_seo_page(path: str, admin=Depends(require_admin)):
+    await db.seo_pages.delete_one({"path": path})
+    return {"deleted": path}
 
 # Root endpoint
 @api_router.get("/")

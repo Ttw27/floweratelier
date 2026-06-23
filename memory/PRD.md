@@ -39,17 +39,20 @@ NOT targeting supermarket-tier gifting.
 
 ## What's Been Implemented
 
-### Site Settings (CMS-lite) — Feb 2026 (latest)
-- [x] New `site_settings` Mongo collection (singleton `_id: "global"`)
-- [x] `GET /api/settings` (public) + `PUT /api/settings` (admin)
-- [x] Header utility bar: removed hardcoded delivery copy; now shows only "Enquire — bespoke →" by default. Admin can add custom text (e.g. seasonal/occasion-led messaging) via Admin → Settings tab. Bar can be disabled entirely.
-- [x] Floating WhatsApp button (bottom-right) on every public page — number, default message and visibility all admin-controlled. Also added to Footer contact list.
-- [x] New `SettingsProvider` (React Context) loads + shares settings across Header / Footer / WhatsAppButton.
-- [x] New Admin "Settings" tab with utility-bar text + WhatsApp number/message + show/hide toggles.
+### Admin foundations: SEO, Pixels, Delivery rules — Feb 2026 (Phase 1)
+- [x] **Per-page SEO** — `seo_pages` Mongo collection + `GET /api/seo?path=` (public, with merged defaults), `GET/PUT/DELETE /api/admin/seo`. Frontend uses **react-helmet-async** via new `<SEOHead />` component (mounts on every route change, fetches & caches per-path meta, emits title/description/keywords/canonical/OG/Twitter cards/JSON-LD).
+- [x] **Admin SEO tab** in `/admin` — table of all 14 preset routes (Home, Collection, Weddings, Traveller W/F, Faith, Sympathy, Corporate, House Installs, Shop Front, In-Shop, Film/TV, Portfolio, Consultation), edit dialog with title/description/keywords/OG image/canonical/robots fields + char counters.
+- [x] **SEO defaults** in Settings (site name + default title/description/OG image) applied as fallback when a route isn't individually customised.
+- [x] **Tracking pixels** — Meta Pixel, GA4 and (optional) GTM IDs editable in Admin → Settings. New `<Pixels />` component injects scripts after consent and fires `PageView`/`page_view` on every SPA route change. Helper `trackEvent(name, params)` exported for custom events.
+- [x] **UK GDPR cookie consent banner** (`<CookieConsent />`) — Accept all / Essential only, persisted in localStorage; pixels held until accepted when `cookie_consent_required` is on.
+- [x] **Delivery calendar admin** — `delivery_min_lead_days` (default 4), `delivery_blocked_weekdays` (Mon–Sun toggle, default Sun), `delivery_blocked_dates` (one-off date list e.g. 25/26 Dec), `delivery_window_days` (default 28). Both `GET /api/delivery/options` and `POST /api/orders` validate against these rules.
+- [x] Static `<title>`/`<meta description>` removed from `public/index.html` so Helmet has full control (no duplicates).
+- [x] New `/privacy` route with UK-GDPR-compliant copy referenced by the cookie banner.
 
-### Bug fixes — Feb 2026 (latest)
-- [x] Traveller Weddings hero: H1 was overflowing its column at 1024–1280px breakpoints and visually overlapping the hero image. Fixed by widening text col on lg, reducing responsive font size + tighter line-breaks. Other occasion/service pages verified clean.
-- [x] Mobile QA pass on homepage, collection, weddings, traveller-weddings, sympathy, traveller-funerals, faith, shop-front, consultation at 390px — all layouts render correctly.
+### Site Settings (CMS-lite) — Feb 2026
+- [x] `site_settings` Mongo collection (singleton). `GET /api/settings` (public), `PUT /api/settings` (admin).
+- [x] Header utility bar: removed hardcoded delivery copy; admin-editable text + show/hide toggle.
+- [x] Floating WhatsApp button on every public page; admin-controlled number, message, visibility.
 
 ### Light-Luxury Overhaul — Feb 2026
 - [x] Complete theme pivot: dark → light luxury (global CSS, all pages, Header, Footer, ProductCard)
@@ -107,10 +110,11 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 - Pytest at `/app/backend/tests/backend_test.py`
 
 ## Next Tasks (P1)
-1. **CMS Layer (P0 / paused)** — extend Settings beyond utility-bar/WhatsApp to make service-page wording, tier pricing ("from £2,200" etc.) and Portfolio items fully admin-editable. Requires new `page_content` Mongo collection + dynamic load on service pages.
-2. Admin UI to manage Portfolio items (currently seed-only)
-3. Replace legacy stock imagery on some pages with commissioned photography
-4. Seed a paid demo order so Admin Revenue shows non-zero
+1. **Phase 2 — Bloom & Wild-style product pages**: media gallery (4–5 photos/videos per product, video URL or upload), sticky gallery layout, in-page delivery calendar reading from admin rules, "Send" stepper (card pick → message → date → box choice → add-ons → checkout). New collections: `cards`, `addons` (sub-types: treats / candles / jewellery_boxes), `product_media`. Treats sub-category groups teddies + chocolates + drinks.
+2. **Phase 3 — Personalised box designer**: full canvas (drag/drop, multiple text layers, custom fonts, multi-photo upload, colour pickers). +£9.99 add-on. Save preview image with the order so the studio can recreate.
+3. CMS layer extension: make service-page wording & tier pricing admin-editable via `page_content` collection.
+4. Admin UI for Portfolio item CRUD.
+5. Replace legacy stock imagery on service pages with commissioned photography.
 
 ## Backlog (P2)
 1. Instagram feed integration
