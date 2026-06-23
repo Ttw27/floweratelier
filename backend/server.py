@@ -1895,6 +1895,153 @@ async def delete_box(box_id: str, admin=Depends(require_admin)):
     return {"deleted": box_id}
 
 
+# ==================== DESIGN TEMPLATES ====================
+
+class TemplateCategoryCreate(BaseModel):
+    name: str
+    slug: str
+    sort_order: int = 0
+    active: bool = True
+
+class TemplateCategoryResponse(TemplateCategoryCreate):
+    id: str
+
+class DesignTemplateCreate(BaseModel):
+    name: str
+    category_id: str
+    thumbnail_url: str = ""
+    layers: List[Dict] = []
+    sort_order: int = 0
+    active: bool = True
+
+class DesignTemplateResponse(DesignTemplateCreate):
+    id: str
+
+# Categories
+@api_router.get("/templates/categories", response_model=List[TemplateCategoryResponse])
+async def list_template_categories(active_only: bool = True):
+    q = {"active": True} if active_only else {}
+    docs = await db.template_categories.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=200)
+    return [TemplateCategoryResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/template-categories", response_model=TemplateCategoryResponse)
+async def create_template_category(data: TemplateCategoryCreate, admin=Depends(require_admin)):
+    doc = {**data.model_dump(), "id": str(uuid.uuid4())}
+    await db.template_categories.insert_one(doc)
+    return TemplateCategoryResponse(**doc)
+
+@api_router.put("/admin/template-categories/{cid}", response_model=TemplateCategoryResponse)
+async def update_template_category(cid: str, data: TemplateCategoryCreate, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    res = await db.template_categories.update_one({"id": cid}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Category not found")
+    return TemplateCategoryResponse(id=cid, **payload)
+
+@api_router.delete("/admin/template-categories/{cid}")
+async def delete_template_category(cid: str, admin=Depends(require_admin)):
+    if await db.design_templates.count_documents({"category_id": cid}) > 0:
+        raise HTTPException(400, "Cannot delete a category that still has templates")
+    res = await db.template_categories.delete_one({"id": cid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Category not found")
+    return {"deleted": cid}
+
+# Templates
+@api_router.get("/templates", response_model=List[DesignTemplateResponse])
+async def list_templates(category_id: Optional[str] = None, active_only: bool = True):
+    q = {}
+    if active_only:
+        q["active"] = True
+    if category_id:
+        q["category_id"] = category_id
+    docs = await db.design_templates.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=500)
+    return [DesignTemplateResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/templates", response_model=DesignTemplateResponse)
+async def create_template(data: DesignTemplateCreate, admin=Depends(require_admin)):
+    doc = {**data.model_dump(), "id": str(uuid.uuid4())}
+    await db.design_templates.insert_one(doc)
+    return DesignTemplateResponse(**doc)
+
+@api_router.put("/admin/templates/{tid}", response_model=DesignTemplateResponse)
+async def update_template(tid: str, data: DesignTemplateCreate, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    res = await db.design_templates.update_one({"id": tid}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Template not found")
+    return DesignTemplateResponse(id=tid, **payload)
+
+@api_router.delete("/admin/templates/{tid}")
+async def delete_template(tid: str, admin=Depends(require_admin)):
+    res = await db.design_templates.delete_one({"id": tid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Template not found")
+    return {"deleted": tid}
+
+
+# Seed starter categories + templates
+@api_router.post("/seed/templates")
+async def seed_templates(reset: bool = False, admin=Depends(require_admin)):
+    if reset:
+        await db.template_categories.delete_many({})
+        await db.design_templates.delete_many({})
+
+    if await db.template_categories.count_documents({}) == 0:
+        for c in [
+            {"name": "Anniversary", "slug": "anniversary", "sort_order": 10},
+            {"name": "Birthday",    "slug": "birthday",    "sort_order": 20},
+            {"name": "In Loving Memory", "slug": "memory", "sort_order": 30},
+        ]:
+            await db.template_categories.insert_one({**c, "id": str(uuid.uuid4()), "active": True})
+
+    cats = {c["slug"]: c async for c in db.template_categories.find({})}
+
+    if await db.design_templates.count_documents({}) == 0:
+        seeds = []
+        if "anniversary" in cats:
+            seeds.append({
+                "name": "Anniversary Heart",
+                "category_id": cats["anniversary"]["id"],
+                "layers": [
+                    {"id": "h1", "type": "shape", "kind": "heart", "x": 330, "y": 200, "fill": "#7A2E2E", "rotation": 0, "scaleX": 1.4, "scaleY": 1.4},
+                    {"id": "t1", "type": "text", "text": "Forever yours", "x": 240, "y": 420, "fontSize": 56, "fontFamily": "Cormorant Garamond, serif", "fill": "#1A1A1A", "rotation": 0},
+                ],
+                "sort_order": 10,
+            })
+        if "birthday" in cats:
+            seeds.append({
+                "name": "Birthday Confetti",
+                "category_id": cats["birthday"]["id"],
+                "layers": [
+                    {"id": "c1", "type": "shape", "kind": "circle", "x": 180, "y": 180, "fill": "#D4AF37", "rotation": 0, "scaleX": 0.5, "scaleY": 0.5},
+                    {"id": "c2", "type": "shape", "kind": "circle", "x": 600, "y": 140, "fill": "#C07A65", "rotation": 0, "scaleX": 0.4, "scaleY": 0.4},
+                    {"id": "c3", "type": "shape", "kind": "circle", "x": 660, "y": 420, "fill": "#5C7A3F", "rotation": 0, "scaleX": 0.45, "scaleY": 0.45},
+                    {"id": "c4", "type": "shape", "kind": "circle", "x": 140, "y": 420, "fill": "#7A2E2E", "rotation": 0, "scaleX": 0.4, "scaleY": 0.4},
+                    {"id": "t1", "type": "text", "text": "Happy Birthday", "x": 220, "y": 270, "fontSize": 64, "fontFamily": "Dancing Script, cursive", "fill": "#1A1A1A", "rotation": 0},
+                ],
+                "sort_order": 10,
+            })
+        if "memory" in cats:
+            seeds.append({
+                "name": "In Loving Memory",
+                "category_id": cats["memory"]["id"],
+                "layers": [
+                    {"id": "t1", "type": "text", "text": "In loving memory", "x": 230, "y": 200, "fontSize": 56, "fontFamily": "Cormorant Garamond, serif", "fill": "#1A1A1A", "rotation": 0},
+                    {"id": "t2", "type": "text", "text": "always in our hearts", "x": 240, "y": 290, "fontSize": 30, "fontFamily": "Cormorant Garamond, serif", "fill": "#7A7A7A", "rotation": 0},
+                    {"id": "h1", "type": "shape", "kind": "heart", "x": 365, "y": 380, "fill": "#1A1A1A", "rotation": 0, "scaleX": 0.7, "scaleY": 0.7},
+                ],
+                "sort_order": 10,
+            })
+        for s in seeds:
+            await db.design_templates.insert_one({**s, "id": str(uuid.uuid4()), "thumbnail_url": "", "active": True})
+
+    return {
+        "categories": await db.template_categories.count_documents({}),
+        "templates": await db.design_templates.count_documents({}),
+    }
+
+
 BOX_SEED = [
     {"name": "Signature kraft box", "description": "Hand-tied in our standard ivory atelier kraft box.", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=800&q=70", "price": 0.0, "bg_color": "#C9A66B", "is_personalised": False, "sort_order": 10},
     {"name": "Glass studio vase", "description": "Arrives ready-arranged in a re-usable hand-blown vase.", "image_url": "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=800&q=70", "price": 12.0, "bg_color": "#F2EFEB", "is_personalised": False, "sort_order": 20},

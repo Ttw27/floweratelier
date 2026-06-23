@@ -4,7 +4,9 @@ import useImage from "use-image";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { X, Type, ImagePlus, Trash2, Undo2, Check, Square, Circle as CircleIcon, Heart, RectangleHorizontal } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { X, Type, ImagePlus, Trash2, Undo2, Check, Square, Circle as CircleIcon, Heart, RectangleHorizontal, LayoutTemplate } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -42,18 +44,29 @@ function URLImage({ src, ...props }) {
 let nextId = 1;
 const uid = () => `n${nextId++}_${Date.now().toString(36)}`;
 
-export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
+export default function BoxDesigner({ open, onClose, onSave, initialBg, templateMode = false, initialLayers = null, initialName = "", categories = [] }) {
   const stageRef = useRef(null);
   const transformerRef = useRef(null);
   const fileInputRef = useRef(null);
   const containerRef = useRef(null);
+  const bgRectRef = useRef(null);
 
   const [bg, setBg] = useState(initialBg || "#F2EFEB");
-  const [layers, setLayers] = useState([]);  // [{id,type:"text"|"image",...}]
-  const [history, setHistory] = useState([]); // for undo
+  const [layers, setLayers] = useState([]);
+  const [history, setHistory] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [savingPng, setSavingPng] = useState(false);
   const [stageWidth, setStageWidth] = useState(BOX_W);
+
+  // Templates picker
+  const [tplOpen, setTplOpen] = useState(false);
+  const [tplCats, setTplCats] = useState([]);
+  const [tpls, setTpls] = useState([]);
+  const [activeCat, setActiveCat] = useState("");
+
+  // Template-mode metadata (admin)
+  const [tplName, setTplName] = useState(initialName || "");
+  const [tplCategoryId, setTplCategoryId] = useState(categories?.[0]?.id || "");
 
   // Reset on open/close
   useEffect(() => {
@@ -61,12 +74,15 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
       setLayers([]);
       setHistory([]);
       setSelectedId(null);
-    }
-    // When opened (or initialBg changes between opens), reset background
-    if (open) {
+      setTplOpen(false);
+    } else {
       setBg(initialBg || "#F2EFEB");
+      // Hydrate from initialLayers (used by template-mode editing or future "edit my saved design")
+      if (initialLayers) setLayers(initialLayers);
+      setTplName(initialName || "");
+      if (categories?.[0]) setTplCategoryId(categories[0].id);
     }
-  }, [open, initialBg]);
+  }, [open, initialBg, initialLayers, initialName, categories]);
 
   // Track container width so the canvas scales to fit (no overlap)
   useEffect(() => {
@@ -175,30 +191,73 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
   const handleSave = async () => {
     setSavingPng(true);
     try {
-      // Deselect so transformer handles aren't in the export
       const prevSelected = selectedId;
       setSelectedId(null);
+      // Hide the bg rect so the PNG is transparent (studio-ready)
+      bgRectRef.current?.hide();
+      bgRectRef.current?.getLayer()?.batchDraw();
       await new Promise((r) => requestAnimationFrame(r));
-      const dataUrl = stageRef.current.toDataURL({ pixelRatio: 1.5, mimeType: "image/jpeg", quality: 0.85 });
-      // Convert dataURL to file & upload
+
+      const dataUrl = stageRef.current.toDataURL({
+        pixelRatio: 1.5 / stageScale,
+        mimeType: "image/png", // transparent PNG
+      });
+
+      bgRectRef.current?.show();
+      bgRectRef.current?.getLayer()?.batchDraw();
+
       const blob = await (await fetch(dataUrl)).blob();
       const fd = new FormData();
-      fd.append("file", new File([blob], "design.jpg", { type: "image/jpeg" }));
+      fd.append("file", new File([blob], "design.png", { type: "image/png" }));
       const r = await axios.post(`${API_URL}/api/uploads/image`, fd);
       const previewUrl = `${API_URL}${r.data.url}`;
-      onSave?.({
-        preview_url: previewUrl,
-        background: bg,
-        layers,
-      });
-      toast.success("Design saved");
+
+      if (templateMode) {
+        if (!tplName.trim()) { toast.error("Template name required"); return; }
+        if (!tplCategoryId) { toast.error("Pick a category"); return; }
+        onSave?.({ name: tplName.trim(), category_id: tplCategoryId, thumbnail_url: previewUrl, layers });
+      } else {
+        onSave?.({ preview_url: previewUrl, background: bg, layers });
+      }
+      toast.success(templateMode ? "Template saved" : "Design saved");
       onClose?.();
       setSelectedId(prevSelected);
     } catch (err) {
+      bgRectRef.current?.show();
       toast.error("Could not save design");
     } finally {
       setSavingPng(false);
     }
+  };
+
+  // Templates browser
+  const openTemplates = async () => {
+    setTplOpen(true);
+    try {
+      if (tplCats.length === 0) {
+        const c = await axios.get(`${API_URL}/api/templates/categories`);
+        setTplCats(c.data || []);
+        if (c.data?.[0]) setActiveCat(c.data[0].id);
+      }
+    } catch { toast.error("Could not load templates"); }
+  };
+
+  useEffect(() => {
+    if (!tplOpen || !activeCat) return;
+    (async () => {
+      try {
+        const r = await axios.get(`${API_URL}/api/templates`, { params: { category_id: activeCat } });
+        setTpls(r.data || []);
+      } catch { /* ignore */ }
+    })();
+  }, [tplOpen, activeCat]);
+
+  const applyTemplate = (tpl) => {
+    const fresh = (tpl.layers || []).map((l) => ({ ...l, id: uid() }));
+    pushHistory(fresh);
+    setSelectedId(null);
+    setTplOpen(false);
+    toast.success(`${tpl.name} loaded`);
   };
 
   const selected = layers.find((l) => l.id === selectedId);
@@ -211,8 +270,8 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 md:px-7 py-4 border-b border-[#E5E5E5] bg-white">
           <div>
-            <p className="accent-label text-[10px]">Personalised box · +£9.99</p>
-            <h3 className="font-heading text-lg md:text-2xl text-[#1A1A1A]">Design your box</h3>
+            <p className="accent-label text-[10px]">{templateMode ? "Admin · Template" : "Personalised box · +£9.99"}</p>
+            <h3 className="font-heading text-lg md:text-2xl text-[#1A1A1A]">{templateMode ? "Design a template" : "Design your box"}</h3>
           </div>
           <button onClick={onClose} aria-label="Close" data-testid="box-designer-close" className="text-[#7A7A7A] hover:text-[#1A1A1A]">
             <X size={20} />
@@ -228,6 +287,12 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
             <ImagePlus size={14} /> Add photo
           </button>
           <input type="file" accept="image/*" onChange={onFile} ref={fileInputRef} className="hidden" data-testid="designer-file-input" />
+
+          <span className="hidden sm:inline-block w-px h-6 bg-[#E5E5E5] mx-1" />
+
+          <button onClick={openTemplates} className="inline-flex items-center gap-2 px-3 py-2 border border-[#E5E5E5] hover:border-[#1A1A1A] text-[12px] uppercase tracking-[0.18em]" data-testid="designer-templates-btn">
+            <LayoutTemplate size={14} /> Templates
+          </button>
 
           <span className="hidden sm:inline-block w-px h-6 bg-[#E5E5E5] mx-1" />
 
@@ -271,7 +336,7 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
                 onTouchStart={(e) => { if (e.target === e.target.getStage()) setSelectedId(null); }}
               >
                 <Layer>
-                  <Rect x={0} y={0} width={BOX_W} height={BOX_H} fill={bg} />
+                  <Rect ref={bgRectRef} x={0} y={0} width={BOX_W} height={BOX_H} fill={bg} listening={false} />
                   <Rect x={20} y={20} width={BOX_W - 40} height={BOX_H - 40} stroke="rgba(255,255,255,0.35)" dash={[6, 8]} listening={false} />
 
                   {layers.map((l) => {
@@ -420,13 +485,90 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 md:px-7 py-4 border-t border-[#E5E5E5] flex items-center justify-between bg-white">
-          <p className="font-body text-[11px] text-[#7A7A7A]">Save sends your design to the studio. They&rsquo;ll match it as faithfully as our materials allow.</p>
+        <div className="px-5 md:px-7 py-4 border-t border-[#E5E5E5] flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
+          {templateMode ? (
+            <div className="flex flex-col sm:flex-row gap-2 flex-1 min-w-0">
+              <Input
+                placeholder="Template name"
+                value={tplName}
+                onChange={(e) => setTplName(e.target.value)}
+                className="light-input rounded-none max-w-xs"
+                data-testid="designer-template-name"
+              />
+              <select
+                value={tplCategoryId}
+                onChange={(e) => setTplCategoryId(e.target.value)}
+                className="light-input rounded-none h-10 px-3 max-w-xs"
+                data-testid="designer-template-category"
+              >
+                {(categories || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          ) : (
+            <p className="font-body text-[11px] text-[#7A7A7A]">Save sends your design to the studio. They&rsquo;ll match it as faithfully as our materials allow.</p>
+          )}
           <Button onClick={handleSave} disabled={savingPng || layers.length === 0} className="btn-dark rounded-none" data-testid="designer-save">
-            <Check size={14} className="mr-2" /> {savingPng ? "Saving…" : "Save design"}
+            <Check size={14} className="mr-2" /> {savingPng ? "Saving…" : (templateMode ? "Save template" : "Save design")}
           </Button>
         </div>
       </div>
+
+      {/* Templates picker */}
+      {tplOpen && (
+        <div className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => setTplOpen(false)} data-testid="designer-templates-modal">
+          <div className="bg-white max-w-3xl w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-[#E5E5E5]">
+              <div>
+                <p className="accent-label text-[10px]">Curated</p>
+                <h4 className="font-heading text-xl text-[#1A1A1A]">Pick a starting template</h4>
+              </div>
+              <button onClick={() => setTplOpen(false)} className="text-[#7A7A7A] hover:text-[#1A1A1A]" aria-label="Close templates"><X size={18} /></button>
+            </div>
+            <div className="px-5 pt-4 flex flex-wrap gap-2">
+              {tplCats.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setActiveCat(c.id)}
+                  className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] border ${activeCat === c.id ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" : "bg-white text-[#1A1A1A] border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                  data-testid={`tpl-cat-${c.slug}`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+            <div className="p-5 overflow-y-auto">
+              {tpls.length === 0 ? (
+                <p className="font-body text-sm text-[#7A7A7A]">No templates in this category yet.</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {tpls.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => applyTemplate(t)}
+                      className="text-left bg-white border border-[#E5E5E5] hover:border-[#1A1A1A] transition-colors"
+                      data-testid={`tpl-${t.id}`}
+                    >
+                      <div className="aspect-[10/7] bg-[#F2EFEB] overflow-hidden">
+                        {t.thumbnail_url ? (
+                          <img src={t.thumbnail_url} alt={t.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[#B3A89B] font-heading text-2xl italic">{t.name}</div>
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="font-body text-[12px] text-[#1A1A1A]">{t.name}</p>
+                        <p className="font-body text-[11px] text-[#7A7A7A]">{(t.layers || []).length} elements</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
