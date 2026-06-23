@@ -36,12 +36,14 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
   const stageRef = useRef(null);
   const transformerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const containerRef = useRef(null);
 
   const [bg, setBg] = useState(initialBg || "#F2EFEB");
   const [layers, setLayers] = useState([]);  // [{id,type:"text"|"image",...}]
   const [history, setHistory] = useState([]); // for undo
   const [selectedId, setSelectedId] = useState(null);
   const [savingPng, setSavingPng] = useState(false);
+  const [stageWidth, setStageWidth] = useState(BOX_W);
 
   // Reset on open/close
   useEffect(() => {
@@ -49,9 +51,29 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
       setLayers([]);
       setHistory([]);
       setSelectedId(null);
+    }
+    // When opened (or initialBg changes between opens), reset background
+    if (open) {
       setBg(initialBg || "#F2EFEB");
     }
   }, [open, initialBg]);
+
+  // Track container width so the canvas scales to fit (no overlap)
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const w = containerRef.current?.clientWidth || BOX_W;
+      setStageWidth(Math.min(w, BOX_W));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    window.addEventListener("resize", measure);
+    return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
+  }, [open]);
+
+  const stageScale = stageWidth / BOX_W;
+  const stageHeight = BOX_H * stageScale;
 
   // Attach transformer to selected node
   useEffect(() => {
@@ -206,85 +228,82 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
         {/* Body */}
         <div className="flex-1 overflow-auto p-4 md:p-7 flex flex-col lg:flex-row gap-5">
           {/* Canvas wrapper */}
-          <div className="flex-1 min-w-0 flex justify-center">
-            <div className="bg-white shadow-[0_18px_50px_rgba(26,26,26,0.12)]" style={{ maxWidth: BOX_W, width: "100%" }}>
-              <div style={{ width: "100%", aspectRatio: `${BOX_W} / ${BOX_H}` }}>
-                <Stage
-                  ref={stageRef}
-                  width={BOX_W}
-                  height={BOX_H}
-                  onMouseDown={(e) => { if (e.target === e.target.getStage()) setSelectedId(null); }}
-                  onTouchStart={(e) => { if (e.target === e.target.getStage()) setSelectedId(null); }}
-                  style={{ width: "100%", height: "100%" }}
-                  scale={{ x: 1, y: 1 }}
-                >
-                  <Layer>
-                    <Rect x={0} y={0} width={BOX_W} height={BOX_H} fill={bg} />
-                    {/* Subtle box edge */}
-                    <Rect x={20} y={20} width={BOX_W - 40} height={BOX_H - 40} stroke="rgba(26,26,26,0.10)" dash={[6, 8]} listening={false} />
+          <div className="flex-1 min-w-0 flex justify-center" ref={containerRef}>
+            <div className="bg-white shadow-[0_18px_50px_rgba(26,26,26,0.12)]" style={{ width: stageWidth, maxWidth: "100%" }}>
+              <Stage
+                ref={stageRef}
+                width={stageWidth}
+                height={stageHeight}
+                scaleX={stageScale}
+                scaleY={stageScale}
+                onMouseDown={(e) => { if (e.target === e.target.getStage()) setSelectedId(null); }}
+                onTouchStart={(e) => { if (e.target === e.target.getStage()) setSelectedId(null); }}
+              >
+                <Layer>
+                  <Rect x={0} y={0} width={BOX_W} height={BOX_H} fill={bg} />
+                  <Rect x={20} y={20} width={BOX_W - 40} height={BOX_H - 40} stroke="rgba(255,255,255,0.35)" dash={[6, 8]} listening={false} />
 
-                    {layers.map((l) => l.type === "text" ? (
-                      <KText
-                        key={l.id}
-                        id={l.id}
-                        text={l.text}
-                        x={l.x}
-                        y={l.y}
-                        fontSize={l.fontSize}
-                        fontFamily={l.fontFamily}
-                        fill={l.fill}
-                        rotation={l.rotation || 0}
-                        scaleX={l.scaleX || 1}
-                        scaleY={l.scaleY || 1}
-                        draggable
-                        onClick={() => setSelectedId(l.id)}
-                        onTap={() => setSelectedId(l.id)}
-                        onDragEnd={(e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() })}
-                        onTransformEnd={(e) => {
-                          const node = e.target;
-                          updateLayer(l.id, {
-                            x: node.x(), y: node.y(),
-                            scaleX: node.scaleX(), scaleY: node.scaleY(),
-                            rotation: node.rotation(),
-                          });
-                        }}
-                      />
-                    ) : (
-                      <URLImage
-                        key={l.id}
-                        id={l.id}
-                        src={l.url}
-                        x={l.x}
-                        y={l.y}
-                        width={l.width}
-                        height={l.height}
-                        rotation={l.rotation || 0}
-                        scaleX={l.scaleX || 1}
-                        scaleY={l.scaleY || 1}
-                        draggable
-                        onClick={() => setSelectedId(l.id)}
-                        onTap={() => setSelectedId(l.id)}
-                        onDragEnd={(e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() })}
-                        onTransformEnd={(e) => {
-                          const node = e.target;
-                          updateLayer(l.id, {
-                            x: node.x(), y: node.y(),
-                            scaleX: node.scaleX(), scaleY: node.scaleY(),
-                            rotation: node.rotation(),
-                          });
-                        }}
-                      />
-                    ))}
-
-                    <Transformer
-                      ref={transformerRef}
-                      rotateEnabled
-                      keepRatio={false}
-                      boundBoxFunc={(oldB, newB) => (newB.width < 12 || newB.height < 12 ? oldB : newB)}
+                  {layers.map((l) => l.type === "text" ? (
+                    <KText
+                      key={l.id}
+                      id={l.id}
+                      text={l.text}
+                      x={l.x}
+                      y={l.y}
+                      fontSize={l.fontSize}
+                      fontFamily={l.fontFamily}
+                      fill={l.fill}
+                      rotation={l.rotation || 0}
+                      scaleX={l.scaleX || 1}
+                      scaleY={l.scaleY || 1}
+                      draggable
+                      onClick={() => setSelectedId(l.id)}
+                      onTap={() => setSelectedId(l.id)}
+                      onDragEnd={(e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() })}
+                      onTransformEnd={(e) => {
+                        const node = e.target;
+                        updateLayer(l.id, {
+                          x: node.x(), y: node.y(),
+                          scaleX: node.scaleX(), scaleY: node.scaleY(),
+                          rotation: node.rotation(),
+                        });
+                      }}
                     />
-                  </Layer>
-                </Stage>
-              </div>
+                  ) : (
+                    <URLImage
+                      key={l.id}
+                      id={l.id}
+                      src={l.url}
+                      x={l.x}
+                      y={l.y}
+                      width={l.width}
+                      height={l.height}
+                      rotation={l.rotation || 0}
+                      scaleX={l.scaleX || 1}
+                      scaleY={l.scaleY || 1}
+                      draggable
+                      onClick={() => setSelectedId(l.id)}
+                      onTap={() => setSelectedId(l.id)}
+                      onDragEnd={(e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() })}
+                      onTransformEnd={(e) => {
+                        const node = e.target;
+                        updateLayer(l.id, {
+                          x: node.x(), y: node.y(),
+                          scaleX: node.scaleX(), scaleY: node.scaleY(),
+                          rotation: node.rotation(),
+                        });
+                      }}
+                    />
+                  ))}
+
+                  <Transformer
+                    ref={transformerRef}
+                    rotateEnabled
+                    keepRatio={false}
+                    boundBoxFunc={(oldB, newB) => (newB.width < 12 || newB.height < 12 ? oldB : newB)}
+                  />
+                </Layer>
+              </Stage>
             </div>
           </div>
 

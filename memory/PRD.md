@@ -39,7 +39,16 @@ NOT targeting supermarket-tier gifting.
 
 ## What's Been Implemented
 
-### Phase 3 — Personalised box designer — Feb 2026 (latest)
+### Send-flow refinements — Feb 2026 (latest)
+- [x] **&ldquo;No card&rdquo; tile** in the card step — automatically skips the message step (progress bar adapts from 6 to 5 dots) and renders &ldquo;No card (flowers only)&rdquo; in the cart.
+- [x] **Boxes are now admin-managed** — new `boxes` Mongo collection + endpoints (`GET /api/boxes` public, `POST/PUT/DELETE /api/admin/boxes`). Each box has `name`, `description`, `image_url`, `price`, **`bg_color`** (canvas surface for personalised), **`is_personalised`** (opens designer when chosen), `sort_order`, `active`. Idempotent seed at `POST /api/seed/boxes` (5 starting boxes: kraft, vase, personalised kraft, personalised ivory linen, personalised midnight black).
+- [x] **New Admin → Boxes tab** — full CRUD with image preview, BG colour swatch picker, hex input, personalised toggle.
+- [x] **Designer responsive** — Konva stage now scales to its container via `ResizeObserver`; no more overlap with the right-hand inspector panel on smaller laptops.
+- [x] **Designer canvas BG inherits the chosen box** — `initialBg` is taken from `box.bg_color`, so each personalised box opens with the right base colour (kraft, ivory, midnight, etc.). Customer can still override via the BG colour swatches.
+- [x] **Cart line now displays the full send-flow** via new `<SendFlowSummary />` component — card thumbnail + name, message, delivery date, box (with PERSONALISED badge if applicable), saved box design preview image, full add-ons list with prices.
+- [x] **Cart order summary** now shows separate **Bouquets / Box &amp; add-ons / Delivery** rows; total reflects all extras.
+
+### Phase 3 — Personalised box designer — Feb 2026
 - [x] **Full HTML5 canvas designer** (`<BoxDesigner />`) using **react-konva + konva**: drag/drop, multi-select with rotation + corner-handle resize, multiple text layers, multi-photo upload.
 - [x] **Six luxury fonts** (Cormorant, Inter, Playfair, Dancing Script, Courier, Georgia) selectable per text layer.
 - [x] **Text + background colour pickers** (8 swatches each), live font-size slider (14–160 px), undo, delete.

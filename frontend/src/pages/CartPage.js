@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2, Plus, Minus, Gift, ArrowRight, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
+import SendFlowSummary from "../components/SendFlowSummary";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -30,8 +31,17 @@ export default function CartPage() {
     finally { setUpdatingGift(false); }
   };
 
-  const deliveryFee = cart.subtotal >= 100 ? 0 : 9.99;
-  const total = cart.subtotal + deliveryFee;
+  const sendFlowExtras = cart.items.reduce((sum, it) => {
+    const sf = it.box_personalization?.send_flow;
+    if (!sf) return sum;
+    const boxExtra = sf.box?.price || 0;
+    const addons = (sf.addons || []).reduce((s, a) => s + (Number(a.price) || 0), 0);
+    return sum + (boxExtra + addons) * (it.quantity || 1);
+  }, 0);
+
+  const adjustedSubtotal = cart.subtotal + sendFlowExtras;
+  const deliveryFee = adjustedSubtotal >= 100 ? 0 : 9.99;
+  const total = adjustedSubtotal + deliveryFee;
 
   if (cart.items.length === 0) {
     return (
@@ -69,15 +79,17 @@ export default function CartPage() {
 
                 <div className="flex-1 flex flex-col">
                   <div className="flex justify-between gap-4">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <h3 className="font-heading text-xl font-light text-[#1A1A1A]">{item.name}</h3>
                       {item.size && <p className="font-body text-xs uppercase tracking-wider text-[#B3A89B] mt-1">{item.size}</p>}
-                      {item.box_personalization && (
+                      {item.box_personalization?.send_flow ? (
+                        <SendFlowSummary data={item.box_personalization.send_flow} />
+                      ) : item.box_personalization && (
                         <div className="mt-3 bg-[#F2EFEB] p-3" data-testid={`cart-item-box-${item.product_id}`}>
                           <p className="font-body text-[10px] uppercase tracking-[0.22em] text-[#1A1A1A] mb-1.5">Personalised Box</p>
                           {item.box_personalization.box_color && <p className="font-body text-xs text-[#7A7A7A]">Box · {item.box_personalization.box_color.replace(/-/g, " ")}</p>}
                           {item.box_personalization.ribbon_color && <p className="font-body text-xs text-[#7A7A7A]">Ribbon · {item.box_personalization.ribbon_color.replace(/-/g, " ")}</p>}
-                          {item.box_personalization.box_message && <p className="font-body text-xs italic text-[#7A7A7A] mt-1">"{item.box_personalization.box_message}"</p>}
+                          {item.box_personalization.box_message && <p className="font-body text-xs italic text-[#7A7A7A] mt-1">&ldquo;{item.box_personalization.box_message}&rdquo;</p>}
                         </div>
                       )}
                     </div>
@@ -145,9 +157,15 @@ export default function CartPage() {
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between font-body text-sm text-[#7A7A7A]">
-                  <span>Subtotal</span>
-                  <span className="text-[#1A1A1A]" data-testid="subtotal">£{cart.subtotal.toFixed(0)}</span>
+                  <span>Bouquets</span>
+                  <span className="text-[#1A1A1A]" data-testid="subtotal">£{cart.subtotal.toFixed(2)}</span>
                 </div>
+                {sendFlowExtras > 0 && (
+                  <div className="flex justify-between font-body text-sm text-[#7A7A7A]" data-testid="extras-row">
+                    <span>Box &amp; add-ons</span>
+                    <span className="text-[#1A1A1A]">£{sendFlowExtras.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-body text-sm text-[#7A7A7A]">
                   <span>Delivery</span>
                   <span className="text-[#1A1A1A]" data-testid="delivery-fee">{deliveryFee === 0 ? "Complimentary" : `£${deliveryFee.toFixed(2)}`}</span>
@@ -158,7 +176,7 @@ export default function CartPage() {
               <div className="border-t border-[#E5E5E5] pt-5 mb-7">
                 <div className="flex justify-between items-baseline">
                   <span className="accent-label text-[#1A1A1A]">Total</span>
-                  <span className="font-heading text-3xl font-light text-[#1A1A1A]" data-testid="total">£{total.toFixed(0)}</span>
+                  <span className="font-heading text-3xl font-light text-[#1A1A1A]" data-testid="total">£{total.toFixed(2)}</span>
                 </div>
               </div>
 

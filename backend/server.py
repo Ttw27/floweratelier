@@ -1851,6 +1851,68 @@ async def delete_addon(addon_id: str, admin=Depends(require_admin)):
     return {"deleted": addon_id}
 
 
+# ==================== BOX CHOICES ====================
+
+class BoxCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    image_url: str = ""
+    price: float = 0.0
+    bg_color: str = "#F2EFEB"     # canvas background when personalised
+    is_personalised: bool = False  # opens the designer when chosen
+    sort_order: int = 0
+    active: bool = True
+
+class BoxResponse(BoxCreate):
+    id: str
+
+@api_router.get("/boxes", response_model=List[BoxResponse])
+async def list_boxes(active_only: bool = True):
+    q = {"active": True} if active_only else {}
+    docs = await db.boxes.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=200)
+    return [BoxResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/boxes", response_model=BoxResponse)
+async def create_box(data: BoxCreate, admin=Depends(require_admin)):
+    doc = data.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    await db.boxes.insert_one(doc)
+    return BoxResponse(**doc)
+
+@api_router.put("/admin/boxes/{box_id}", response_model=BoxResponse)
+async def update_box(box_id: str, data: BoxCreate, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    res = await db.boxes.update_one({"id": box_id}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Box not found")
+    return BoxResponse(id=box_id, **payload)
+
+@api_router.delete("/admin/boxes/{box_id}")
+async def delete_box(box_id: str, admin=Depends(require_admin)):
+    res = await db.boxes.delete_one({"id": box_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Box not found")
+    return {"deleted": box_id}
+
+
+BOX_SEED = [
+    {"name": "Signature kraft box", "description": "Hand-tied in our standard ivory atelier kraft box.", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=800&q=70", "price": 0.0, "bg_color": "#C9A66B", "is_personalised": False, "sort_order": 10},
+    {"name": "Glass studio vase", "description": "Arrives ready-arranged in a re-usable hand-blown vase.", "image_url": "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=800&q=70", "price": 12.0, "bg_color": "#F2EFEB", "is_personalised": False, "sort_order": 20},
+    {"name": "Personalised kraft box", "description": "Designed by you — drag-and-drop photos, custom text, fonts and colours.", "image_url": "https://images.unsplash.com/photo-1620662736427-b8a198f52a4d?w=800&q=70", "price": 9.99, "bg_color": "#C9A66B", "is_personalised": True, "sort_order": 30},
+    {"name": "Personalised ivory linen box", "description": "Ivory linen-covered box, ready for your custom design.", "image_url": "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=800&q=70", "price": 14.99, "bg_color": "#F2EFEB", "is_personalised": True, "sort_order": 40},
+    {"name": "Personalised midnight black box", "description": "Deep matte-black box — gold &amp; ivory text reads beautifully.", "image_url": "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&q=70", "price": 14.99, "bg_color": "#1A1A1A", "is_personalised": True, "sort_order": 50},
+]
+
+@api_router.post("/seed/boxes")
+async def seed_boxes(reset: bool = False, admin=Depends(require_admin)):
+    if reset:
+        await db.boxes.delete_many({})
+    if await db.boxes.count_documents({}) == 0:
+        for b in BOX_SEED:
+            await db.boxes.insert_one({**b, "id": str(uuid.uuid4()), "active": True})
+    return {"boxes": await db.boxes.count_documents({})}
+
+
 CARD_SEED = [
     {"name": "With Love", "category": "general", "image_url": "https://images.unsplash.com/photo-1518972559570-7cc1309f3229?w=640&q=70", "description": "Cream linen card with gold-foil hearts.", "sort_order": 10},
     {"name": "Happy Birthday", "category": "birthday", "image_url": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=640&q=70", "description": "Hand-painted floral cover.", "sort_order": 20},
