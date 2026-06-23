@@ -180,7 +180,7 @@ export default function TravellerFuneralsPage() {
       <ReadyCollectionCTA
         occasion="traveller_funeral"
         heading={<>Standard sizes,<br /><em>order direct.</em></>}
-        subheading="When the service is approaching fast, we hold a curated edit of standard letter tributes and classic pieces — built ahead and ready for next-day UK dispatch. No consultation required."
+        subheading="A curated edit of standard letter tributes and classic pieces, built to order in our atelier with a 4-day lead time. Fresh stems sourced direct from Holland and Colombia — no consultation required."
         examples={["1ft 'DAD' Letter · £180", "1ft 'MUM' Letter · £180", "1ft 'NAN' Letter · £180", "2ft Cross · £280", "2ft Gates of Heaven · £380", "Classic Heart · £220"]}
         tone="dark"
       />

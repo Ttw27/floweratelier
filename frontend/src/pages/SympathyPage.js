@@ -1,27 +1,10 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
 export default function SympathyPage() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/api/products`, { params: { category: "sympathy" } });
-        setProducts(response.data);
-      } catch {} finally { setLoading(false); }
-    };
-    fetchProducts();
-  }, []);
-
   const tributeTypes = [
     { name: "Casket & Coffin Tributes", desc: "Hand-tied sprays for the service" },
     { name: "Standing Arrangements", desc: "Elegant pedestal and easel tributes" },
@@ -97,41 +80,11 @@ export default function SympathyPage() {
         </div>
       </section>
 
-      {/* Products */}
-      {!loading && products.length > 0 && (
-        <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="flex flex-col md:flex-row justify-between md:items-end mb-14 gap-6">
-              <div>
-                <p className="accent-label mb-5"><span className="thin-rule" />From the Collection</p>
-                <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A]">Signature tributes</h2>
-              </div>
-              <Link to="/collection/sympathy" className="font-body text-[11px] uppercase tracking-[0.22em] text-[#1A1A1A] border-b border-[#1A1A1A] pb-1">
-                View all →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-              {products.slice(0, 3).map((product) => (
-                <Link key={product.id} to={`/product/${product.id}`} className="group block" data-testid={`sympathy-product-${product.id}`}>
-                  <div className="aspect-[4/5] overflow-hidden bg-[#F2EFEB] image-hover-container">
-                    <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="pt-5">
-                    <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-1 group-hover:italic transition-all">{product.name}</h3>
-                    <p className="font-body text-sm text-[#7A7A7A]">from <span className="text-[#1A1A1A]">£{product.price.toFixed(0)}</span></p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Ready Collection — buy direct */}
       <ReadyCollectionCTA
         occasion="sympathy"
         heading={<>Standard tributes,<br /><em>ready to order.</em></>}
-        subheading="When time is short, we hold a curated edit of classic standard-size pieces — wreaths, hearts, casket sprays and sympathy bouquets — ready to dispatch with same- and next-day UK delivery."
+        subheading="When time allows, we hold a curated edit of classic standard-size pieces — wreaths, hearts, casket sprays and sympathy bouquets — built to order in our atelier with a 4-day lead time. Fresh stems sourced direct from Holland and Colombia."
         examples={["Classic White Wreath · £165", "Sympathy Casket Spray · £275", "Classic Heart Tribute · £220", "Quiet Lily Tribute · £140"]}
       />
 

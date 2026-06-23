@@ -29,7 +29,7 @@ export default function CollectionPage() {
   const categoryData = categories.find((c) => c.slug === category);
   const pageTitle = occasion ? (OCCASION_LABELS[occasion] || "The Ready Collection") : (categoryData?.name || "The Collection");
   const pageDescription = occasion
-    ? "Standard-size pieces — order direct, no consultation required. Same- and next-day delivery available across the UK."
+    ? "Standard-size pieces — order direct, no consultation required. 4-day turnaround as we source fresh stems from Holland & Colombia and hand-build each piece in our atelier."
     : categoryData?.description;
 
   useEffect(() => {

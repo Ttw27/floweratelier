@@ -18,7 +18,7 @@ export default function ReadyCollectionCTA({
   occasion,
   eyebrow = "The Ready Collection",
   heading,
-  subheading = "Some pieces don't wait. We hold a curated edit of standard-size tributes — ready to order direct from the shop, with same- and next-day UK delivery.",
+  subheading = "Some pieces don't wait. We hold a curated edit of standard-size tributes — ready to order direct from the shop. Up to a 4-day turnaround as we source fresh stems from Holland and Colombia and hand-build each piece in the atelier.",
   examples,
   ctaLabel = "Shop the Ready Collection",
   tone = "light",
@@ -77,15 +77,15 @@ export default function ReadyCollectionCTA({
               <div className="flex items-start gap-3">
                 <Clock size={16} strokeWidth={1.3} className={isDark ? "text-[#B3A89B] mt-0.5" : "text-[#1A1A1A] mt-0.5"} />
                 <div>
-                  <p className={`font-body text-sm ${headingColor}`}>Same / next-day delivery</p>
-                  <p className={`font-body text-xs ${subColor} mt-1`}>Available across London and the UK.</p>
+                  <p className={`font-body text-sm ${headingColor}`}>Up to 4-day turnaround</p>
+                  <p className={`font-body text-xs ${subColor} mt-1`}>Fresh stems sourced from Holland &amp; Colombia, then hand-built in the atelier.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Truck size={16} strokeWidth={1.3} className={isDark ? "text-[#B3A89B] mt-0.5" : "text-[#1A1A1A] mt-0.5"} />
                 <div>
                   <p className={`font-body text-sm ${headingColor}`}>Standard sizes &amp; finishes</p>
-                  <p className={`font-body text-xs ${subColor} mt-1`}>Fixed prices. No quote required.</p>
+                  <p className={`font-body text-xs ${subColor} mt-1`}>Fixed prices. No quote required. UK-wide delivery.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
