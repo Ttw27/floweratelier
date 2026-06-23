@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Stage, Layer, Rect, Text as KText, Image as KImage, Transformer } from "react-konva";
+import { Stage, Layer, Rect, Circle, Path, Text as KText, Image as KImage, Transformer } from "react-konva";
 import useImage from "use-image";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { X, Type, ImagePlus, Trash2, Undo2, Check, Palette } from "lucide-react";
+import { X, Type, ImagePlus, Trash2, Undo2, Check, Square, Circle as CircleIcon, Heart, RectangleHorizontal } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -21,7 +21,17 @@ const FONT_OPTIONS = [
 ];
 
 const TEXT_COLORS = ["#1A1A1A", "#FFFFFF", "#B3A89B", "#C07A65", "#5C7A3F", "#7E5A39", "#D4AF37", "#7A2E2E"];
-const BG_COLORS  = ["#F2EFEB", "#FAFAF7", "#1A1A1A", "#C9A66B", "#E8ECE1", "#F2CFC0", "#233520", "#FFFFFF"];
+const SHAPE_COLORS = ["#1A1A1A", "#FFFFFF", "#D4AF37", "#7A2E2E", "#5C7A3F", "#C07A65", "#7E5A39", "#B3A89B", "#F2CFC0", "#233520"];
+
+// Heart SVG path (centred ~140×130 at scale 1)
+const HEART_PATH = "M70,125 C25,90 0,60 0,35 C0,15 17,0 35,0 C50,0 62,8 70,22 C78,8 90,0 105,0 C123,0 140,15 140,35 C140,60 115,90 70,125 Z";
+
+const SHAPE_KINDS = [
+  { id: "rect-square",     label: "Square",        Icon: Square },
+  { id: "rect-horizontal", label: "Rectangle",     Icon: RectangleHorizontal },
+  { id: "circle",          label: "Circle",        Icon: CircleIcon },
+  { id: "heart",           label: "Heart",         Icon: Heart },
+];
 
 function URLImage({ src, ...props }) {
   const [img] = useImage(src, "anonymous");
@@ -119,6 +129,21 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
 
   const addImage = () => fileInputRef.current?.click();
 
+  const addShape = (kind) => {
+    const id = uid();
+    const base = { id, type: "shape", kind, x: 280, y: 200, fill: "#1A1A1A", rotation: 0, scaleX: 1, scaleY: 1 };
+    let shape;
+    switch (kind) {
+      case "rect-square":     shape = { ...base, width: 220, height: 220 }; break;
+      case "rect-horizontal": shape = { ...base, width: 280, height: 140 }; break;
+      case "circle":          shape = { ...base, radius: 110 }; break;
+      case "heart":           shape = { ...base }; break;
+      default: return;
+    }
+    pushHistory([...layers, shape]);
+    setSelectedId(id);
+  };
+
   const onFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -206,14 +231,20 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
 
           <span className="hidden sm:inline-block w-px h-6 bg-[#E5E5E5] mx-1" />
 
-          {/* Background colour */}
-          <div className="inline-flex items-center gap-2">
-            <Palette size={14} className="text-[#7A7A7A]" />
-            <span className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A] mr-1">BG</span>
-            {BG_COLORS.map((c) => (
-              <button key={c} type="button" onClick={() => setBg(c)} className={`w-6 h-6 rounded-full border ${bg === c ? "ring-2 ring-[#1A1A1A] ring-offset-1" : "border-[#E5E5E5]"}`} style={{ background: c }} aria-label={`Background ${c}`} data-testid={`designer-bg-${c}`} />
-            ))}
-          </div>
+          {/* Shape buttons */}
+          <span className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A] mr-1 hidden sm:inline">Shape</span>
+          {SHAPE_KINDS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => addShape(s.id)}
+              className="inline-flex items-center justify-center w-9 h-9 border border-[#E5E5E5] hover:border-[#1A1A1A] text-[#1A1A1A]"
+              title={s.label}
+              data-testid={`designer-add-shape-${s.id}`}
+              aria-label={`Add ${s.label.toLowerCase()}`}
+            >
+              <s.Icon size={14} />
+            </button>
+          ))}
 
           <span className="hidden sm:inline-block w-px h-6 bg-[#E5E5E5] mx-1" />
 
@@ -243,58 +274,44 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
                   <Rect x={0} y={0} width={BOX_W} height={BOX_H} fill={bg} />
                   <Rect x={20} y={20} width={BOX_W - 40} height={BOX_H - 40} stroke="rgba(255,255,255,0.35)" dash={[6, 8]} listening={false} />
 
-                  {layers.map((l) => l.type === "text" ? (
-                    <KText
-                      key={l.id}
-                      id={l.id}
-                      text={l.text}
-                      x={l.x}
-                      y={l.y}
-                      fontSize={l.fontSize}
-                      fontFamily={l.fontFamily}
-                      fill={l.fill}
-                      rotation={l.rotation || 0}
-                      scaleX={l.scaleX || 1}
-                      scaleY={l.scaleY || 1}
-                      draggable
-                      onClick={() => setSelectedId(l.id)}
-                      onTap={() => setSelectedId(l.id)}
-                      onDragEnd={(e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() })}
-                      onTransformEnd={(e) => {
+                  {layers.map((l) => {
+                    const common = {
+                      id: l.id,
+                      x: l.x,
+                      y: l.y,
+                      rotation: l.rotation || 0,
+                      scaleX: l.scaleX || 1,
+                      scaleY: l.scaleY || 1,
+                      draggable: true,
+                      onClick: () => setSelectedId(l.id),
+                      onTap: () => setSelectedId(l.id),
+                      onDragEnd: (e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() }),
+                      onTransformEnd: (e) => {
                         const node = e.target;
                         updateLayer(l.id, {
                           x: node.x(), y: node.y(),
                           scaleX: node.scaleX(), scaleY: node.scaleY(),
                           rotation: node.rotation(),
                         });
-                      }}
-                    />
-                  ) : (
-                    <URLImage
-                      key={l.id}
-                      id={l.id}
-                      src={l.url}
-                      x={l.x}
-                      y={l.y}
-                      width={l.width}
-                      height={l.height}
-                      rotation={l.rotation || 0}
-                      scaleX={l.scaleX || 1}
-                      scaleY={l.scaleY || 1}
-                      draggable
-                      onClick={() => setSelectedId(l.id)}
-                      onTap={() => setSelectedId(l.id)}
-                      onDragEnd={(e) => updateLayer(l.id, { x: e.target.x(), y: e.target.y() })}
-                      onTransformEnd={(e) => {
-                        const node = e.target;
-                        updateLayer(l.id, {
-                          x: node.x(), y: node.y(),
-                          scaleX: node.scaleX(), scaleY: node.scaleY(),
-                          rotation: node.rotation(),
-                        });
-                      }}
-                    />
-                  ))}
+                      },
+                    };
+                    if (l.type === "text") {
+                      return <KText key={l.id} {...common} text={l.text} fontSize={l.fontSize} fontFamily={l.fontFamily} fill={l.fill} />;
+                    }
+                    if (l.type === "image") {
+                      return <URLImage key={l.id} {...common} src={l.url} width={l.width} height={l.height} />;
+                    }
+                    if (l.kind === "rect-square" || l.kind === "rect-horizontal") {
+                      return <Rect key={l.id} {...common} width={l.width} height={l.height} fill={l.fill} cornerRadius={4} />;
+                    }
+                    if (l.kind === "circle") {
+                      return <Circle key={l.id} {...common} radius={l.radius} fill={l.fill} />;
+                    }
+                    if (l.kind === "heart") {
+                      return <Path key={l.id} {...common} data={HEART_PATH} fill={l.fill} />;
+                    }
+                    return null;
+                  })}
 
                   <Transformer
                     ref={transformerRef}
@@ -374,6 +391,29 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg }) {
               <div className="space-y-3 text-[#1A1A1A]">
                 <p className="font-body text-[11px] text-[#7A7A7A]">Drag to reposition, corner handles to scale, top dot to rotate.</p>
                 <Button variant="outline" className="rounded-none w-full" onClick={deleteSelected} data-testid="designer-image-remove">Remove photo</Button>
+              </div>
+            )}
+
+            {selected && selected.type === "shape" && (
+              <div className="space-y-4 text-[#1A1A1A]" data-testid="designer-shape-inspector">
+                <p className="font-body text-[11px] text-[#7A7A7A]">Drag to reposition, corner handles to scale, top dot to rotate.</p>
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A]">Colour</label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {SHAPE_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => updateLayer(selected.id, { fill: c })}
+                        className={`w-7 h-7 rounded-full border ${selected.fill === c ? "ring-2 ring-[#1A1A1A] ring-offset-1" : "border-[#E5E5E5]"}`}
+                        style={{ background: c }}
+                        data-testid={`designer-shape-color-${c}`}
+                        aria-label={`Shape colour ${c}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <Button variant="outline" className="rounded-none w-full" onClick={deleteSelected} data-testid="designer-shape-remove">Remove shape</Button>
               </div>
             )}
           </aside>
