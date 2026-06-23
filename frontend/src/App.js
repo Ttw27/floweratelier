@@ -15,6 +15,9 @@ import SympathyPage from "./pages/SympathyPage";
 import TravellerFuneralsPage from "./pages/TravellerFuneralsPage";
 import CorporatePage from "./pages/CorporatePage";
 import HouseInstallsPage from "./pages/HouseInstallsPage";
+import ShopFrontInstallsPage from "./pages/ShopFrontInstallsPage";
+import InShopDisplaysPage from "./pages/InShopDisplaysPage";
+import FilmTVPhotoshootPage from "./pages/FilmTVPhotoshootPage";
 import BespokePortfolioPage from "./pages/BespokePortfolioPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -52,6 +55,9 @@ function App() {
                 <Route path="/traveller-funerals" element={<TravellerFuneralsPage />} />
                 <Route path="/corporate" element={<CorporatePage />} />
                 <Route path="/house-installs" element={<HouseInstallsPage />} />
+                <Route path="/shop-front-installs" element={<ShopFrontInstallsPage />} />
+                <Route path="/in-shop-displays" element={<InShopDisplaysPage />} />
+                <Route path="/film-tv-photoshoot" element={<FilmTVPhotoshootPage />} />
                 <Route path="/portfolio" element={<BespokePortfolioPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />

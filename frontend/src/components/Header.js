@@ -22,6 +22,9 @@ const OCCASIONS = [
 const SERVICES = [
   { name: "Corporate Events", path: "/corporate" },
   { name: "House Installs", path: "/house-installs" },
+  { name: "Shop Front Installs", path: "/shop-front-installs" },
+  { name: "In-Shop Bespoke Displays", path: "/in-shop-displays" },
+  { name: "Film, TV & Photoshoot", path: "/film-tv-photoshoot" },
 ];
 
 export default function Header() {

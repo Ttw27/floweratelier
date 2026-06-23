@@ -15,6 +15,9 @@ const FILTERS = [
   { id: "traveller_funeral", name: "Traveller Funerals" },
   { id: "corporate", name: "Corporate" },
   { id: "house", name: "House" },
+  { id: "shop_front", name: "Shop Fronts" },
+  { id: "in_shop_display", name: "In-Shop" },
+  { id: "film_tv", name: "Film & TV" },
   { id: "shop", name: "Window" },
 ];
 

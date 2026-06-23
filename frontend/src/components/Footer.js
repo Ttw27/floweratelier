@@ -55,6 +55,9 @@ export default function Footer() {
               <li><Link to="/traveller-funerals" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-traveller-funerals">Traveller Funerals</Link></li>
               <li><Link to="/corporate" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-corporate">Corporate</Link></li>
               <li><Link to="/house-installs" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-house-installs">House Installs</Link></li>
+              <li><Link to="/shop-front-installs" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-shop-front">Shop Front Installs</Link></li>
+              <li><Link to="/in-shop-displays" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-in-shop">In-Shop Displays</Link></li>
+              <li><Link to="/film-tv-photoshoot" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-film-tv">Film, TV &amp; Photoshoot</Link></li>
               <li><Link to="/portfolio" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-portfolio">Bespoke Portfolio</Link></li>
             </ul>
           </div>

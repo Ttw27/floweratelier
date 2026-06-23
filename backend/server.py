@@ -892,7 +892,7 @@ async def get_admin_inquiries(admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v4-occasions-extended"
+    current_version = "v5-retail-and-media"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
@@ -1337,6 +1337,156 @@ async def seed_data(reset: bool = False):
             "image": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1400",
             "location": "Chinatown, London", "price_from": 2800.0,
             "tags": ["chinese", "tea ceremony", "red gold"], "featured": False,
+        },
+
+        # ───── SHOP FRONT INSTALLS (6) ─────
+        {
+            "id": str(uuid.uuid4()), "title": "Bond Street Boutique Window — Spring",
+            "category": "shop_front",
+            "description": "A six-foot floral entryway installation for a Bond Street fashion house, refreshed quarterly.",
+            "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400",
+            "location": "Bond Street, London", "price_from": 4800.0,
+            "tags": ["window", "fashion", "quarterly"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Sloane Street Jeweller — Christmas",
+            "category": "shop_front",
+            "description": "An ivory and gold floral window for a flagship jeweller — built for a 6-week Christmas display.",
+            "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1400",
+            "location": "Sloane Street, London", "price_from": 6200.0,
+            "tags": ["jewellery", "christmas", "window"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Beauty Hall Entrance — Knightsbridge",
+            "category": "shop_front",
+            "description": "Twin floral pillars framing a department store beauty hall entrance, swapped seasonally.",
+            "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400",
+            "location": "Knightsbridge, London", "price_from": 3400.0,
+            "tags": ["beauty", "department store", "pillars"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Chelsea Bridal Boutique Façade",
+            "category": "shop_front",
+            "description": "A cascading floral façade above the entrance of a Chelsea bridal boutique, refreshed monthly.",
+            "image": "https://images.unsplash.com/photo-1575081838238-d06e716afa28?w=1400",
+            "location": "King's Road, Chelsea", "price_from": 2800.0,
+            "tags": ["bridal", "façade", "cascading"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Mayfair Wine Merchant — Summer Edit",
+            "category": "shop_front",
+            "description": "A relaxed garden-style window install for a Mayfair wine merchant, set with summer florals.",
+            "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1400",
+            "location": "Mayfair, London", "price_from": 2200.0,
+            "tags": ["wine", "summer", "garden style"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Notting Hill Lifestyle Store",
+            "category": "shop_front",
+            "description": "A flowering archway above the entrance of a Notting Hill interiors store, refreshed seasonally.",
+            "image": "https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=1400",
+            "location": "Westbourne Grove", "price_from": 2400.0,
+            "tags": ["interiors", "archway", "seasonal"], "featured": False,
+        },
+
+        # ───── IN-SHOP BESPOKE DISPLAYS (6) ─────
+        {
+            "id": str(uuid.uuid4()), "title": "Beauty Counter — Mascara Launch",
+            "category": "in_shop_display",
+            "description": "Six matching florals across the beauty counter for a luxury mascara launch — colour-coded to the product palette.",
+            "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
+            "location": "Selfridges, London", "price_from": 1850.0,
+            "tags": ["beauty", "launch", "counter"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Watch Showroom — Soft Whites",
+            "category": "in_shop_display",
+            "description": "Minimal white arrangements on six display plinths for a watch showroom — refreshed bi-weekly.",
+            "image": "https://images.unsplash.com/photo-1543699936-c901ddbf0c05?w=1400",
+            "location": "New Bond Street", "price_from": 950.0,
+            "tags": ["watch", "minimal", "white"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Bridal Boutique — Fitting Rooms",
+            "category": "in_shop_display",
+            "description": "Bespoke posies for each fitting room and a sculptural centre arrangement for the salon.",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
+            "location": "Hampstead, London", "price_from": 720.0,
+            "tags": ["bridal", "fitting room"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Concept Store — Brand Activation",
+            "category": "in_shop_display",
+            "description": "A three-week floral takeover of a Soho concept store — entrance, central display and back-room styling.",
+            "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
+            "location": "Soho, London", "price_from": 4400.0,
+            "tags": ["concept", "takeover", "brand"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Patisserie Counter Florals",
+            "category": "in_shop_display",
+            "description": "Delicate sugared-pastel florals across a Mayfair patisserie counter, swapped twice weekly.",
+            "image": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1400",
+            "location": "Mayfair, London", "price_from": 450.0,
+            "tags": ["patisserie", "weekly", "pastel"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Showroom Reception — Hospitality Group",
+            "category": "in_shop_display",
+            "description": "A large signature reception arrangement plus four meeting-room posies, weekly.",
+            "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1400",
+            "location": "London", "price_from": 680.0,
+            "tags": ["showroom", "reception", "weekly"], "featured": False,
+        },
+
+        # ───── FILM, TV & PHOTOSHOOT (6) ─────
+        {
+            "id": str(uuid.uuid4()), "title": "Vogue Editorial — Spring Beauty",
+            "category": "film_tv",
+            "description": "Set florals for a Vogue beauty editorial — soft, painterly, all blush and ivory.",
+            "image": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1400",
+            "location": "Studio shoot", "price_from": 2200.0,
+            "tags": ["editorial", "beauty", "magazine"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Music Video — Floral Bath Scene",
+            "category": "film_tv",
+            "description": "A petal-filled bath and surrounding floral installation for a major-label music video shoot.",
+            "image": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=1400",
+            "location": "East London Studios", "price_from": 4800.0,
+            "tags": ["music video", "set design", "petals"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Period Drama — Country House Florals",
+            "category": "film_tv",
+            "description": "Period-accurate floral arrangements across a country house set for a streaming drama series.",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
+            "location": "Buckinghamshire", "price_from": 6500.0,
+            "tags": ["period drama", "set", "country house"], "featured": True,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Fashion Lookbook — Garden Florals",
+            "category": "film_tv",
+            "description": "Wild garden florals styled across a Cotswolds country garden shoot for an emerging designer lookbook.",
+            "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1400",
+            "location": "Cotswolds", "price_from": 1850.0,
+            "tags": ["lookbook", "fashion", "garden"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Beauty Campaign — Macro Florals",
+            "category": "film_tv",
+            "description": "Bespoke single-stem hero florals for a global skincare campaign — macro-photographed for product imagery.",
+            "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400",
+            "location": "Soho Studios", "price_from": 1450.0,
+            "tags": ["campaign", "skincare", "macro"], "featured": False,
+        },
+        {
+            "id": str(uuid.uuid4()), "title": "Talk Show — Daily Studio Florals",
+            "category": "film_tv",
+            "description": "A two-year programme of daily floral arrangements for a long-running daytime talk show studio set.",
+            "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
+            "location": "Television Centre, London", "price_from": 720.0,
+            "tags": ["tv", "studio", "daily"], "featured": False,
         },
 
         # ───── SHOP / WINDOW ─────
