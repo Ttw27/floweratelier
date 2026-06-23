@@ -39,7 +39,18 @@ NOT targeting supermarket-tier gifting.
 
 ## What's Been Implemented
 
-### Admin foundations: SEO, Pixels, Delivery rules — Feb 2026 (Phase 1)
+### Phase 2 — Bloom & Wild product pages — Feb 2026 (latest)
+- [x] **Extended `Product` model** with `media: List[{type, url, thumbnail?, source?}]` (image / video — direct, YouTube or Vimeo) and `is_bouquet: bool` flag.
+- [x] **Sticky media gallery** (`<MediaGallery />`) — left thumbnail rail (4–5 items) + main viewer; supports image, direct video, YouTube/Vimeo embeds; falls back to legacy `images` array.
+- [x] **B&W-style ProductDetailPage rewrite** — split layout with sticky gallery left + product info right (title, price, description, "Earliest delivery" callout, "Send this bouquet" CTA, inline WhatsApp link).
+- [x] **6-step Send Flow modal** (`<SendFlow />`): Pick card → write message → pick delivery date (uses `/api/delivery/options`) → choose box (kraft / glass vase +£12 / personalised +£9.99 — Designer placeholder for Phase 3) → optional add-ons (Treats, Candles, Jewellery boxes) → Review with itemised total. Adds a single line item to cart with the entire send-flow payload attached as metadata.
+- [x] **Cards collection** (`/api/cards`, admin CRUD `/api/admin/cards`). Seeded 10 default cards.
+- [x] **Add-ons collection** (`/api/addons[?sub_type=]`, admin CRUD `/api/admin/addons`) with three sub-types: `treat` (8 seeded — teddies + chocolates + drinks), `candle` (20 seeded — Atelier No. 01–20 fragrance line), `jewellery_box` (6 seeded). Idempotent seed at `POST /api/seed/cards-addons`.
+- [x] **Admin tabs**: new `Cards` and `Add-ons` tabs in `/admin` with grid CRUD, sub-type filter pills, image preview, active/hidden toggle, sort order, edit-modal.
+- [x] **OrderCreate extended** with `card_id`, `card_message`, `box_choice`, `box_design_url` (for Phase 3 designer), `addon_ids`.
+- [x] Pixel `InitiateCheckout` and `AddToCart` events fired from the send flow.
+
+### Phase 1 — SEO + Pixels + Delivery rules — Feb 2026
 - [x] **Per-page SEO** — `seo_pages` Mongo collection + `GET /api/seo?path=` (public, with merged defaults), `GET/PUT/DELETE /api/admin/seo`. Frontend uses **react-helmet-async** via new `<SEOHead />` component (mounts on every route change, fetches & caches per-path meta, emits title/description/keywords/canonical/OG/Twitter cards/JSON-LD).
 - [x] **Admin SEO tab** in `/admin` — table of all 14 preset routes (Home, Collection, Weddings, Traveller W/F, Faith, Sympathy, Corporate, House Installs, Shop Front, In-Shop, Film/TV, Portfolio, Consultation), edit dialog with title/description/keywords/OG image/canonical/robots fields + char counters.
 - [x] **SEO defaults** in Settings (site name + default title/description/OG image) applied as fallback when a route isn't individually customised.
@@ -110,11 +121,12 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 - Pytest at `/app/backend/tests/backend_test.py`
 
 ## Next Tasks (P1)
-1. **Phase 2 — Bloom & Wild-style product pages**: media gallery (4–5 photos/videos per product, video URL or upload), sticky gallery layout, in-page delivery calendar reading from admin rules, "Send" stepper (card pick → message → date → box choice → add-ons → checkout). New collections: `cards`, `addons` (sub-types: treats / candles / jewellery_boxes), `product_media`. Treats sub-category groups teddies + chocolates + drinks.
-2. **Phase 3 — Personalised box designer**: full canvas (drag/drop, multiple text layers, custom fonts, multi-photo upload, colour pickers). +£9.99 add-on. Save preview image with the order so the studio can recreate.
-3. CMS layer extension: make service-page wording & tier pricing admin-editable via `page_content` collection.
-4. Admin UI for Portfolio item CRUD.
-5. Replace legacy stock imagery on service pages with commissioned photography.
+1. **Phase 3 — Personalised box designer** (+£9.99): full canvas — drag/drop, multiple text layers, custom fonts, multi-photo upload, colour pickers; preview image saved with order. Currently a placeholder option in send flow (step 4 — "Designer coming soon").
+2. **Product media editor in admin** — currently media is added via API; surface a UI inside the existing Products tab to add/reorder media items and toggle `is_bouquet`.
+3. **Cart / order rendering** — display the new send-flow payload (card preview, recipient message, addons list, box choice) in the cart row + order confirmation + admin order detail.
+4. CMS layer extension: make service-page wording & tier pricing admin-editable via `page_content` collection.
+5. Admin UI for Portfolio item CRUD.
+6. Replace legacy stock imagery on service pages with commissioned photography.
 
 ## Backlog (P2)
 1. Instagram feed integration

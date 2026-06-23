@@ -68,10 +68,12 @@ class ProductCreate(BaseModel):
     original_price: Optional[float] = None
     category_id: str
     images: List[str]
+    media: Optional[List[Dict]] = None
     sizes: Optional[List[Dict]] = None
     in_stock: bool = True
     featured: bool = False
     occasion_tags: List[str] = []
+    is_bouquet: bool = True
 
 class ProductResponse(BaseModel):
     id: str
@@ -82,10 +84,12 @@ class ProductResponse(BaseModel):
     category_id: str
     category_name: Optional[str] = None
     images: List[str]
+    media: Optional[List[Dict]] = None
     sizes: Optional[List[Dict]] = None
     in_stock: bool
     featured: bool
     occasion_tags: List[str]
+    is_bouquet: bool = True
     created_at: str
 
 class CategoryCreate(BaseModel):
@@ -123,7 +127,13 @@ class OrderCreate(BaseModel):
     gift_message: Optional[str] = None
     recipient_name: str
     recipient_phone: str
-    box_personalization: Optional[Dict] = None  # {color: str, ribbon_color: str, custom_message: str}
+    box_personalization: Optional[Dict] = None  # {color, ribbon_color, custom_message}
+    # Bloom & Wild send-flow extras (all optional, populated by PDP stepper)
+    card_id: Optional[str] = None
+    card_message: Optional[str] = None
+    box_choice: Optional[str] = None              # "kraft" | "vase" | "personalised"
+    box_design_url: Optional[str] = None          # rendered preview from Phase 3 designer
+    addon_ids: Optional[List[str]] = None
 
 class BoxPersonalizationOptions(BaseModel):
     box_colors: List[str] = ["Classic White", "Blush Pink", "Sage Green", "Navy Blue", "Kraft Natural"]
@@ -1720,6 +1730,182 @@ async def update_settings(data: SiteSettings, admin=Depends(require_admin)):
 async def _get_settings_dict() -> dict:
     doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
     return {**DEFAULT_SETTINGS, **(doc or {})}
+
+# ==================== CARDS & ADD-ONS ====================
+
+class CardCreate(BaseModel):
+    name: str
+    image_url: str
+    description: Optional[str] = ""
+    price: float = 0.0
+    category: Optional[str] = "general"   # birthday | thank-you | sympathy | wedding | general
+    sort_order: int = 0
+    active: bool = True
+
+class CardResponse(CardCreate):
+    id: str
+
+class AddonCreate(BaseModel):
+    name: str
+    image_url: str
+    description: Optional[str] = ""
+    price: float
+    sub_type: str   # "treat" | "candle" | "jewellery_box"
+    sort_order: int = 0
+    active: bool = True
+
+class AddonResponse(AddonCreate):
+    id: str
+
+ALLOWED_ADDON_SUBTYPES = {"treat", "candle", "jewellery_box"}
+
+
+@api_router.get("/cards", response_model=List[CardResponse])
+async def list_cards(active_only: bool = True):
+    q = {"active": True} if active_only else {}
+    docs = await db.cards.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=500)
+    return [CardResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/cards", response_model=CardResponse)
+async def create_card(data: CardCreate, admin=Depends(require_admin)):
+    doc = data.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    await db.cards.insert_one(doc)
+    return CardResponse(**doc)
+
+@api_router.put("/admin/cards/{card_id}", response_model=CardResponse)
+async def update_card(card_id: str, data: CardCreate, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    res = await db.cards.update_one({"id": card_id}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Card not found")
+    return CardResponse(id=card_id, **payload)
+
+@api_router.delete("/admin/cards/{card_id}")
+async def delete_card(card_id: str, admin=Depends(require_admin)):
+    res = await db.cards.delete_one({"id": card_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Card not found")
+    return {"deleted": card_id}
+
+
+@api_router.get("/addons", response_model=List[AddonResponse])
+async def list_addons(sub_type: Optional[str] = None, active_only: bool = True):
+    q = {}
+    if active_only:
+        q["active"] = True
+    if sub_type:
+        if sub_type not in ALLOWED_ADDON_SUBTYPES:
+            raise HTTPException(400, "Invalid sub_type")
+        q["sub_type"] = sub_type
+    docs = await db.addons.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=500)
+    return [AddonResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/addons", response_model=AddonResponse)
+async def create_addon(data: AddonCreate, admin=Depends(require_admin)):
+    if data.sub_type not in ALLOWED_ADDON_SUBTYPES:
+        raise HTTPException(400, "sub_type must be treat | candle | jewellery_box")
+    doc = data.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    await db.addons.insert_one(doc)
+    return AddonResponse(**doc)
+
+@api_router.put("/admin/addons/{addon_id}", response_model=AddonResponse)
+async def update_addon(addon_id: str, data: AddonCreate, admin=Depends(require_admin)):
+    if data.sub_type not in ALLOWED_ADDON_SUBTYPES:
+        raise HTTPException(400, "sub_type must be treat | candle | jewellery_box")
+    payload = data.model_dump()
+    res = await db.addons.update_one({"id": addon_id}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Addon not found")
+    return AddonResponse(id=addon_id, **payload)
+
+@api_router.delete("/admin/addons/{addon_id}")
+async def delete_addon(addon_id: str, admin=Depends(require_admin)):
+    res = await db.addons.delete_one({"id": addon_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Addon not found")
+    return {"deleted": addon_id}
+
+
+CARD_SEED = [
+    {"name": "With Love", "category": "general", "image_url": "https://images.unsplash.com/photo-1518972559570-7cc1309f3229?w=640&q=70", "description": "Cream linen card with gold-foil hearts.", "sort_order": 10},
+    {"name": "Happy Birthday", "category": "birthday", "image_url": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=640&q=70", "description": "Hand-painted floral cover.", "sort_order": 20},
+    {"name": "Thank You", "category": "thank-you", "image_url": "https://images.unsplash.com/photo-1499744937866-d7e566a20a61?w=640&q=70", "description": "Letter-pressed ivory card.", "sort_order": 30},
+    {"name": "Congratulations", "category": "general", "image_url": "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=640&q=70", "description": "Modern blush typography.", "sort_order": 40},
+    {"name": "On Your Wedding Day", "category": "wedding", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=640&q=70", "description": "Botanical illustration in champagne tones.", "sort_order": 50},
+    {"name": "With Sympathy", "category": "sympathy", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=640&q=70", "description": "Quiet ivory card with soft lily motif.", "sort_order": 60},
+    {"name": "New Baby", "category": "general", "image_url": "https://images.unsplash.com/photo-1519689680058-324335c77eba?w=640&q=70", "description": "Pastel floral embroidered cover.", "sort_order": 70},
+    {"name": "Just Because", "category": "general", "image_url": "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=640&q=70", "description": "Plain ivory linen — let the message speak.", "sort_order": 80},
+    {"name": "Get Well Soon", "category": "general", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=640&q=70", "description": "Watercolour wildflowers on cream.", "sort_order": 90},
+    {"name": "Anniversary", "category": "general", "image_url": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=640&q=70", "description": "Gold-stamped roses on deep ivory.", "sort_order": 100},
+]
+
+ADDON_SEED = [
+    # Treats (teddies, chocolates, drinks)
+    {"name": "Petals Plush Bear", "sub_type": "treat", "price": 24.0, "image_url": "https://images.unsplash.com/photo-1559454403-b8fb88521f43?w=640&q=70", "description": "Hand-stitched cream teddy, 30cm.", "sort_order": 10},
+    {"name": "Ivory Knit Bear", "sub_type": "treat", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=640&q=70", "description": "Cable-knit organic cotton bear.", "sort_order": 20},
+    {"name": "House Truffle Box", "sub_type": "treat", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=640&q=70", "description": "Twelve hand-rolled single-origin truffles.", "sort_order": 30},
+    {"name": "Salted Caramel Selection", "sub_type": "treat", "price": 22.0, "image_url": "https://images.unsplash.com/photo-1582176604856-e824b4736522?w=640&q=70", "description": "Eight artisan caramels from a Dorset chocolatier.", "sort_order": 40},
+    {"name": "Veuve Clicquot 200ml", "sub_type": "treat", "price": 25.0, "image_url": "https://images.unsplash.com/photo-1551986782-d0169b3f8fa7?w=640&q=70", "description": "Quarter-bottle of yellow-label champagne.", "sort_order": 50},
+    {"name": "English Sparkling Magnum", "sub_type": "treat", "price": 65.0, "image_url": "https://images.unsplash.com/photo-1592753011519-d83d35ed8b3e?w=640&q=70", "description": "Sussex-grown brut, 1.5L.", "sort_order": 60},
+    {"name": "Prosecco Mini-Bottle", "sub_type": "treat", "price": 12.0, "image_url": "https://images.unsplash.com/photo-1551024506-0bccd828d307?w=640&q=70", "description": "20cl prosecco DOC.", "sort_order": 70},
+    {"name": "Botanical Gin 50cl", "sub_type": "treat", "price": 38.0, "image_url": "https://images.unsplash.com/photo-1567696911980-2c8c43a6db48?w=640&q=70", "description": "Hand-distilled with rose petals.", "sort_order": 80},
+
+    # Candles — 20 designs
+    {"name": "Atelier No. 01 — Fig", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1602874801006-9da3f8e1d05a?w=640&q=70", "description": "Deep, leafy fig in hand-poured soy.", "sort_order": 10},
+    {"name": "Atelier No. 02 — Tuberose", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=640&q=70", "description": "Velvety, white-floral.", "sort_order": 20},
+    {"name": "Atelier No. 03 — Cassis", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1608181831718-e7e9da12e9bf?w=640&q=70", "description": "Black-currant leaf, sharp & cool.", "sort_order": 30},
+    {"name": "Atelier No. 04 — Rose Absolute", "sub_type": "candle", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1599371619178-1c5d9bc4b06e?w=640&q=70", "description": "May-rose petals, true to the bloom.", "sort_order": 40},
+    {"name": "Atelier No. 05 — Oud & Amber", "sub_type": "candle", "price": 38.0, "image_url": "https://images.unsplash.com/photo-1574263867128-b3e1b9ed59a1?w=640&q=70", "description": "Smoke, resin and warmth.", "sort_order": 50},
+    {"name": "Atelier No. 06 — Neroli", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1599371619207-42f15bd5f97b?w=640&q=70", "description": "Bitter-orange blossom.", "sort_order": 60},
+    {"name": "Atelier No. 07 — Jasmine Sambac", "sub_type": "candle", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1602874801006-9da3f8e1d05a?w=640&q=70", "description": "Indolic, heady night-bloom.", "sort_order": 70},
+    {"name": "Atelier No. 08 — Cedar", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=640&q=70", "description": "Atlas cedar & dry wood.", "sort_order": 80},
+    {"name": "Atelier No. 09 — Bergamot", "sub_type": "candle", "price": 26.0, "image_url": "https://images.unsplash.com/photo-1608181831718-e7e9da12e9bf?w=640&q=70", "description": "Calabrian bergamot, lifted citrus.", "sort_order": 90},
+    {"name": "Atelier No. 10 — Tonka", "sub_type": "candle", "price": 30.0, "image_url": "https://images.unsplash.com/photo-1574263867128-b3e1b9ed59a1?w=640&q=70", "description": "Almond, hay, soft vanilla.", "sort_order": 100},
+    {"name": "Atelier No. 11 — Sandalwood", "sub_type": "candle", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1599371619178-1c5d9bc4b06e?w=640&q=70", "description": "Mysore sandalwood, creamy & long.", "sort_order": 110},
+    {"name": "Atelier No. 12 — Lavender Provence", "sub_type": "candle", "price": 26.0, "image_url": "https://images.unsplash.com/photo-1599371619207-42f15bd5f97b?w=640&q=70", "description": "Sun-bleached French lavender.", "sort_order": 120},
+    {"name": "Atelier No. 13 — Vetiver", "sub_type": "candle", "price": 30.0, "image_url": "https://images.unsplash.com/photo-1602874801006-9da3f8e1d05a?w=640&q=70", "description": "Earthy, smoky root.", "sort_order": 130},
+    {"name": "Atelier No. 14 — Peony", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=640&q=70", "description": "Fresh garden peony.", "sort_order": 140},
+    {"name": "Atelier No. 15 — Mimosa", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1608181831718-e7e9da12e9bf?w=640&q=70", "description": "Soft, powdery & golden.", "sort_order": 150},
+    {"name": "Atelier No. 16 — Ylang Ylang", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1574263867128-b3e1b9ed59a1?w=640&q=70", "description": "Tropical white floral.", "sort_order": 160},
+    {"name": "Atelier No. 17 — Black Pepper & Pomelo", "sub_type": "candle", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1599371619178-1c5d9bc4b06e?w=640&q=70", "description": "Sharp pink pepper over pomelo.", "sort_order": 170},
+    {"name": "Atelier No. 18 — Smoked Vanilla", "sub_type": "candle", "price": 30.0, "image_url": "https://images.unsplash.com/photo-1599371619207-42f15bd5f97b?w=640&q=70", "description": "Bourbon vanilla & woodsmoke.", "sort_order": 180},
+    {"name": "Atelier No. 19 — White Tea", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1602874801006-9da3f8e1d05a?w=640&q=70", "description": "Clean, quiet, restorative.", "sort_order": 190},
+    {"name": "Atelier No. 20 — Petals Signature", "sub_type": "candle", "price": 38.0, "image_url": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=640&q=70", "description": "Our house blend — rose, fig, oud.", "sort_order": 200},
+
+    # Jewellery boxes
+    {"name": "Ivory Linen Jewellery Box — Small", "sub_type": "jewellery_box", "price": 22.0, "image_url": "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=640&q=70", "description": "Linen-wrapped, suede-lined, 9×9cm.", "sort_order": 10},
+    {"name": "Ivory Linen Jewellery Box — Medium", "sub_type": "jewellery_box", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=640&q=70", "description": "12×12cm, holds rings + earrings.", "sort_order": 20},
+    {"name": "Atelier Velvet Box — Blush", "sub_type": "jewellery_box", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=640&q=70", "description": "Cotton velvet, signature blush.", "sort_order": 30},
+    {"name": "Atelier Velvet Box — Sage", "sub_type": "jewellery_box", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=640&q=70", "description": "Cotton velvet, deep sage.", "sort_order": 40},
+    {"name": "Heritage Wooden Box", "sub_type": "jewellery_box", "price": 48.0, "image_url": "https://images.unsplash.com/photo-1610540854094-0c8ce0ce2c6c?w=640&q=70", "description": "Solid oak with brass clasp.", "sort_order": 50},
+    {"name": "Marble & Brass Trinket Box", "sub_type": "jewellery_box", "price": 42.0, "image_url": "https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=640&q=70", "description": "Carrara marble base, brass lid.", "sort_order": 60},
+]
+
+@api_router.post("/seed/cards-addons")
+async def seed_cards_addons(reset: bool = False, admin=Depends(require_admin)):
+    if reset:
+        await db.cards.delete_many({})
+        await db.addons.delete_many({})
+    cards_count = await db.cards.count_documents({})
+    if cards_count == 0:
+        for c in CARD_SEED:
+            doc = {**c, "id": str(uuid.uuid4()), "active": True, "price": c.get("price", 0.0)}
+            await db.cards.insert_one(doc)
+    addons_count = await db.addons.count_documents({})
+    if addons_count == 0:
+        for a in ADDON_SEED:
+            doc = {**a, "id": str(uuid.uuid4()), "active": True}
+            await db.addons.insert_one(doc)
+    return {
+        "cards": await db.cards.count_documents({}),
+        "addons_total": await db.addons.count_documents({}),
+        "treats": await db.addons.count_documents({"sub_type": "treat"}),
+        "candles": await db.addons.count_documents({"sub_type": "candle"}),
+        "jewellery_boxes": await db.addons.count_documents({"sub_type": "jewellery_box"}),
+    }
+
 
 # ==================== SEO ====================
 

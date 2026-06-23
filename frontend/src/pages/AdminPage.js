@@ -13,6 +13,8 @@ import { format } from "date-fns";
 import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import SEOAdmin from "../components/admin/SEOAdmin";
+import CardsAdmin from "../components/admin/CardsAdmin";
+import AddonsAdmin from "../components/admin/AddonsAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -184,6 +186,8 @@ export default function AdminPage() {
             <TabsTrigger value="orders" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-orders-tab">Orders</TabsTrigger>
             <TabsTrigger value="inquiries" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-inquiries-tab">Inquiries</TabsTrigger>
             <TabsTrigger value="products" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-products-tab">Products</TabsTrigger>
+            <TabsTrigger value="cards" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-cards-tab">Cards</TabsTrigger>
+            <TabsTrigger value="addons" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-addons-tab">Add-ons</TabsTrigger>
             <TabsTrigger value="seo" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-seo-tab">SEO</TabsTrigger>
             <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
           </TabsList>
@@ -378,6 +382,14 @@ export default function AdminPage() {
 
           <TabsContent value="seo" data-testid="admin-seo-content">
             <SEOAdmin />
+          </TabsContent>
+
+          <TabsContent value="cards" data-testid="admin-cards-content">
+            <CardsAdmin />
+          </TabsContent>
+
+          <TabsContent value="addons" data-testid="admin-addons-content">
+            <AddonsAdmin />
           </TabsContent>
 
           <TabsContent value="settings" data-testid="admin-settings-content">
