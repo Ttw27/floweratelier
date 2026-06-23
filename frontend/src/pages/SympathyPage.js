@@ -4,6 +4,7 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -125,6 +126,14 @@ export default function SympathyPage() {
           </div>
         </section>
       )}
+
+      {/* Ready Collection — buy direct */}
+      <ReadyCollectionCTA
+        occasion="sympathy"
+        heading={<>Standard tributes,<br /><em>ready to order.</em></>}
+        subheading="When time is short, we hold a curated edit of classic standard-size pieces — wreaths, hearts, casket sprays and sympathy bouquets — ready to dispatch with same- and next-day UK delivery."
+        examples={["Classic White Wreath · £165", "Sympathy Casket Spray · £275", "Classic Heart Tribute · £220", "Quiet Lily Tribute · £140"]}
+      />
 
       {/* Mini Portfolio — Sympathy works */}
       <MiniPortfolio

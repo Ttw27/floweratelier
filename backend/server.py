@@ -892,7 +892,7 @@ async def get_admin_inquiries(admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v5-retail-and-media"
+    current_version = "v6-ready-collection-r3"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
@@ -911,6 +911,7 @@ async def seed_data(reset: bool = False):
         {"id": str(uuid.uuid4()), "name": "Celebration", "slug": "celebration", "description": "Arrangements for anniversaries, birthdays and milestones", "image": "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png"},
         {"id": str(uuid.uuid4()), "name": "Garden Roses", "slug": "garden-roses", "description": "Signature long-stem and English garden roses", "image": "https://images.unsplash.com/photo-1760373071711-960143464e34?w=800"},
         {"id": str(uuid.uuid4()), "name": "Orchids & Exotics", "slug": "exotics", "description": "Rare cultivars and sculptural stems", "image": "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=800"},
+        {"id": str(uuid.uuid4()), "name": "Ready Tributes", "slug": "ready-tributes", "description": "Standard-size pieces — order direct, no consultation required", "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=800"},
     ]
     for cat in categories:
         cat["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -982,6 +983,113 @@ async def seed_data(reset: bool = False):
             "sizes": [{"name": "Luxe", "price_modifier": 0}, {"name": "Grande", "price_modifier": 55}, {"name": "Extraordinaire", "price_modifier": 110}],
             "in_stock": True, "featured": True, "occasion_tags": ["birthday", "congratulations", "celebration"],
         },
+
+        # ───── THE READY COLLECTION ─────
+        # Order-direct standard-size pieces — no consultation required
+        {
+            "id": str(uuid.uuid4()), "name": "Letter Tribute — 1ft 'DAD'",
+            "description": "A 1-foot floral letter tribute in red carnation and white chrysanthemum on a bespoke timber frame. Standard size, ready for next-day delivery anywhere in the UK.",
+            "price": 180.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
+            "sizes": [{"name": "1ft", "price_modifier": 0}, {"name": "2ft", "price_modifier": 140}],
+            "in_stock": True, "featured": True, "occasion_tags": ["ready", "traveller_funeral", "sympathy", "letter"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Letter Tribute — 1ft 'MUM'",
+            "description": "A 1-foot 'MUM' floral letter in classic white chrysanthemum with red rose detailing, on bespoke timber frame.",
+            "price": 180.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
+            "sizes": [{"name": "1ft", "price_modifier": 0}, {"name": "2ft", "price_modifier": 140}],
+            "in_stock": True, "featured": True, "occasion_tags": ["ready", "traveller_funeral", "sympathy", "letter"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Letter Tribute — 1ft 'NAN'",
+            "description": "A 1-foot 'NAN' floral letter tribute, hand-built in soft pastel chrysanthemum and ivory rose.",
+            "price": 180.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
+            "sizes": [{"name": "1ft", "price_modifier": 0}, {"name": "2ft", "price_modifier": 140}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "traveller_funeral", "sympathy", "letter"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Classic Heart Tribute",
+            "description": "A traditional 14-inch heart tribute in red roses with white lily detail and hand-tied satin ribbon. Standard-size, no consultation required.",
+            "price": 220.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1200"],
+            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Large 18\"", "price_modifier": 85}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "sympathy", "traveller_funeral", "heart"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Classic White Wreath",
+            "description": "A 14-inch circular wreath in white chrysanthemum, lily and seasonal greenery — a timeless standard form for any service.",
+            "price": 165.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1200"],
+            "sizes": [{"name": "14\"", "price_modifier": 0}, {"name": "18\"", "price_modifier": 70}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "sympathy", "wreath"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Floral Cross — 2ft",
+            "description": "A traditional 2-foot floral cross in white chrysanthemum with optional gold or silver ribbon trim. Ready to dispatch.",
+            "price": 280.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1200"],
+            "sizes": [{"name": "2ft", "price_modifier": 0}, {"name": "3ft", "price_modifier": 160}],
+            "in_stock": True, "featured": True, "occasion_tags": ["ready", "sympathy", "traveller_funeral", "cross"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Gates of Heaven — 2ft",
+            "description": "A classic 2-foot Gates of Heaven tribute with cross detailing, in white chrysanthemum with delicate ribbon work.",
+            "price": 380.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1200"],
+            "sizes": [{"name": "2ft", "price_modifier": 0}, {"name": "3ft", "price_modifier": 220}],
+            "in_stock": True, "featured": True, "occasion_tags": ["ready", "traveller_funeral", "sympathy", "gates"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Sympathy Casket Spray — Classic",
+            "description": "A standard-size casket spray in white roses, lily and lisianthus — designed to sit beautifully on a closed casket.",
+            "price": 275.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1200"],
+            "sizes": [{"name": "Standard", "price_modifier": 0}, {"name": "Large", "price_modifier": 95}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "sympathy", "casket"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Quiet Lily Tribute",
+            "description": "A respectful hand-tied bouquet of white lily and pale roses — sent with a hand-finished sympathy card.",
+            "price": 140.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1200"],
+            "sizes": [{"name": "Classic", "price_modifier": 0}, {"name": "Luxe", "price_modifier": 60}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "sympathy", "bouquet"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Bridesmaid Posy — Standard",
+            "description": "A standard-size bridesmaid posy in ivory garden roses, lisianthus and seasonal foliage. Multiple posies ship together — perfect when consultation isn't needed.",
+            "price": 85.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
+            "sizes": [{"name": "Posy", "price_modifier": 0}, {"name": "Luxe Posy", "price_modifier": 35}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "wedding", "traveller_wedding", "bridesmaid"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Wedding Buttonhole",
+            "description": "A classic buttonhole / boutonnière in ivory spray rose, eucalyptus and pearl pin. Sold individually — order direct for the wedding party.",
+            "price": 25.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
+            "sizes": [{"name": "Classic", "price_modifier": 0}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "wedding", "traveller_wedding", "buttonhole"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Ready Bridal Posy — Ivory",
+            "description": "A ready-to-order bridal posy in ivory garden roses, lily-of-the-valley and trailing eucalyptus — for intimate ceremonies and registry weddings.",
+            "price": 245.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
+            "sizes": [{"name": "Bridal", "price_modifier": 0}],
+            "in_stock": True, "featured": True, "occasion_tags": ["ready", "wedding", "bridal"],
+        },
+        {
+            "id": str(uuid.uuid4()), "name": "Mehndi Garland — Marigold",
+            "description": "A standard-length marigold and rose garland for Mehndi events — ready to order when consultation isn't required.",
+            "price": 95.00, "original_price": None, "category_id": categories[6]["id"],
+            "images": ["https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200"],
+            "sizes": [{"name": "Standard 4ft", "price_modifier": 0}, {"name": "6ft", "price_modifier": 40}],
+            "in_stock": True, "featured": False, "occasion_tags": ["ready", "faith_wedding", "mehndi"],
+        },
     ]
     for prod in products:
         prod["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -1010,7 +1118,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "Cotswolds Country House Wedding",
             "category": "wedding",
             "description": "Wild, garden-gathered florals across a marquee installation for a 200-guest country wedding.",
-            "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1400",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
             "location": "Stow-on-the-Wold, Cotswolds", "price_from": 7500.0,
             "tags": ["marquee", "country", "wild"], "featured": False,
         },
@@ -1052,7 +1160,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "Letter Tribute — MOTHER",
             "category": "sympathy",
             "description": "A hand-crafted floral lettering tribute in ivory roses and white lisianthus — a quiet, dignified final tribute.",
-            "image": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1400",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
             "location": "Private service", "price_from": 650.0,
             "tags": ["tribute", "lettering", "ivory"], "featured": False,
         },
@@ -1060,7 +1168,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "Coffin Spray — Garden Whites",
             "category": "sympathy",
             "description": "A trailing coffin spray of white roses, lisianthus and seasonal greenery — soft, dignified, deeply considered.",
-            "image": "https://images.unsplash.com/photo-1572731073127-3c0d1d05c0d2?w=1400",
+            "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
             "location": "St. Marylebone Crematorium", "price_from": 350.0,
             "tags": ["coffin spray", "white"], "featured": False,
         },
@@ -1218,7 +1326,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "Statement Top Table Run",
             "category": "traveller_wedding",
             "description": "A 30-foot continuous floral runner across the top table — peonies, garden roses, hydrangea and trailing amaranthus.",
-            "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1400",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
             "location": "Essex", "price_from": 4800.0,
             "tags": ["top table", "runner", "statement"], "featured": False,
         },
@@ -1244,7 +1352,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "3ft 'DAD' Letter Tribute",
             "category": "traveller_funeral",
             "description": "A 3-foot floral letter tribute in red carnations and white chrysanthemum, set in a bespoke timber frame.",
-            "image": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1400",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
             "location": "London", "price_from": 650.0,
             "tags": ["letter tribute", "3ft", "dad"], "featured": True,
         },
@@ -1284,7 +1392,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "Football Crest Tribute",
             "category": "traveller_funeral",
             "description": "A 4-foot football club crest tribute in club colours — hand-built on bespoke timber frame, finished with the team name.",
-            "image": "https://images.unsplash.com/photo-1572731073127-3c0d1d05c0d2?w=1400",
+            "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
             "location": "Glasgow", "price_from": 720.0,
             "tags": ["crest", "football", "personalised"], "featured": False,
         },
@@ -1468,7 +1576,7 @@ async def seed_data(reset: bool = False):
             "id": str(uuid.uuid4()), "title": "Fashion Lookbook — Garden Florals",
             "category": "film_tv",
             "description": "Wild garden florals styled across a Cotswolds country garden shoot for an emerging designer lookbook.",
-            "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1400",
+            "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
             "location": "Cotswolds", "price_from": 1850.0,
             "tags": ["lookbook", "fashion", "garden"], "featured": False,
         },

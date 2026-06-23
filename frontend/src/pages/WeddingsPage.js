@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 
 const HERO = "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1800";
 const IMG_1 = "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200";
@@ -89,6 +90,15 @@ export default function WeddingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Ready Collection — buy direct */}
+      <ReadyCollectionCTA
+        occasion="wedding"
+        eyebrow="The Ready Collection"
+        heading={<>Bridesmaids &amp; buttonholes,<br /><em>ready to order.</em></>}
+        subheading="For intimate weddings, registry days and the wedding party — we hold a small edit of ready bridal posies, standard bridesmaid posies and buttonholes. No consultation required."
+        examples={["Ready Bridal Posy · £245", "Bridesmaid Posy · £85", "Buttonhole · £25"]}
+      />
 
       {/* Mini Portfolio — Wedding works */}
       <MiniPortfolio

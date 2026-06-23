@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone, Heart, Sparkles, Crown } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 
 const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
 
@@ -125,6 +126,14 @@ export default function TravellerWeddingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Ready Collection — buy direct */}
+      <ReadyCollectionCTA
+        occasion="traveller_wedding"
+        heading={<>Posies &amp; buttonholes,<br /><em>order direct.</em></>}
+        subheading="For the wedding party — bridesmaid posies, mothers' posies and buttonholes available in standard sizes, ready to dispatch. Larger statement pieces &amp; full wedding installs remain bespoke and consultation-led."
+        examples={["Bridesmaid Posy · £85", "Buttonhole · £25", "Ready Bridal Posy · £245"]}
+      />
 
       {/* Mini Portfolio */}
       <MiniPortfolio

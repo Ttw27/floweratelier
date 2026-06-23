@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Phone, Heart } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 
 const HERO = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1800";
 
@@ -174,6 +175,15 @@ export default function TravellerFuneralsPage() {
           </a>
         </div>
       </section>
+
+      {/* Ready Collection — buy direct, no consultation needed */}
+      <ReadyCollectionCTA
+        occasion="traveller_funeral"
+        heading={<>Standard sizes,<br /><em>order direct.</em></>}
+        subheading="When the service is approaching fast, we hold a curated edit of standard letter tributes and classic pieces — built ahead and ready for next-day UK dispatch. No consultation required."
+        examples={["1ft 'DAD' Letter · £180", "1ft 'MUM' Letter · £180", "1ft 'NAN' Letter · £180", "2ft Cross · £280", "2ft Gates of Heaven · £380", "Classic Heart · £220"]}
+        tone="dark"
+      />
 
       {/* Mini Portfolio */}
       <MiniPortfolio

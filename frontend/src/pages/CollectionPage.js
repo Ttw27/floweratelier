@@ -1,13 +1,25 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
 import { Filter, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+const OCCASION_LABELS = {
+  ready: "The Ready Collection",
+  traveller_funeral: "Ready Tributes · Traveller Funerals",
+  sympathy: "Ready Tributes · Sympathy",
+  traveller_wedding: "Ready Pieces · Traveller Weddings",
+  wedding: "Ready Pieces · Weddings",
+  faith_wedding: "Ready Pieces · Faith Weddings",
+};
+
 export default function CollectionPage() {
   const { category } = useParams();
+  const [searchParams] = useSearchParams();
+  const occasion = searchParams.get("occasion");
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,14 +27,21 @@ export default function CollectionPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const categoryData = categories.find((c) => c.slug === category);
-  const pageTitle = categoryData?.name || "The Collection";
+  const pageTitle = occasion ? (OCCASION_LABELS[occasion] || "The Ready Collection") : (categoryData?.name || "The Collection");
+  const pageDescription = occasion
+    ? "Standard-size pieces — order direct, no consultation required. Same- and next-day delivery available across the UK."
+    : categoryData?.description;
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        const productParams = {};
+        if (category) productParams.category = category;
+        if (occasion) productParams.occasion = occasion;
+
         const [productsRes, categoriesRes] = await Promise.all([
-          axios.get(`${API_URL}/api/products`, { params: { category: category || undefined } }),
+          axios.get(`${API_URL}/api/products`, { params: productParams }),
           axios.get(`${API_URL}/api/categories`),
         ]);
 
@@ -47,22 +66,22 @@ export default function CollectionPage() {
       }
     };
     fetchData();
-  }, [category, sortBy]);
+  }, [category, occasion, sortBy]);
 
   return (
     <div className="min-h-screen pt-28" data-testid="collection-page">
       {/* Header */}
       <section className="py-20 md:py-28 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-6"><span className="thin-rule" />{category ? "Category" : "Shop"}</p>
+          <p className="accent-label mb-6"><span className="thin-rule" />{occasion ? "The Ready Collection" : (category ? "Category" : "Shop")}</p>
           <h1
             className="font-heading text-5xl md:text-7xl lg:text-8xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight"
             data-testid="collection-title"
           >
             {pageTitle}
           </h1>
-          {categoryData?.description && (
-            <p className="font-body text-base text-[#7A7A7A] mt-8 max-w-xl">{categoryData.description}</p>
+          {pageDescription && (
+            <p className="font-body text-base text-[#7A7A7A] mt-8 max-w-xl">{pageDescription}</p>
           )}
         </div>
       </section>
