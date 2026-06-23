@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { X, ChevronLeft, ChevronRight, Check, Calendar as CalendarIcon } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Check, Calendar as CalendarIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "../context/CartContext";
 import { trackEvent } from "./Pixels";
+import BoxDesigner from "./BoxDesigner";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -22,7 +23,7 @@ const STEPS = [
 const BOX_CHOICES = [
   { id: "kraft", name: "Signature kraft box", price: 0, description: "Hand-tied in our standard ivory atelier kraft box.", image: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=800&q=70" },
   { id: "vase", name: "Glass studio vase", price: 12, description: "Arrives ready-arranged in a re-usable hand-blown vase.", image: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=800&q=70" },
-  { id: "personalised", name: "Personalised box (+£9.99)", price: 9.99, description: "Designed by you — photos, names, dates. (Designer launching shortly.)", image: "https://images.unsplash.com/photo-1620662736427-b8a198f52a4d?w=800&q=70", comingSoon: true },
+  { id: "personalised", name: "Personalised box (+£9.99)", price: 9.99, description: "Designed by you — drag-and-drop photos, custom text, fonts and colours.", image: "https://images.unsplash.com/photo-1620662736427-b8a198f52a4d?w=800&q=70" },
 ];
 
 const ADDON_GROUPS = [
@@ -46,6 +47,8 @@ export default function SendFlow({ product, open, onClose }) {
   const [chosenDate, setChosenDate] = useState(null);
   const [chosenBox, setChosenBox] = useState("kraft");
   const [chosenAddonIds, setChosenAddonIds] = useState([]);
+  const [boxDesign, setBoxDesign] = useState(null);   // {preview_url, background, layers}
+  const [designerOpen, setDesignerOpen] = useState(false);
 
   // Load reference data once when opened
   useEffect(() => {
@@ -80,6 +83,8 @@ export default function SendFlow({ product, open, onClose }) {
       setChosenDate(null);
       setChosenBox("kraft");
       setChosenAddonIds([]);
+      setBoxDesign(null);
+      setDesignerOpen(false);
     } else {
       trackEvent("InitiateCheckout", { content_name: product?.name, value: product?.price });
     }
@@ -98,8 +103,8 @@ export default function SendFlow({ product, open, onClose }) {
       case "card": return !!chosenCardId;
       case "message": return cardMessage.trim().length > 0;
       case "date": return !!chosenDate;
-      case "box": return !!chosenBox;
-      case "addons": return true;     // optional — always allow
+      case "box": return chosenBox !== "personalised" || !!boxDesign;
+      case "addons": return true;
       case "review": return true;
       default: return true;
     }
@@ -124,6 +129,7 @@ export default function SendFlow({ product, open, onClose }) {
           box_choice: chosenBox,
           box_label: boxObj?.name,
           box_extra_price: boxObj?.price || 0,
+          box_design: chosenBox === "personalised" ? boxDesign : null,
           addons: chosenAddons.map((a) => ({ id: a.id, name: a.name, price: a.price, sub_type: a.sub_type })),
         },
       };
@@ -243,30 +249,61 @@ export default function SendFlow({ product, open, onClose }) {
           )}
 
           {STEPS[step].key === "box" && (
-            <div data-testid="step-box" className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {BOX_CHOICES.map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => setChosenBox(b.id)}
-                  className={`text-left bg-white border ${chosenBox === b.id ? "border-[#1A1A1A] ring-2 ring-[#1A1A1A]/15" : "border-[#E5E5E5] hover:border-[#1A1A1A]"} transition-colors`}
-                  data-testid={`box-choice-${b.id}`}
-                >
-                  <div className="aspect-[4/3] overflow-hidden bg-[#F2EFEB]">
-                    <img src={b.image} alt={b.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-body text-[13px] text-[#1A1A1A]">{b.name}</p>
-                      {b.price > 0 && <span className="font-body text-[12px] text-[#1A1A1A]">+£{b.price.toFixed(2)}</span>}
+            <div data-testid="step-box" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {BOX_CHOICES.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setChosenBox(b.id)}
+                    className={`text-left bg-white border ${chosenBox === b.id ? "border-[#1A1A1A] ring-2 ring-[#1A1A1A]/15" : "border-[#E5E5E5] hover:border-[#1A1A1A]"} transition-colors`}
+                    data-testid={`box-choice-${b.id}`}
+                  >
+                    <div className="aspect-[4/3] overflow-hidden bg-[#F2EFEB]">
+                      <img src={b.image} alt={b.name} className="w-full h-full object-cover" />
                     </div>
-                    <p className="font-body text-[11px] text-[#7A7A7A] mt-1">{b.description}</p>
-                    {b.comingSoon && (
-                      <p className="mt-2 inline-block text-[10px] uppercase tracking-[0.22em] bg-[#F2EFEB] text-[#7A7A7A] px-2 py-0.5">Designer coming soon</p>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-body text-[13px] text-[#1A1A1A]">{b.name}</p>
+                        {b.price > 0 && <span className="font-body text-[12px] text-[#1A1A1A]">+£{b.price.toFixed(2)}</span>}
+                      </div>
+                      <p className="font-body text-[11px] text-[#7A7A7A] mt-1">{b.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Personalised box designer panel */}
+              {chosenBox === "personalised" && (
+                <div className="bg-[#F2EFEB] border border-[#1A1A1A]/15 p-5 md:p-6 flex flex-col md:flex-row gap-5 items-start" data-testid="box-personalised-panel">
+                  {boxDesign?.preview_url ? (
+                    <img src={boxDesign.preview_url} alt="Your design" className="w-full md:w-56 aspect-[10/7] object-cover bg-white" data-testid="box-design-preview" />
+                  ) : (
+                    <div className="w-full md:w-56 aspect-[10/7] bg-white border border-dashed border-[#1A1A1A]/20 flex items-center justify-center">
+                      <Sparkles size={28} className="text-[#B3A89B]" strokeWidth={1.2} />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="accent-label mb-2"><span className="thin-rule" />{boxDesign ? "Your design is saved" : "Bring your box to life"}</p>
+                    <p className="font-body text-[13px] text-[#1A1A1A] leading-relaxed mb-4">
+                      Drag-and-drop your own photos, type names &amp; dates, choose from six luxury fonts, and pick text + background colours. The studio will recreate your saved design as faithfully as our materials allow.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button onClick={() => setDesignerOpen(true)} className="btn-dark rounded-none" data-testid="open-box-designer">
+                        <Sparkles size={14} className="mr-2" /> {boxDesign ? "Edit design" : "Open designer"}
+                      </Button>
+                      {boxDesign && (
+                        <Button variant="outline" className="rounded-none" onClick={() => setBoxDesign(null)} data-testid="clear-box-design">
+                          Clear design
+                        </Button>
+                      )}
+                    </div>
+                    {!boxDesign && (
+                      <p className="font-body text-[11px] text-[#7A7A7A] mt-3">A saved design is required before you can continue.</p>
                     )}
                   </div>
-                </button>
-              ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -314,6 +351,14 @@ export default function SendFlow({ product, open, onClose }) {
                 <Row label="Box" value={`${boxObj?.name}${boxObj?.price ? ` — +£${boxObj.price.toFixed(2)}` : ""}`} />
                 <Row label="Add-ons" value={chosenAddonIds.length === 0 ? "None" : `${chosenAddonIds.length} item(s) — £${totalAddonsPrice.toFixed(2)}`} />
               </div>
+
+              {chosenBox === "personalised" && boxDesign?.preview_url && (
+                <div className="mt-6">
+                  <p className="accent-label mb-2"><span className="thin-rule" />Your box design</p>
+                  <img src={boxDesign.preview_url} alt="Your saved box design" className="w-full max-w-sm aspect-[10/7] object-cover bg-white border border-[#E5E5E5]" data-testid="review-box-design-preview" />
+                </div>
+              )}
+
               <div className="mt-6 pt-6 border-t border-[#E5E5E5] flex items-center justify-between">
                 <p className="accent-label">Estimated total</p>
                 <p className="font-heading text-2xl text-[#1A1A1A]" data-testid="send-flow-total">£{totalPrice.toFixed(2)}</p>
@@ -340,6 +385,14 @@ export default function SendFlow({ product, open, onClose }) {
           )}
         </div>
       </div>
+
+      {/* Personalised box designer */}
+      <BoxDesigner
+        open={designerOpen}
+        initialBg={boxDesign?.background}
+        onClose={() => setDesignerOpen(false)}
+        onSave={(design) => setBoxDesign(design)}
+      />
     </div>
   );
 }

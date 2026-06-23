@@ -39,7 +39,16 @@ NOT targeting supermarket-tier gifting.
 
 ## What's Been Implemented
 
-### Phase 2 — Bloom & Wild product pages — Feb 2026 (latest)
+### Phase 3 — Personalised box designer — Feb 2026 (latest)
+- [x] **Full HTML5 canvas designer** (`<BoxDesigner />`) using **react-konva + konva**: drag/drop, multi-select with rotation + corner-handle resize, multiple text layers, multi-photo upload.
+- [x] **Six luxury fonts** (Cormorant, Inter, Playfair, Dancing Script, Courier, Georgia) selectable per text layer.
+- [x] **Text + background colour pickers** (8 swatches each), live font-size slider (14–160 px), undo, delete.
+- [x] **Photo upload** — backend `POST /api/uploads/image` accepts JPG/PNG/WEBP/GIF (max 6 MB), saves under `/app/backend/uploads`, served via static-mounted `/api/uploads/<file>`.
+- [x] **Save flow** — Konva stage exported to JPEG via `toDataURL()`, uploaded, returns a public URL. Preview stored in `send_flow.box_design.preview_url` and shown on Step 4 + Step 6 (Review).
+- [x] **+£9.99 pricing** — automatically added when "Personalised box" is selected. Step 4 blocks Continue until a design has been saved.
+- [x] Pre-existing `box_design_url` field on `OrderCreate` will receive the design URL at checkout.
+
+### Phase 2 — Bloom & Wild product pages — Feb 2026
 - [x] **Extended `Product` model** with `media: List[{type, url, thumbnail?, source?}]` (image / video — direct, YouTube or Vimeo) and `is_bouquet: bool` flag.
 - [x] **Sticky media gallery** (`<MediaGallery />`) — left thumbnail rail (4–5 items) + main viewer; supports image, direct video, YouTube/Vimeo embeds; falls back to legacy `images` array.
 - [x] **B&W-style ProductDetailPage rewrite** — split layout with sticky gallery left + product info right (title, price, description, "Earliest delivery" callout, "Send this bouquet" CTA, inline WhatsApp link).
@@ -121,12 +130,11 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 - Pytest at `/app/backend/tests/backend_test.py`
 
 ## Next Tasks (P1)
-1. **Phase 3 — Personalised box designer** (+£9.99): full canvas — drag/drop, multiple text layers, custom fonts, multi-photo upload, colour pickers; preview image saved with order. Currently a placeholder option in send flow (step 4 — "Designer coming soon").
+1. **Cart / checkout / order rendering** — surface the new send-flow payload (card preview, message, addons list, box design preview) in the cart row, order confirmation page and admin order detail. Currently flowing through `box_personalization.send_flow` metadata but not yet displayed downstream.
 2. **Product media editor in admin** — currently media is added via API; surface a UI inside the existing Products tab to add/reorder media items and toggle `is_bouquet`.
-3. **Cart / order rendering** — display the new send-flow payload (card preview, recipient message, addons list, box choice) in the cart row + order confirmation + admin order detail.
-4. CMS layer extension: make service-page wording & tier pricing admin-editable via `page_content` collection.
-5. Admin UI for Portfolio item CRUD.
-6. Replace legacy stock imagery on service pages with commissioned photography.
+3. CMS layer extension: make service-page wording &amp; tier pricing admin-editable via `page_content` collection.
+4. Admin UI for Portfolio item CRUD.
+5. Replace legacy stock imagery on service pages with commissioned photography.
 
 ## Backlog (P2)
 1. Instagram feed integration

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -1731,6 +1732,28 @@ async def _get_settings_dict() -> dict:
     doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
     return {**DEFAULT_SETTINGS, **(doc or {})}
 
+# ==================== UPLOADS ====================
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+MAX_UPLOAD_SIZE = 6 * 1024 * 1024  # 6 MB
+
+@api_router.post("/uploads/image")
+async def upload_image(file: UploadFile = File(...)):
+    """Upload an image (max 6MB, jpg/png/webp/gif). Returns a public URL."""
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, f"Unsupported type: {file.content_type}")
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(413, "File too large (max 6 MB)")
+    ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}[file.content_type]
+    name = f"{uuid.uuid4().hex}{ext}"
+    path = UPLOAD_DIR / name
+    with open(path, "wb") as f:
+        f.write(contents)
+    return {"url": f"/api/uploads/{name}", "size": len(contents), "content_type": file.content_type}
+
+
 # ==================== CARDS & ADD-ONS ====================
 
 class CardCreate(BaseModel):
@@ -1974,6 +1997,8 @@ async def root():
 
 # Include the router in the main app
 app.include_router(api_router)
+# Serve uploaded images under /api/uploads so the kubernetes ingress routes to the backend
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
