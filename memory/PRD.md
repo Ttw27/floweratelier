@@ -157,6 +157,16 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 8. Seasonal pre-order drops (Valentine's, Mother's Day)
 
 ## Changelog
+### 2026-06-24 (later) — Workshop booking modes: direct vs enquire (+ venue partners)
+- **`booking_mode` flag on workshops**: `"direct"` (current Stripe deposit/full flow) or `"enquire"` (WhatsApp + lead form, no Stripe, no sessions).
+- **Care Homes** workshop migrated to `enquire` mode (bespoke pricing per resident).
+- **New programme** "Flower Workshop Nights for Pubs & Social Clubs" — `enquire` mode, with a venue sales pitch (per-head fee to us, venue keeps 100% of bar/food/door, midweek footfall, free socials promotion). Commercial bullets + venue-types are admin-editable.
+- **Workshops page redesign**: cards now split into "Book a date" (direct) and "Host at your venue" (enquire), with a 4-tile Why-host strip (Per head / Bar / Midweek / Promotion) and a venue-types row.
+- **WorkshopEnquireModal** — WhatsApp deep link (pre-filled per workshop) + lead form POSTing to `/api/inquiries` with `service_type="workshop_host"`. Captures venue name, target date and expected guests beyond the standard contact fields.
+- **WorkshopDetailPage** branches by mode — enquire variant hides session list, swaps the price for "Bespoke", and ends with a dark WhatsApp + Send-a-brief CTA strip.
+- **Admin** — new `booking_mode` radio with conditionally-rendered enquire fields (pitch, commercial bullets, venue list, WhatsApp pre-filled message).
+- Tested: pytest 26/26 + frontend Playwright (`iteration_7.json`).
+
 ### 2026-06-24 — Workshops Booking Funnel + Box Designer UX
 - **Workshops** (Phase 4): admin-managed `workshops` (programmes) + dated `workshop_sessions` collections; customer hybrid layout (`/workshops` list + `/workshops/:slug` detail). 2-step booking modal (date → details + payment).
   - Payment options via Stripe: **deposit** or **pay-in-full with 5% off**. Cancellation policy: deposits non-refundable; balance collected on the day (not via Stripe).
