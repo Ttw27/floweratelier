@@ -846,7 +846,30 @@ async def stripe_webhook(request: Request):
         
         if webhook_response.payment_status == "paid":
             order_id = webhook_response.metadata.get("order_id")
-            if order_id:
+            kind = webhook_response.metadata.get("kind")
+            if kind == "workshop_booking":
+                booking_id = webhook_response.metadata.get("booking_id")
+                if booking_id:
+                    booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+                    if booking and booking.get("payment_status") != "paid":
+                        await db.workshop_bookings.update_one(
+                            {"id": booking_id},
+                            {"$set": {
+                                "payment_status": "paid",
+                                "status": "confirmed",
+                                "amount_paid": booking.get("amount_due_now", 0),
+                                "paid_at": datetime.now(timezone.utc).isoformat(),
+                            }},
+                        )
+                        await db.workshop_sessions.update_one(
+                            {"id": booking["session_id"]},
+                            {"$inc": {"spots_booked": booking.get("guests", 1)}},
+                        )
+                        await db.payment_transactions.update_one(
+                            {"booking_id": booking_id},
+                            {"$set": {"payment_status": "paid"}}
+                        )
+            elif order_id:
                 await db.orders.update_one(
                     {"id": order_id},
                     {"$set": {"payment_status": "paid", "status": "confirmed"}}
@@ -2136,6 +2159,468 @@ async def seed_cards_addons(reset: bool = False, admin=Depends(require_admin)):
         "treats": await db.addons.count_documents({"sub_type": "treat"}),
         "candles": await db.addons.count_documents({"sub_type": "candle"}),
         "jewellery_boxes": await db.addons.count_documents({"sub_type": "jewellery_box"}),
+    }
+
+
+# ==================== WORKSHOPS ====================
+
+class WorkshopCreate(BaseModel):
+    slug: str
+    name: str
+    tag: str = ""                       # e.g. "Christmas", "Halloween", "Care Homes"
+    season: str = ""
+    short_description: str = ""
+    description: str = ""
+    includes: List[str] = []
+    duration: str = ""
+    group_size: str = ""
+    location_default: str = ""
+    image_url: str = ""
+    gallery_images: List[str] = []
+    price_per_guest: float = 0.0        # default price; sessions can override
+    deposit_amount: float = 0.0         # default deposit; sessions can override
+    full_payment_discount_pct: float = 5.0  # 5% off if paid in full at booking
+    cancellation_policy: str = "Deposits are non-refundable. Balance is collected on the day."
+    sort_order: int = 0
+    active: bool = True
+
+class WorkshopResponse(WorkshopCreate):
+    id: str
+
+class WorkshopSessionCreate(BaseModel):
+    workshop_id: str
+    date: str                       # ISO date e.g. "2026-03-12"
+    start_time: str = ""            # "18:30"
+    end_time: str = ""              # "21:00"
+    location: str = ""              # override
+    capacity: int = 14
+    spots_booked: int = 0
+    price_per_guest: Optional[float] = None    # override
+    deposit_amount: Optional[float] = None     # override
+    notes: str = ""
+    active: bool = True
+
+class WorkshopSessionResponse(WorkshopSessionCreate):
+    id: str
+
+class WorkshopBookingCreate(BaseModel):
+    session_id: str
+    name: str
+    email: EmailStr
+    phone: str
+    guests: int = 1
+    dietary_requirements: str = ""
+    notes: str = ""
+    payment_choice: str = "deposit"   # "deposit" | "full"
+
+class WorkshopBookingResponse(BaseModel):
+    id: str
+    session_id: str
+    workshop_id: str
+    workshop_name: str
+    name: str
+    email: str
+    phone: str
+    guests: int
+    dietary_requirements: str
+    notes: str
+    payment_choice: str
+    price_per_guest: float
+    deposit_per_guest: float
+    full_payment_discount_pct: float
+    subtotal: float
+    discount_amount: float
+    balance_due_on_day: float
+    amount_due_now: float
+    amount_paid: float
+    status: str
+    payment_status: str
+    stripe_session_id: Optional[str] = None
+    created_at: str
+
+class WorkshopCheckoutRequest(BaseModel):
+    booking_id: str
+    origin_url: str
+
+
+def _ws_calc_amounts(workshop: dict, session: dict, guests: int, payment_choice: str):
+    """Returns (price_per_guest, deposit_per_guest, subtotal, discount_amount, amount_due_now, balance_due_on_day, discount_pct)."""
+    price = float(session.get("price_per_guest") or workshop.get("price_per_guest") or 0.0)
+    deposit = float(session.get("deposit_amount") or workshop.get("deposit_amount") or (price * 0.5))
+    discount_pct = float(workshop.get("full_payment_discount_pct") or 0.0)
+    subtotal = round(price * max(guests, 1), 2)
+    if payment_choice == "full":
+        discount_amount = round(subtotal * (discount_pct / 100.0), 2)
+        amount_due_now = round(subtotal - discount_amount, 2)
+        balance_due_on_day = 0.0
+    else:
+        discount_amount = 0.0
+        amount_due_now = round(deposit * max(guests, 1), 2)
+        balance_due_on_day = round(subtotal - amount_due_now, 2)
+    return price, deposit, subtotal, discount_amount, amount_due_now, balance_due_on_day, discount_pct
+
+
+def _ws_serialise_booking(b: dict, workshop_name: str = "") -> WorkshopBookingResponse:
+    return WorkshopBookingResponse(
+        id=b["id"], session_id=b["session_id"], workshop_id=b["workshop_id"],
+        workshop_name=workshop_name or b.get("workshop_name", ""),
+        name=b["name"], email=b["email"], phone=b["phone"],
+        guests=b.get("guests", 1),
+        dietary_requirements=b.get("dietary_requirements", ""),
+        notes=b.get("notes", ""),
+        payment_choice=b.get("payment_choice", "deposit"),
+        price_per_guest=b.get("price_per_guest", 0.0),
+        deposit_per_guest=b.get("deposit_per_guest", 0.0),
+        full_payment_discount_pct=b.get("full_payment_discount_pct", 0.0),
+        subtotal=b.get("subtotal", 0.0),
+        discount_amount=b.get("discount_amount", 0.0),
+        balance_due_on_day=b.get("balance_due_on_day", 0.0),
+        amount_due_now=b.get("amount_due_now", 0.0),
+        amount_paid=b.get("amount_paid", 0.0),
+        status=b.get("status", "pending"),
+        payment_status=b.get("payment_status", "pending"),
+        stripe_session_id=b.get("stripe_session_id"),
+        created_at=b.get("created_at", ""),
+    )
+
+
+# ---- Public workshop listing ----
+@api_router.get("/workshops", response_model=List[WorkshopResponse])
+async def list_workshops(active_only: bool = True):
+    q = {"active": True} if active_only else {}
+    docs = await db.workshops.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=200)
+    return [WorkshopResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.get("/workshops/{slug}", response_model=WorkshopResponse)
+async def get_workshop_by_slug(slug: str):
+    doc = await db.workshops.find_one({"slug": slug, "active": True}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Workshop not found")
+    return WorkshopResponse(**doc)
+
+@api_router.get("/workshops/{slug}/sessions", response_model=List[WorkshopSessionResponse])
+async def list_workshop_sessions_by_slug(slug: str):
+    """Public — upcoming, active, not sold out sessions for a workshop."""
+    w = await db.workshops.find_one({"slug": slug, "active": True}, {"_id": 0})
+    if not w:
+        raise HTTPException(404, "Workshop not found")
+    today = datetime.now(timezone.utc).date().isoformat()
+    docs = await db.workshop_sessions.find({
+        "workshop_id": w["id"],
+        "active": True,
+        "date": {"$gte": today},
+    }).sort("date", 1).to_list(length=200)
+    return [WorkshopSessionResponse(**{**d, "id": d["id"]}) for d in docs]
+
+
+# ---- Admin: workshop CRUD ----
+@api_router.get("/admin/workshops", response_model=List[WorkshopResponse])
+async def admin_list_workshops(admin=Depends(require_admin)):
+    docs = await db.workshops.find({}).sort([("sort_order", 1), ("name", 1)]).to_list(length=500)
+    return [WorkshopResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/workshops", response_model=WorkshopResponse)
+async def admin_create_workshop(data: WorkshopCreate, admin=Depends(require_admin)):
+    if await db.workshops.find_one({"slug": data.slug}):
+        raise HTTPException(400, "Slug already exists")
+    doc = {**data.model_dump(), "id": str(uuid.uuid4())}
+    await db.workshops.insert_one(doc)
+    return WorkshopResponse(**doc)
+
+@api_router.put("/admin/workshops/{wid}", response_model=WorkshopResponse)
+async def admin_update_workshop(wid: str, data: WorkshopCreate, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    other = await db.workshops.find_one({"slug": payload["slug"], "id": {"$ne": wid}})
+    if other:
+        raise HTTPException(400, "Slug already in use")
+    res = await db.workshops.update_one({"id": wid}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Workshop not found")
+    return WorkshopResponse(id=wid, **payload)
+
+@api_router.delete("/admin/workshops/{wid}")
+async def admin_delete_workshop(wid: str, admin=Depends(require_admin)):
+    if await db.workshop_sessions.count_documents({"workshop_id": wid}) > 0:
+        raise HTTPException(400, "Delete sessions first")
+    res = await db.workshops.delete_one({"id": wid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Workshop not found")
+    return {"deleted": wid}
+
+
+# ---- Admin: session CRUD ----
+@api_router.get("/admin/workshop-sessions", response_model=List[WorkshopSessionResponse])
+async def admin_list_sessions(workshop_id: Optional[str] = None, admin=Depends(require_admin)):
+    q = {}
+    if workshop_id:
+        q["workshop_id"] = workshop_id
+    docs = await db.workshop_sessions.find(q).sort("date", 1).to_list(length=500)
+    return [WorkshopSessionResponse(**{**d, "id": d["id"]}) for d in docs]
+
+@api_router.post("/admin/workshop-sessions", response_model=WorkshopSessionResponse)
+async def admin_create_session(data: WorkshopSessionCreate, admin=Depends(require_admin)):
+    if not await db.workshops.find_one({"id": data.workshop_id}):
+        raise HTTPException(400, "Parent workshop not found")
+    doc = {**data.model_dump(), "id": str(uuid.uuid4())}
+    await db.workshop_sessions.insert_one(doc)
+    return WorkshopSessionResponse(**doc)
+
+@api_router.put("/admin/workshop-sessions/{sid}", response_model=WorkshopSessionResponse)
+async def admin_update_session(sid: str, data: WorkshopSessionCreate, admin=Depends(require_admin)):
+    payload = data.model_dump()
+    res = await db.workshop_sessions.update_one({"id": sid}, {"$set": payload})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Session not found")
+    return WorkshopSessionResponse(id=sid, **payload)
+
+@api_router.delete("/admin/workshop-sessions/{sid}")
+async def admin_delete_session(sid: str, admin=Depends(require_admin)):
+    if await db.workshop_bookings.count_documents({"session_id": sid, "payment_status": "paid"}) > 0:
+        raise HTTPException(400, "Session has paid bookings; cancel them first")
+    res = await db.workshop_sessions.delete_one({"id": sid})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Session not found")
+    return {"deleted": sid}
+
+
+# ---- Customer booking flow ----
+@api_router.post("/workshop-bookings", response_model=WorkshopBookingResponse)
+async def create_workshop_booking(data: WorkshopBookingCreate):
+    session = await db.workshop_sessions.find_one({"id": data.session_id, "active": True}, {"_id": 0})
+    if not session:
+        raise HTTPException(404, "Session not found")
+    workshop = await db.workshops.find_one({"id": session["workshop_id"]}, {"_id": 0})
+    if not workshop:
+        raise HTTPException(404, "Workshop not found")
+    if data.payment_choice not in ("deposit", "full"):
+        raise HTTPException(400, "payment_choice must be 'deposit' or 'full'")
+    if data.guests < 1:
+        raise HTTPException(400, "At least 1 guest required")
+    spots_remaining = max(0, session.get("capacity", 0) - session.get("spots_booked", 0))
+    if data.guests > spots_remaining:
+        raise HTTPException(400, f"Only {spots_remaining} spot(s) remaining for this session")
+
+    price, deposit, subtotal, discount_amount, amount_due_now, balance_due, discount_pct = _ws_calc_amounts(
+        workshop, session, data.guests, data.payment_choice
+    )
+
+    booking_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": booking_id,
+        "session_id": data.session_id,
+        "workshop_id": workshop["id"],
+        "workshop_name": workshop["name"],
+        "workshop_slug": workshop["slug"],
+        "session_date": session["date"],
+        "session_start_time": session.get("start_time", ""),
+        "session_location": session.get("location") or workshop.get("location_default", ""),
+        "name": data.name,
+        "email": data.email,
+        "phone": data.phone,
+        "guests": data.guests,
+        "dietary_requirements": data.dietary_requirements,
+        "notes": data.notes,
+        "payment_choice": data.payment_choice,
+        "price_per_guest": price,
+        "deposit_per_guest": deposit,
+        "full_payment_discount_pct": discount_pct,
+        "subtotal": subtotal,
+        "discount_amount": discount_amount,
+        "balance_due_on_day": balance_due,
+        "amount_due_now": amount_due_now,
+        "amount_paid": 0.0,
+        "status": "pending",
+        "payment_status": "pending",
+        "stripe_session_id": None,
+        "created_at": now,
+    }
+    await db.workshop_bookings.insert_one(doc)
+    return _ws_serialise_booking(doc, workshop["name"])
+
+
+@api_router.post("/workshop-checkout/session")
+async def create_workshop_checkout_session(request: Request, data: WorkshopCheckoutRequest):
+    booking = await db.workshop_bookings.find_one({"id": data.booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Booking not found")
+    if booking.get("payment_status") == "paid":
+        raise HTTPException(400, "Booking already paid")
+    if booking.get("amount_due_now", 0) <= 0:
+        raise HTTPException(400, "No amount due for this booking")
+
+    api_key = os.environ.get('STRIPE_API_KEY')
+    webhook_url = f"{data.origin_url}/api/webhook/stripe"
+    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+
+    success_url = f"{data.origin_url}/workshops/booking-success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{data.origin_url}/workshops"
+
+    checkout_request = CheckoutSessionRequest(
+        amount=float(booking["amount_due_now"]),
+        currency="gbp",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "kind": "workshop_booking",
+            "booking_id": booking["id"],
+            "session_id": booking["session_id"],
+            "workshop_id": booking["workshop_id"],
+            "guests": str(booking.get("guests", 1)),
+        },
+    )
+    session = await stripe_checkout.create_checkout_session(checkout_request)
+
+    await db.workshop_bookings.update_one(
+        {"id": booking["id"]},
+        {"$set": {"stripe_session_id": session.session_id}}
+    )
+    await db.payment_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "kind": "workshop_booking",
+        "booking_id": booking["id"],
+        "amount": booking["amount_due_now"],
+        "currency": "gbp",
+        "payment_status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"url": session.url, "session_id": session.session_id, "amount": booking["amount_due_now"]}
+
+
+@api_router.get("/workshop-checkout/status/{session_id}")
+async def get_workshop_checkout_status(session_id: str):
+    booking = await db.workshop_bookings.find_one({"stripe_session_id": session_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Booking not found for session")
+
+    api_key = os.environ.get('STRIPE_API_KEY')
+    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+    status = await stripe_checkout.get_checkout_status(session_id)
+
+    if status.payment_status == "paid" and booking.get("payment_status") != "paid":
+        await db.workshop_bookings.update_one(
+            {"id": booking["id"]},
+            {"$set": {
+                "payment_status": "paid",
+                "status": "confirmed",
+                "amount_paid": booking.get("amount_due_now", 0),
+                "paid_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        # Increase the booked spots count
+        await db.workshop_sessions.update_one(
+            {"id": booking["session_id"]},
+            {"$inc": {"spots_booked": booking.get("guests", 1)}},
+        )
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        booking = await db.workshop_bookings.find_one({"id": booking["id"]}, {"_id": 0})
+
+    return {
+        "status": status.status,
+        "payment_status": status.payment_status,
+        "amount_total": status.amount_total,
+        "currency": status.currency,
+        "booking": _ws_serialise_booking(booking, booking.get("workshop_name", "")).model_dump(),
+    }
+
+
+@api_router.get("/admin/workshop-bookings", response_model=List[WorkshopBookingResponse])
+async def admin_list_bookings(admin=Depends(require_admin)):
+    docs = await db.workshop_bookings.find({}).sort("created_at", -1).to_list(length=2000)
+    return [_ws_serialise_booking(d, d.get("workshop_name", "")) for d in docs]
+
+
+# ---- Seed initial workshops ----
+WORKSHOP_SEED = [
+    {
+        "slug": "christmas-door-wreath",
+        "name": "Christmas Door Wreath Workshop",
+        "tag": "Christmas",
+        "season": "Late November · December",
+        "short_description": "An evening of mulled wine, foraged foliage and gilded ribbons.",
+        "description": "An evening of mulled wine, foraged foliage and gilded ribbons. Each guest leaves with a 14\" door wreath built on a moss base — eucalyptus, blue spruce, dried oranges and your choice of velvet ribbon.",
+        "includes": ["All materials, secateurs & wire", "Mulled wine, cheese and mince pies", "A take-home wreath box for the journey"],
+        "duration": "2.5 hours",
+        "group_size": "Up to 14 guests",
+        "location_default": "Petals Atelier — Mayfair",
+        "image_url": "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1200&q=80",
+        "price_per_guest": 95.0,
+        "deposit_amount": 45.0,
+        "full_payment_discount_pct": 5.0,
+        "sort_order": 10,
+    },
+    {
+        "slug": "halloween-wreath",
+        "name": "Halloween Wreath Workshop",
+        "tag": "Halloween",
+        "season": "October",
+        "short_description": "Moody, painterly autumnal wreaths in oxblood, copper and bronze.",
+        "description": "Moody, painterly autumnal wreaths in oxblood, copper and bronze — dried hydrangea, blackberry, dyed grasses and small pumpkins. A favourite for hen-dos, friend-groups and corporate teams in the run-up to half-term.",
+        "includes": ["All materials, base, wire & secateurs", "Spiced cider & seasonal grazing board", "Studio photography of your finished piece"],
+        "duration": "2 hours",
+        "group_size": "Up to 14 guests",
+        "location_default": "Petals Atelier — Mayfair",
+        "image_url": "https://images.unsplash.com/photo-1572731120259-3a4f9a5b2bcd?w=1200&q=80",
+        "price_per_guest": 75.0,
+        "deposit_amount": 35.0,
+        "full_payment_discount_pct": 5.0,
+        "sort_order": 20,
+    },
+    {
+        "slug": "care-home-bouquet",
+        "name": "Bouquet Workshops for Care Homes",
+        "tag": "Care Homes",
+        "season": "Year-round · weekly or monthly",
+        "short_description": "A gentle, seated workshop designed with care-home activity coordinators.",
+        "description": "A gentle, seated workshop designed with care-home activity coordinators. Residents arrange a small hand-tied posy from soft-stemmed seasonal blooms — dementia-friendly facilitation, fully sanitised tools, no thorns, and a vase to take back to their room.",
+        "includes": ["Florist-led, fully insured facilitator", "All flowers, vases & sanitised tools", "Pre-event consult with your activity team"],
+        "duration": "60–90 minutes",
+        "group_size": "Up to 20 residents",
+        "location_default": "On site at your care home",
+        "image_url": "https://images.unsplash.com/photo-1499744937866-d7e566a20a61?w=1200&q=80",
+        "price_per_guest": 18.0,
+        "deposit_amount": 9.0,
+        "full_payment_discount_pct": 5.0,
+        "sort_order": 30,
+    },
+]
+
+@api_router.post("/seed/workshops")
+async def seed_workshops(reset: bool = False, admin=Depends(require_admin)):
+    if reset:
+        await db.workshops.delete_many({})
+        await db.workshop_sessions.delete_many({})
+    if await db.workshops.count_documents({}) == 0:
+        for w in WORKSHOP_SEED:
+            await db.workshops.insert_one({**w, "id": str(uuid.uuid4()), "active": True, "gallery_images": [],
+                                            "cancellation_policy": "Deposits are non-refundable. Balance is collected on the day."})
+    # Seed two upcoming sessions per workshop if none exist
+    today = datetime.now(timezone.utc).date()
+    if await db.workshop_sessions.count_documents({}) == 0:
+        for w in await db.workshops.find({}).to_list(length=100):
+            for offset_days, start_time in [(28, "18:30"), (42, "11:00")]:
+                d = (today + timedelta(days=offset_days)).isoformat()
+                await db.workshop_sessions.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "workshop_id": w["id"],
+                    "date": d,
+                    "start_time": start_time,
+                    "end_time": "",
+                    "location": "",
+                    "capacity": 14,
+                    "spots_booked": 0,
+                    "price_per_guest": None,
+                    "deposit_amount": None,
+                    "notes": "",
+                    "active": True,
+                })
+    return {
+        "workshops": await db.workshops.count_documents({}),
+        "sessions": await db.workshop_sessions.count_documents({}),
     }
 
 

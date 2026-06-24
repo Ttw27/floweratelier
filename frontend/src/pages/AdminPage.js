@@ -17,6 +17,7 @@ import CardsAdmin from "../components/admin/CardsAdmin";
 import AddonsAdmin from "../components/admin/AddonsAdmin";
 import BoxesAdmin from "../components/admin/BoxesAdmin";
 import TemplatesAdmin from "../components/admin/TemplatesAdmin";
+import WorkshopsAdmin from "../components/admin/WorkshopsAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -192,6 +193,7 @@ export default function AdminPage() {
             <TabsTrigger value="boxes" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-boxes-tab">Boxes</TabsTrigger>
             <TabsTrigger value="templates" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-templates-tab">Templates</TabsTrigger>
             <TabsTrigger value="addons" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-addons-tab">Add-ons</TabsTrigger>
+            <TabsTrigger value="workshops" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-workshops-tab">Workshops</TabsTrigger>
             <TabsTrigger value="seo" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-seo-tab">SEO</TabsTrigger>
             <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
           </TabsList>
@@ -402,6 +404,10 @@ export default function AdminPage() {
 
           <TabsContent value="addons" data-testid="admin-addons-content">
             <AddonsAdmin />
+          </TabsContent>
+
+          <TabsContent value="workshops" data-testid="admin-workshops-content">
+            <WorkshopsAdmin />
           </TabsContent>
 
           <TabsContent value="settings" data-testid="admin-settings-content">

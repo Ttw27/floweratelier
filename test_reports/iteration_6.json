@@ -1,0 +1,62 @@
+{
+  "summary": "Workshop Booking Funnel + Box Designer UX e2e testing. Backend 21/21 pytest pass on /app/backend/tests/test_workshops.py (public workshops, sessions, bookings with deposit/full pricing math, oversell rejection, Stripe checkout URL, admin auth gating, admin CRUD with session-blocking delete, webhook branch presence, and regression for products/boxes/cards/templates/login). Frontend: /workshops renders 3 cards with Book/Details; modal opens, sessions load, step 2 reached, all required data-testids present, deposit↔full toggles update summary, 5% off badge shown, full booking flow created and redirected to checkout.stripe.com. /workshops/:slug detail page renders + unknown slug returns 'Workshop not found'. Admin Workshops tab present with sub-tabs and Add Programme/Add Date modals. Box Designer opened from admin Templates: Arrange controls (front/forward/backward/back) all render and are clickable without error; designer-edit-text-inline button opens inline textarea overlay appended to document.body (verified 1 body-direct textarea after click).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Admin → Workshops sub-tabs",
+        "issues": [
+          "Sub-tab data-testid for the Programmes tab is `workshops-subtab-workshops` (id from internal state key) while the label is 'Programmes'. The review_request expected `workshops-subtab-programmes`. Cosmetic/test-id naming only — tab works. Consider aligning the id to `programmes` for consistency with the user-visible label."
+        ]
+      }
+    ]
+  },
+  "passed_tests": [
+    "GET /api/workshops → 3 seeded workshops (christmas-door-wreath, halloween-wreath, care-home-bouquet)",
+    "GET /api/workshops/christmas-door-wreath → 200 with price 95, deposit 45, discount_pct 5; unknown slug → 404",
+    "GET /api/workshops/christmas-door-wreath/sessions → >=1 upcoming session",
+    "POST /api/workshop-bookings deposit 2 guests @95 → subtotal £190, amount_due_now £90, balance £100, discount £0",
+    "POST /api/workshop-bookings full 1 guest @95 → subtotal £95, amount_due_now £90.25, discount £4.75, balance £0",
+    "POST /api/workshop-bookings rejects guests>capacity (capacity=1, guests=2 → 400 'spot remaining')",
+    "POST /api/workshop-checkout/session returns url containing stripe.com and amount==booking.amount_due_now",
+    "Admin auth required on /api/admin/workshops, /api/admin/workshop-sessions, /api/admin/workshop-bookings, /api/seed/workshops (401/403)",
+    "Admin CRUD: POST→PUT→DELETE-blocked-while-sessions-exist→DELETE-session→DELETE-workshop all work",
+    "Static check: webhook `kind == 'workshop_booking'` branch present in server.py",
+    "Regression: /api/products, /api/boxes, /api/cards, /api/templates, /api/auth/login all 200",
+    "Frontend /workshops: workshops-page renders, 3 workshop-card-* tiles, 3 Book + 3 Details buttons",
+    "Frontend modal: workshop-booking-modal opens, workshop-session-* render, Continue → workshop-booking-step-details",
+    "Frontend form: name/email/phone/guests/dietary/notes/cancellation-policy/submit + payment-deposit/payment-full all present",
+    "Frontend pricing UI: full-payment card shows '5% OFF' badge; deposit summary shows £45/£50 split; full summary shows £4.75 discount and £90.25 due",
+    "Frontend redirect: clicking Pay & book navigates to https://checkout.stripe.com/c/pay/cs_test_…",
+    "Frontend /workshops/christmas-door-wreath: workshop-detail-page, title 'Christmas Door Wreath Workshop', Book CTA, 2 upcoming-session cards; /workshops/does-not-exist shows 'Workshop not found'",
+    "Admin /admin → admin-workshops-tab: sub-tabs Sessions/Bookings present, Add Programme opens workshops-edit-form modal",
+    "Box Designer (from admin Templates → Add template): box-designer modal opens, Add Text creates a layer, designer-arrange-controls + bring-to-front/forward/backward/to-back all present and clickable, designer-edit-text-inline opens an inline textarea appended to document.body (1 body-direct textarea observed)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_workshops.py",
+    "/app/test_reports/pytest/workshops_results.xml"
+  ],
+  "action_items": [
+    "(Cosmetic, optional) Rename the Programmes sub-tab id from 'workshops' to 'programmes' in /app/frontend/src/components/admin/WorkshopsAdmin.js so data-testid='workshops-subtab-programmes' matches the visible label and the spec. Functional behaviour is unaffected."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/server.py is now 2707 lines — well above the 700-line guideline. Strongly recommend splitting into modular routers (auth, catalog, portfolio, orders, workshops, templates, admin) to keep the codebase maintainable. The workshop block alone is ~330 lines and is self-contained, making it a natural extraction candidate (e.g. routers/workshops.py).",
+    "Workshop seed inside server.py duplicates WORKSHOP_SEED data; consider moving seed data to a json/seed module.",
+    "Some workshop endpoints depend on session.get('spots_booked', 0) — the spots_booked counter is only incremented in /workshop-checkout/status (paid path). If a booking is created but the user abandons Stripe, the capacity stays available, which is correct, but the rejected-when-full logic uses spots_booked. Ensure the webhook handler also increments spots_booked when paid (it does, verified in lines 850-870)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_workshops.py (new pytest suite, 21 tests, all passing)"
+  ],
+  "success_rate": {"backend": "100% (21/21)", "frontend": "100% critical flows"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (verified working; used to access /admin → Workshops tab and Templates → Box Designer)",
+  "seed_data_creation": "No new seed needed — relied on existing 3 workshops + 6 sessions. Added 2-3 TEST_ bookings during pricing assertions; one ephemeral admin-created workshop+session was created and deleted in the CRUD test.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Workshop pytest is at /app/backend/tests/test_workshops.py. Both christmas-door-wreath sessions are still available (oversell test uses a temporary capacity=1 session and cleans up). The booking flow does redirect to a real Stripe checkout URL; no payment is actually completed during tests. Box Designer is most easily accessed via /admin → Templates → Add template (TemplatesAdmin opens BoxDesigner). The Box Designer inline-edit textarea is appended directly to document.body (verifiable via `document.querySelectorAll('body > textarea').length === 1` after clicking designer-edit-text-inline).",
+  "rca of the issue": "No bugs found. Only one cosmetic test-id naming inconsistency (workshops-subtab-workshops vs. expected workshops-subtab-programmes)."
+}

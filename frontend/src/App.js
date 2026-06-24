@@ -21,6 +21,8 @@ import ShopFrontInstallsPage from "./pages/ShopFrontInstallsPage";
 import InShopDisplaysPage from "./pages/InShopDisplaysPage";
 import FilmTVPhotoshootPage from "./pages/FilmTVPhotoshootPage";
 import WorkshopsPage from "./pages/WorkshopsPage";
+import WorkshopDetailPage from "./pages/WorkshopDetailPage";
+import WorkshopBookingSuccessPage from "./pages/WorkshopBookingSuccessPage";
 import BespokePortfolioPage from "./pages/BespokePortfolioPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -71,6 +73,8 @@ function App() {
                 <Route path="/in-shop-displays" element={<InShopDisplaysPage />} />
                 <Route path="/film-tv-photoshoot" element={<FilmTVPhotoshootPage />} />
                 <Route path="/workshops" element={<WorkshopsPage />} />
+                <Route path="/workshops/booking-success" element={<WorkshopBookingSuccessPage />} />
+                <Route path="/workshops/:slug" element={<WorkshopDetailPage />} />
                 <Route path="/portfolio" element={<BespokePortfolioPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />

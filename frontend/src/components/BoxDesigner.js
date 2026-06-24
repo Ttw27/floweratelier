@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, Type, ImagePlus, Trash2, Undo2, Check, Square, Circle as CircleIcon, Heart, RectangleHorizontal, LayoutTemplate } from "lucide-react";
+import { X, Type, ImagePlus, Trash2, Undo2, Check, Square, Circle as CircleIcon, Heart, RectangleHorizontal, LayoutTemplate, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -188,6 +188,76 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
     setLayers((arr) => arr.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   };
 
+  // Arrange layers (z-index = array order; later = on top)
+  const moveLayer = (direction) => {
+    if (!selectedId) return;
+    const idx = layers.findIndex((l) => l.id === selectedId);
+    if (idx === -1) return;
+    let target;
+    if (direction === "front") target = layers.length - 1;
+    else if (direction === "back") target = 0;
+    else if (direction === "forward") target = Math.min(layers.length - 1, idx + 1);
+    else target = Math.max(0, idx - 1); // backward
+    if (target === idx) return;
+    const next = layers.slice();
+    const [item] = next.splice(idx, 1);
+    next.splice(target, 0, item);
+    pushHistory(next);
+  };
+
+  // Inline text editing — render an HTML textarea over the canvas
+  const startEditingText = (layer) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const node = stage.findOne(`#${layer.id}`);
+    if (!node) return;
+    // Hide the konva text while editing so we don't see two overlapping
+    node.hide();
+    transformerRef.current?.hide();
+    node.getLayer()?.batchDraw();
+
+    const stageBox = stage.container().getBoundingClientRect();
+    const absPos = node.getAbsolutePosition();
+    const rotation = node.rotation();
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.value = layer.text;
+    textarea.style.position = "absolute";
+    textarea.style.top = `${stageBox.top + absPos.y}px`;
+    textarea.style.left = `${stageBox.left + absPos.x}px`;
+    textarea.style.width = `${Math.max(160, node.width() * stageScale)}px`;
+    textarea.style.minHeight = `${Math.max(40, layer.fontSize * (layer.scaleY || 1) * stageScale * 1.2)}px`;
+    textarea.style.fontSize = `${layer.fontSize * (layer.scaleY || 1) * stageScale}px`;
+    textarea.style.lineHeight = "1.1";
+    textarea.style.fontFamily = layer.fontFamily;
+    textarea.style.color = layer.fill;
+    textarea.style.background = "rgba(255,255,255,0.96)";
+    textarea.style.outline = "2px solid #1A1A1A";
+    textarea.style.padding = "4px 6px";
+    textarea.style.margin = "0";
+    textarea.style.zIndex = "200";
+    textarea.style.transformOrigin = "top left";
+    textarea.style.transform = `rotate(${rotation}deg)`;
+    textarea.style.overflow = "hidden";
+    textarea.style.resize = "none";
+    textarea.focus();
+    textarea.select();
+
+    const finish = (commit) => {
+      const newText = textarea.value.trim() || layer.text;
+      document.body.removeChild(textarea);
+      node.show();
+      transformerRef.current?.show();
+      node.getLayer()?.batchDraw();
+      if (commit) updateLayer(layer.id, { text: newText });
+    };
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); finish(true); }
+      if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    });
+    textarea.addEventListener("blur", () => finish(true));
+  };
+
   const handleSave = async () => {
     setSavingPng(true);
     try {
@@ -361,7 +431,9 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
                       },
                     };
                     if (l.type === "text") {
-                      return <KText key={l.id} {...common} text={l.text} fontSize={l.fontSize} fontFamily={l.fontFamily} fill={l.fill} />;
+                      return <KText key={l.id} {...common} text={l.text} fontSize={l.fontSize} fontFamily={l.fontFamily} fill={l.fill}
+                        onDblClick={() => startEditingText(l)}
+                        onDblTap={() => startEditingText(l)} />;
                     }
                     if (l.type === "image") {
                       return <URLImage key={l.id} {...common} src={l.url} width={l.width} height={l.height} />;
@@ -394,14 +466,44 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
             <p className="accent-label mb-4"><span className="thin-rule" />Layer settings</p>
             {!selected && (
               <p className="font-body text-[12px] text-[#7A7A7A]">
-                Tap any text or photo on the canvas to edit it. Drag to move, corner handles to scale, top dot to rotate.
+                Tap any text or photo on the canvas to edit it. <strong>Double-tap text to rewrite it.</strong> Drag to move, corner handles to scale, top dot to rotate.
               </p>
+            )}
+
+            {selected && (
+              <div className="mb-5 pb-5 border-b border-[#E5E5E5]" data-testid="designer-arrange-controls">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A] mb-2">Arrange</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => moveLayer("front")} className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-[#E5E5E5] hover:border-[#1A1A1A] text-[11px] uppercase tracking-[0.18em]" data-testid="designer-bring-to-front" aria-label="Bring to front">
+                    <ChevronsUp size={14} /> To front
+                  </button>
+                  <button type="button" onClick={() => moveLayer("forward")} className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-[#E5E5E5] hover:border-[#1A1A1A] text-[11px] uppercase tracking-[0.18em]" data-testid="designer-bring-forward" aria-label="Bring forward">
+                    <ChevronUp size={14} /> Forward
+                  </button>
+                  <button type="button" onClick={() => moveLayer("backward")} className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-[#E5E5E5] hover:border-[#1A1A1A] text-[11px] uppercase tracking-[0.18em]" data-testid="designer-send-backward" aria-label="Send backward">
+                    <ChevronDown size={14} /> Backward
+                  </button>
+                  <button type="button" onClick={() => moveLayer("back")} className="inline-flex items-center justify-center gap-2 px-3 py-2 border border-[#E5E5E5] hover:border-[#1A1A1A] text-[11px] uppercase tracking-[0.18em]" data-testid="designer-send-to-back" aria-label="Send to back">
+                    <ChevronsDown size={14} /> To back
+                  </button>
+                </div>
+              </div>
             )}
 
             {selected && selected.type === "text" && (
               <div className="space-y-4 text-[#1A1A1A]">
                 <div>
-                  <label className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A]">Text</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A]">Text</label>
+                    <button
+                      type="button"
+                      onClick={() => startEditingText(selected)}
+                      className="text-[10px] uppercase tracking-[0.18em] underline text-[#1A1A1A]"
+                      data-testid="designer-edit-text-inline"
+                    >
+                      Edit on canvas
+                    </button>
+                  </div>
                   <textarea
                     rows={2}
                     value={selected.text}
@@ -409,6 +511,7 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
                     className="mt-1 w-full border border-[#E5E5E5] p-2 text-sm focus:border-[#1A1A1A] outline-none rounded-none"
                     data-testid="designer-text-input"
                   />
+                  <p className="text-[10px] text-[#7A7A7A] mt-1">Tip: double-click the text on the canvas to rewrite it inline.</p>
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-[0.18em] text-[#7A7A7A]">Font</label>
