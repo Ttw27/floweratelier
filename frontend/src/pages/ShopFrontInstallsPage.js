@@ -37,7 +37,7 @@ export default function ShopFrontInstallsPage() {
               </h1>
               <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
                 Bespoke storefront floral installations for fashion houses, beauty halls,
-                jewellery flagships and lifestyle stores across London — quarterly, monthly
+                jewellery flagships and lifestyle stores across the Midlands — quarterly, monthly
                 or campaign-led.
               </p>
               <Link to="/consultation?service=shop_front">

@@ -31,9 +31,9 @@ const OCCASIONS = [
 const PRESS = ["Vogue", "Tatler", "House & Garden", "Condé Nast Traveller", "Country Living", "FT — How To Spend It"];
 
 const TESTIMONIALS = [
-  { quote: "They understood, without being told, the exact quiet I wanted my wedding to feel.", author: "Eloise & Felix", location: "Kensington · June 2025" },
-  { quote: "The bouquet arrived more beautiful than I could have imagined. My mother wept.", author: "Mrs. C. Hartley", location: "Mayfair · 2025" },
-  { quote: "Our weekly installs have completely lifted the energy of the entire club. Impeccable.", author: "Private Members' Club", location: "Mayfair" },
+  { quote: "They understood, without being told, the exact quiet I wanted my wedding to feel.", author: "Eloise & Felix", location: "Stoneygate · June 2025" },
+  { quote: "The bouquet arrived more beautiful than I could have imagined. My mother wept.", author: "Mrs. C. Hartley", location: "Stoneygate · 2025" },
+  { quote: "Our weekly installs have completely lifted the energy of the entire club. Impeccable.", author: "Private Members' Club", location: "Leicester" },
 ];
 
 function ProductCardLuxe({ product, onAdd }) {
@@ -118,7 +118,7 @@ export default function HomePage() {
                 <em className="text-[#B3A89B]">artfully</em> composed.
               </h1>
               <p className="font-body text-sm md:text-base text-[#7A7A7A] leading-relaxed mb-6 max-w-md">
-                Editorial bouquets hand-tied in our Mayfair atelier — delivered across London
+                Editorial bouquets hand-tied in our Leicester atelier — delivered across the Midlands
                 tomorrow, with bespoke services UK-wide.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 mb-7">
@@ -133,8 +133,8 @@ export default function HomePage() {
               </div>
               {/* Trust micro-row */}
               <div className="grid grid-cols-3 gap-4 pt-5 border-t border-[#E5E5E5]">
-                <div><Truck size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Next-day London</p></div>
-                <div><Award size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Mayfair atelier</p></div>
+                <div><Truck size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Next-day Midlands</p></div>
+                <div><Award size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Leicester atelier</p></div>
                 <div><Leaf size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">7-day freshness</p></div>
               </div>
             </div>
@@ -142,7 +142,7 @@ export default function HomePage() {
           <div className="relative order-1 lg:order-2 h-[320px] sm:h-[380px] lg:h-auto overflow-hidden">
             <img src={IMG.hero} alt="Signature bouquet" className="w-full h-full object-cover" />
             <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 hidden md:block">
-              <p className="accent-label text-[#1A1A1A]">The Mayfair · from £185</p>
+              <p className="accent-label text-[#1A1A1A]">The Stoneygate · from £185</p>
             </div>
           </div>
         </div>

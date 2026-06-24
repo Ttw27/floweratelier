@@ -950,7 +950,7 @@ async def get_admin_inquiries(admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v6-ready-collection-r3"
+    current_version = "v7-leicester-r4"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
@@ -978,7 +978,7 @@ async def seed_data(reset: bool = False):
     # Premium products £80+ — light-luxury imagery
     products = [
         {
-            "id": str(uuid.uuid4()), "name": "The Mayfair",
+            "id": str(uuid.uuid4()), "name": "The Stoneygate",
             "description": "An editorial composition of garden roses, peonies and ranunculus in ivory and blush — hand-tied and presented in our signature ivory box.",
             "price": 185.00, "original_price": None, "category_id": categories[0]["id"],
             "images": ["https://images.pexels.com/photos/33886749/pexels-photo-33886749.png"],
@@ -994,7 +994,7 @@ async def seed_data(reset: bool = False):
             "in_stock": True, "featured": True, "occasion_tags": ["anniversary", "thank-you", "celebration"],
         },
         {
-            "id": str(uuid.uuid4()), "name": "The Belgravia Bride",
+            "id": str(uuid.uuid4()), "name": "The Stoneygate Bride",
             "description": "A couture bridal bouquet of David Austin roses, ranunculus and trailing jasmine. Includes complimentary boutonnière.",
             "price": 245.00, "original_price": None, "category_id": categories[1]["id"],
             "images": ["https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1200"],
@@ -1157,35 +1157,35 @@ async def seed_data(reset: bool = False):
     portfolio_items = [
         # ───── WEDDINGS (6) ─────
         {
-            "id": str(uuid.uuid4()), "title": "Kensington Orangery Wedding",
+            "id": str(uuid.uuid4()), "title": "Stoneygate Orangery Wedding",
             "category": "wedding",
-            "description": "A blush & ivory ceremony arch with trailing roses, garden anemones and seasonal greenery — designed for a summer wedding in West London.",
+            "description": "A blush & ivory ceremony arch with trailing roses, garden anemones and seasonal greenery — designed for a summer wedding in Leicestershire.",
             "image": "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1400",
-            "location": "Kensington, London", "price_from": 3500.0,
+            "location": "Leicester city centre", "price_from": 3500.0,
             "tags": ["arch", "ceremony", "blush", "ivory"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Whitehall Reception Tablescape",
+            "id": str(uuid.uuid4()), "title": "Loughborough Hall Reception Tablescape",
             "category": "wedding",
             "description": "Low-profile runners of ranunculus, roses and clouds of gypsophila — designed to sit below eye-line for intimate conversation.",
             "image": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1400",
-            "location": "Whitehall, London", "price_from": 2200.0,
+            "location": "Loughborough, Leicestershire", "price_from": 2200.0,
             "tags": ["tablescape", "reception", "runner"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Cotswolds Country House Wedding",
+            "id": str(uuid.uuid4()), "title": "Leicestershire Country House Wedding",
             "category": "wedding",
             "description": "Wild, garden-gathered florals across a marquee installation for a 200-guest country wedding.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Stow-on-the-Wold, Cotswolds", "price_from": 7500.0,
+            "location": "Stapleford, Leicestershire", "price_from": 7500.0,
             "tags": ["marquee", "country", "wild"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Claridge's Ballroom Reception",
+            "id": str(uuid.uuid4()), "title": "Stapleford Park Ballroom Reception",
             "category": "wedding",
             "description": "Twelve elevated centrepieces of phalaenopsis, peony and trailing amaranthus for a black-tie ballroom dinner.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Claridge's, Mayfair", "price_from": 8500.0,
+            "location": "Stapleford Park, Leicestershire", "price_from": 8500.0,
             "tags": ["ballroom", "elevated", "black-tie"], "featured": True,
         },
         {
@@ -1197,11 +1197,11 @@ async def seed_data(reset: bool = False):
             "tags": ["destination", "italy", "aisle"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Intimate Chelsea Registry",
+            "id": str(uuid.uuid4()), "title": "Intimate Leicester Registry",
             "category": "wedding",
             "description": "A delicate bridal posy and matching boutonnière in cream garden roses and lily-of-the-valley.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Chelsea Old Town Hall", "price_from": 450.0,
+            "location": "Leicester Town Hall", "price_from": 450.0,
             "tags": ["intimate", "posy", "registry"], "featured": False,
         },
 
@@ -1227,7 +1227,7 @@ async def seed_data(reset: bool = False):
             "category": "sympathy",
             "description": "A trailing coffin spray of white roses, lisianthus and seasonal greenery — soft, dignified, deeply considered.",
             "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
-            "location": "St. Marylebone Crematorium", "price_from": 350.0,
+            "location": "Gilroes Crematorium, Leicester", "price_from": 350.0,
             "tags": ["coffin spray", "white"], "featured": False,
         },
         {
@@ -1235,7 +1235,7 @@ async def seed_data(reset: bool = False):
             "category": "sympathy",
             "description": "A standing easel tribute in soft lilac, white and silver-greens, designed for a celebration of life service.",
             "image": "https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=1400",
-            "location": "Westminster", "price_from": 280.0,
+            "location": "Leicester", "price_from": 280.0,
             "tags": ["easel", "lilac"], "featured": False,
         },
         {
@@ -1243,7 +1243,7 @@ async def seed_data(reset: bool = False):
             "category": "sympathy",
             "description": "A classic heart-shaped tribute of red roses and white lily, finished with a hand-tied ribbon and personal card.",
             "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
-            "location": "North London Cemetery", "price_from": 220.0,
+            "location": "Gilroes Cemetery, Leicester", "price_from": 220.0,
             "tags": ["heart", "classic", "red"], "featured": False,
         },
         {
@@ -1257,35 +1257,35 @@ async def seed_data(reset: bool = False):
 
         # ───── CORPORATE (6) ─────
         {
-            "id": str(uuid.uuid4()), "title": "Mayfair Private Members' Club",
+            "id": str(uuid.uuid4()), "title": "Leicester Private Members' Club",
             "category": "corporate",
             "description": "Weekly floral installs across three bars and a dining room — a rotating programme of seasonal statement arrangements.",
             "image": "https://images.unsplash.com/photo-1768508949823-26255327c264?w=1400",
-            "location": "Mayfair, London", "price_from": 1800.0,
+            "location": "Stoneygate, Leicester", "price_from": 1800.0,
             "tags": ["corporate", "weekly install", "hospitality"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Product Launch — Bond Street",
+            "id": str(uuid.uuid4()), "title": "Product Launch — Highcross",
             "category": "corporate",
             "description": "A statement entrance arch and six reception pedestals in monochrome ivory for a luxury fashion launch.",
             "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1400",
-            "location": "Bond Street, London", "price_from": 4500.0,
+            "location": "Highcross Quarter, Leicester", "price_from": 4500.0,
             "tags": ["corporate", "launch", "event"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Royal Opera House Gala",
+            "id": str(uuid.uuid4()), "title": "Curve Theatre Gala",
             "category": "corporate",
             "description": "Twenty-four cocktail-table arrangements and a grand foyer installation for a charity gala dinner.",
             "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
-            "location": "Royal Opera House, Covent Garden", "price_from": 6800.0,
+            "location": "Curve Theatre, Leicester", "price_from": 6800.0,
             "tags": ["gala", "charity", "foyer"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Tech Awards — The Shard",
+            "id": str(uuid.uuid4()), "title": "Tech Awards — St James Building",
             "category": "corporate",
             "description": "A geometric, modern installation of structured greenery and white roses for an industry awards ceremony.",
             "image": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1400",
-            "location": "The Shard, London", "price_from": 5200.0,
+            "location": "St James Building, Leicester", "price_from": 5200.0,
             "tags": ["awards", "modern", "architectural"], "featured": False,
         },
         {
@@ -1293,57 +1293,57 @@ async def seed_data(reset: bool = False):
             "category": "corporate",
             "description": "Bi-weekly grand lobby installations with seasonal palette rotation — ongoing two-year programme.",
             "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1400",
-            "location": "Knightsbridge, London", "price_from": 2400.0,
+            "location": "Stoneygate, Leicester", "price_from": 2400.0,
             "tags": ["hotel", "lobby", "programme"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Press Day — Mayfair Maison",
+            "id": str(uuid.uuid4()), "title": "Press Day — Leicester Maison",
             "category": "corporate",
             "description": "A press-day floral styling with bouquet stations and a photogenic arch for a fashion house's press preview.",
             "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
-            "location": "Mayfair, London", "price_from": 3200.0,
+            "location": "Stoneygate, Leicester", "price_from": 3200.0,
             "tags": ["press", "fashion", "styling"], "featured": False,
         },
 
         # ───── HOUSE INSTALLS (6) ─────
         {
-            "id": str(uuid.uuid4()), "title": "Notting Hill Residence",
+            "id": str(uuid.uuid4()), "title": "Clarendon Park Residence",
             "category": "house",
             "description": "A fortnightly house-floral programme across entrance hall, kitchen island and dining table for a private residence.",
             "image": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1400",
-            "location": "Notting Hill, London", "price_from": 750.0,
+            "location": "Clarendon Park, Leicester", "price_from": 750.0,
             "tags": ["house install", "residential", "subscription"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Chelsea Townhouse Staircase",
+            "id": str(uuid.uuid4()), "title": "Stoneygate Townhouse Staircase",
             "category": "house",
             "description": "A cascading seasonal installation down a three-floor staircase for a private anniversary dinner at home.",
             "image": "https://images.unsplash.com/photo-1543699936-c901ddbf0c05?w=1400",
-            "location": "Chelsea, London", "price_from": 2800.0,
+            "location": "Westcotes, Leicester", "price_from": 2800.0,
             "tags": ["house install", "statement", "cascade"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Holland Park Drawing Room",
+            "id": str(uuid.uuid4()), "title": "Knighton Drawing Room",
             "category": "house",
             "description": "A weekly drawing-room arrangement in a hand-thrown ceramic vessel — alongside fresh kitchen and bedside posies.",
             "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400",
-            "location": "Holland Park, London", "price_from": 450.0,
+            "location": "Knighton, Leicester", "price_from": 450.0,
             "tags": ["weekly", "drawing room"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Belgravia Hallway Installation",
+            "id": str(uuid.uuid4()), "title": "Stoneygate Hallway Installation",
             "category": "house",
             "description": "A monumental entrance hallway installation for a private dinner — designed to greet guests on arrival.",
             "image": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1400",
-            "location": "Belgravia, London", "price_from": 1850.0,
+            "location": "Stoneygate, Leicester", "price_from": 1850.0,
             "tags": ["entrance", "statement"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Hampstead Country Kitchen",
+            "id": str(uuid.uuid4()), "title": "Oadby Country Kitchen",
             "category": "house",
             "description": "A bi-weekly kitchen-led programme: a large central arrangement plus smaller pieces for the breakfast nook and pantry.",
             "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400",
-            "location": "Hampstead, London", "price_from": 380.0,
+            "location": "Oadby, Leicestershire", "price_from": 380.0,
             "tags": ["kitchen", "bi-weekly"], "featured": False,
         },
         {
@@ -1411,7 +1411,7 @@ async def seed_data(reset: bool = False):
             "category": "traveller_funeral",
             "description": "A 3-foot floral letter tribute in red carnations and white chrysanthemum, set in a bespoke timber frame.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "London", "price_from": 650.0,
+            "location": "Leicester", "price_from": 650.0,
             "tags": ["letter tribute", "3ft", "dad"], "featured": True,
         },
         {
@@ -1435,7 +1435,7 @@ async def seed_data(reset: bool = False):
             "category": "traveller_funeral",
             "description": "A 5-foot Gates of Heaven tribute with cross detailing, in white chrysanthemum with gold and silver ribbon work.",
             "image": "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?w=1400",
-            "location": "London", "price_from": 850.0,
+            "location": "Leicester", "price_from": 850.0,
             "tags": ["gates of heaven", "tribute", "white"], "featured": False,
         },
         {
@@ -1461,7 +1461,7 @@ async def seed_data(reset: bool = False):
             "category": "faith_wedding",
             "description": "Marigold and rose garlands for the gurdwara, palki canopy decoration, and mala for the groom and bride.",
             "image": "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?w=1400",
-            "location": "Southall, London", "price_from": 4200.0,
+            "location": "Belgrave, Leicester", "price_from": 4200.0,
             "tags": ["sikh", "gurdwara", "garlands"], "featured": True,
         },
         {
@@ -1469,7 +1469,7 @@ async def seed_data(reset: bool = False):
             "category": "faith_wedding",
             "description": "A four-pillar floral mandap with marigold thoran, varmala for garland exchange, and full kalash decoration.",
             "image": "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1400",
-            "location": "Wembley, London", "price_from": 6800.0,
+            "location": "Leicester", "price_from": 6800.0,
             "tags": ["hindu", "mandap", "marigold"], "featured": True,
         },
         {
@@ -1477,7 +1477,7 @@ async def seed_data(reset: bool = False):
             "category": "faith_wedding",
             "description": "A floral chuppah of white peonies, garden roses and orchids — with matching ketubah signing table arrangement.",
             "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
-            "location": "Hampstead, London", "price_from": 5400.0,
+            "location": "Oadby, Leicestershire", "price_from": 5400.0,
             "tags": ["jewish", "chuppah", "white"], "featured": True,
         },
         {
@@ -1485,7 +1485,7 @@ async def seed_data(reset: bool = False):
             "category": "faith_wedding",
             "description": "A Nikah ceremony floral design in cream, gold and white — with a separate vibrant palette for the mehndi event.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Edgware Road, London", "price_from": 5800.0,
+            "location": "Belgrave Road, Leicester", "price_from": 5800.0,
             "tags": ["muslim", "nikah", "cream gold"], "featured": False,
         },
         {
@@ -1493,7 +1493,7 @@ async def seed_data(reset: bool = False):
             "category": "faith_wedding",
             "description": "Crown stephana for the bride and groom, plus a floral arch at the church entrance in white and ivory.",
             "image": "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1400",
-            "location": "Bayswater, London", "price_from": 3200.0,
+            "location": "Highfields, Leicester", "price_from": 3200.0,
             "tags": ["greek orthodox", "stephana", "church"], "featured": False,
         },
         {
@@ -1501,57 +1501,57 @@ async def seed_data(reset: bool = False):
             "category": "faith_wedding",
             "description": "A tea ceremony floral installation in red and gold, with double-happiness symbolism and traditional peony arrangements.",
             "image": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1400",
-            "location": "Chinatown, London", "price_from": 2800.0,
+            "location": "Belgrave, Leicester", "price_from": 2800.0,
             "tags": ["chinese", "tea ceremony", "red gold"], "featured": False,
         },
 
         # ───── SHOP FRONT INSTALLS (6) ─────
         {
-            "id": str(uuid.uuid4()), "title": "Bond Street Boutique Window — Spring",
+            "id": str(uuid.uuid4()), "title": "Highcross Boutique Window — Spring",
             "category": "shop_front",
-            "description": "A six-foot floral entryway installation for a Bond Street fashion house, refreshed quarterly.",
+            "description": "A six-foot floral entryway installation for a Highcross fashion house, refreshed quarterly.",
             "image": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1400",
-            "location": "Bond Street, London", "price_from": 4800.0,
+            "location": "Highcross Quarter, Leicester", "price_from": 4800.0,
             "tags": ["window", "fashion", "quarterly"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Sloane Street Jeweller — Christmas",
+            "id": str(uuid.uuid4()), "title": "Highcross Jeweller — Christmas",
             "category": "shop_front",
             "description": "An ivory and gold floral window for a flagship jeweller — built for a 6-week Christmas display.",
             "image": "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1400",
-            "location": "Sloane Street, London", "price_from": 6200.0,
+            "location": "Stoneygate, Leicester", "price_from": 6200.0,
             "tags": ["jewellery", "christmas", "window"], "featured": True,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Beauty Hall Entrance — Knightsbridge",
+            "id": str(uuid.uuid4()), "title": "Beauty Hall Entrance — Highcross",
             "category": "shop_front",
             "description": "Twin floral pillars framing a department store beauty hall entrance, swapped seasonally.",
             "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400",
-            "location": "Knightsbridge, London", "price_from": 3400.0,
+            "location": "Stoneygate, Leicester", "price_from": 3400.0,
             "tags": ["beauty", "department store", "pillars"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Chelsea Bridal Boutique Façade",
+            "id": str(uuid.uuid4()), "title": "Highcross Bridal Boutique Façade",
             "category": "shop_front",
-            "description": "A cascading floral façade above the entrance of a Chelsea bridal boutique, refreshed monthly.",
+            "description": "A cascading floral façade above the entrance of a Highcross bridal boutique, refreshed monthly.",
             "image": "https://images.unsplash.com/photo-1575081838238-d06e716afa28?w=1400",
-            "location": "King's Road, Chelsea", "price_from": 2800.0,
+            "location": "New Walk, Leicester", "price_from": 2800.0,
             "tags": ["bridal", "façade", "cascading"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Mayfair Wine Merchant — Summer Edit",
+            "id": str(uuid.uuid4()), "title": "Leicester Wine Merchant — Summer Edit",
             "category": "shop_front",
-            "description": "A relaxed garden-style window install for a Mayfair wine merchant, set with summer florals.",
+            "description": "A relaxed garden-style window install for a Leicester wine merchant, set with summer florals.",
             "image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1400",
-            "location": "Mayfair, London", "price_from": 2200.0,
+            "location": "Stoneygate, Leicester", "price_from": 2200.0,
             "tags": ["wine", "summer", "garden style"], "featured": False,
         },
         {
-            "id": str(uuid.uuid4()), "title": "Notting Hill Lifestyle Store",
+            "id": str(uuid.uuid4()), "title": "Clarendon Park Lifestyle Store",
             "category": "shop_front",
-            "description": "A flowering archway above the entrance of a Notting Hill interiors store, refreshed seasonally.",
+            "description": "A flowering archway above the entrance of a Clarendon Park interiors store, refreshed seasonally.",
             "image": "https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=1400",
-            "location": "Westbourne Grove", "price_from": 2400.0,
+            "location": "Belgrave, Leicester", "price_from": 2400.0,
             "tags": ["interiors", "archway", "seasonal"], "featured": False,
         },
 
@@ -1561,7 +1561,7 @@ async def seed_data(reset: bool = False):
             "category": "in_shop_display",
             "description": "Six matching florals across the beauty counter for a luxury mascara launch — colour-coded to the product palette.",
             "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400",
-            "location": "Selfridges, London", "price_from": 1850.0,
+            "location": "Highcross, Leicester", "price_from": 1850.0,
             "tags": ["beauty", "launch", "counter"], "featured": True,
         },
         {
@@ -1569,7 +1569,7 @@ async def seed_data(reset: bool = False):
             "category": "in_shop_display",
             "description": "Minimal white arrangements on six display plinths for a watch showroom — refreshed bi-weekly.",
             "image": "https://images.unsplash.com/photo-1543699936-c901ddbf0c05?w=1400",
-            "location": "New Bond Street", "price_from": 950.0,
+            "location": "Highcross Quarter, Leicester", "price_from": 950.0,
             "tags": ["watch", "minimal", "white"], "featured": True,
         },
         {
@@ -1577,23 +1577,23 @@ async def seed_data(reset: bool = False):
             "category": "in_shop_display",
             "description": "Bespoke posies for each fitting room and a sculptural centre arrangement for the salon.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Hampstead, London", "price_from": 720.0,
+            "location": "Oadby, Leicestershire", "price_from": 720.0,
             "tags": ["bridal", "fitting room"], "featured": False,
         },
         {
             "id": str(uuid.uuid4()), "title": "Concept Store — Brand Activation",
             "category": "in_shop_display",
-            "description": "A three-week floral takeover of a Soho concept store — entrance, central display and back-room styling.",
+            "description": "A three-week floral takeover of a Cultural Quarter concept store — entrance, central display and back-room styling.",
             "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
-            "location": "Soho, London", "price_from": 4400.0,
+            "location": "Cultural Quarter, Leicester", "price_from": 4400.0,
             "tags": ["concept", "takeover", "brand"], "featured": False,
         },
         {
             "id": str(uuid.uuid4()), "title": "Patisserie Counter Florals",
             "category": "in_shop_display",
-            "description": "Delicate sugared-pastel florals across a Mayfair patisserie counter, swapped twice weekly.",
+            "description": "Delicate sugared-pastel florals across a Leicester patisserie counter, swapped twice weekly.",
             "image": "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1400",
-            "location": "Mayfair, London", "price_from": 450.0,
+            "location": "Stoneygate, Leicester", "price_from": 450.0,
             "tags": ["patisserie", "weekly", "pastel"], "featured": False,
         },
         {
@@ -1601,7 +1601,7 @@ async def seed_data(reset: bool = False):
             "category": "in_shop_display",
             "description": "A large signature reception arrangement plus four meeting-room posies, weekly.",
             "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=1400",
-            "location": "London", "price_from": 680.0,
+            "location": "Leicester", "price_from": 680.0,
             "tags": ["showroom", "reception", "weekly"], "featured": False,
         },
 
@@ -1619,7 +1619,7 @@ async def seed_data(reset: bool = False):
             "category": "film_tv",
             "description": "A petal-filled bath and surrounding floral installation for a major-label music video shoot.",
             "image": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=1400",
-            "location": "East London Studios", "price_from": 4800.0,
+            "location": "Leicester Film Studios", "price_from": 4800.0,
             "tags": ["music video", "set design", "petals"], "featured": True,
         },
         {
@@ -1627,15 +1627,15 @@ async def seed_data(reset: bool = False):
             "category": "film_tv",
             "description": "Period-accurate floral arrangements across a country house set for a streaming drama series.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Buckinghamshire", "price_from": 6500.0,
+            "location": "Rutland", "price_from": 6500.0,
             "tags": ["period drama", "set", "country house"], "featured": True,
         },
         {
             "id": str(uuid.uuid4()), "title": "Fashion Lookbook — Garden Florals",
             "category": "film_tv",
-            "description": "Wild garden florals styled across a Cotswolds country garden shoot for an emerging designer lookbook.",
+            "description": "Wild garden florals styled across a Rutland country garden shoot for an emerging designer lookbook.",
             "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1400",
-            "location": "Cotswolds", "price_from": 1850.0,
+            "location": "Rutland", "price_from": 1850.0,
             "tags": ["lookbook", "fashion", "garden"], "featured": False,
         },
         {
@@ -1643,7 +1643,7 @@ async def seed_data(reset: bool = False):
             "category": "film_tv",
             "description": "Bespoke single-stem hero florals for a global skincare campaign — macro-photographed for product imagery.",
             "image": "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1400",
-            "location": "Soho Studios", "price_from": 1450.0,
+            "location": "Leicester Studios", "price_from": 1450.0,
             "tags": ["campaign", "skincare", "macro"], "featured": False,
         },
         {
@@ -1651,7 +1651,7 @@ async def seed_data(reset: bool = False):
             "category": "film_tv",
             "description": "A two-year programme of daily floral arrangements for a long-running daytime talk show studio set.",
             "image": "https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400",
-            "location": "Television Centre, London", "price_from": 720.0,
+            "location": "BBC Radio Leicester", "price_from": 720.0,
             "tags": ["tv", "studio", "daily"], "featured": False,
         },
 
@@ -1717,8 +1717,8 @@ class SiteSettings(BaseModel):
     delivery_blocked_dates: List[str] = []       # ["2026-12-24", "2026-12-25"]
     delivery_window_days: int = 28               # how many days ahead to surface
     # Default SEO fallbacks (used when a route has no per-page override)
-    seo_default_title: str = "Petals Atelier — London Luxury Floristry"
-    seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in London. Editorial design, dignified service, delivered nationwide."
+    seo_default_title: str = "Petals Atelier — Leicester & Midlands Luxury Floristry"
+    seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in Leicester and across the Midlands. Editorial design, dignified service, delivered nationwide."
     seo_default_og_image: str = ""
     seo_site_name: str = "Petals Atelier"
 
@@ -2551,7 +2551,7 @@ WORKSHOP_SEED = [
         "includes": ["All materials, secateurs & wire", "Mulled wine, cheese and mince pies", "A take-home wreath box for the journey"],
         "duration": "2.5 hours",
         "group_size": "Up to 14 guests",
-        "location_default": "Petals Atelier — Mayfair",
+        "location_default": "Petals Atelier — Leicester",
         "image_url": "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1200&q=80",
         "price_per_guest": 95.0,
         "deposit_amount": 45.0,
@@ -2569,7 +2569,7 @@ WORKSHOP_SEED = [
         "includes": ["All materials, base, wire & secateurs", "Spiced cider & seasonal grazing board", "Studio photography of your finished piece"],
         "duration": "2 hours",
         "group_size": "Up to 14 guests",
-        "location_default": "Petals Atelier — Mayfair",
+        "location_default": "Petals Atelier — Leicester",
         "image_url": "https://images.unsplash.com/photo-1572731120259-3a4f9a5b2bcd?w=1200&q=80",
         "price_per_guest": 75.0,
         "deposit_amount": 35.0,
@@ -2614,7 +2614,7 @@ WORKSHOP_SEED = [
         "includes": ["Florist-led 2-hour session", "All flowers, tools and aprons supplied", "We promote on our socials and tag the venue", "Bring 14–20 new midweek covers through the door"],
         "duration": "2 hours (plus drinks after)",
         "group_size": "Up to 14 guests · larger on request",
-        "location_default": "At your venue, anywhere in London & the Home Counties",
+        "location_default": "At your venue, anywhere in Leicestershire & the Midlands",
         "image_url": "https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=1200&q=80",
         "price_per_guest": 45.0,
         "deposit_amount": 0.0,

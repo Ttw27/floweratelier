@@ -65,7 +65,7 @@ export default function ConsultationPage() {
             and respond within 24 hours to arrange a conversation.
           </p>
           <div className="space-y-2 font-body text-sm text-[#7A7A7A]">
-            <p className="flex items-center justify-center gap-2"><Phone size={14} strokeWidth={1.3} />020 7123 4567</p>
+            <p className="flex items-center justify-center gap-2"><Phone size={14} strokeWidth={1.3} />0116 212 3456</p>
             <p className="flex items-center justify-center gap-2"><Mail size={14} strokeWidth={1.3} />atelier@petalsatelier.com</p>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function ConsultationPage() {
             <div className="bg-white border border-[#E5E5E5] p-8">
               <p className="accent-label mb-5 text-[#1A1A1A]">Direct</p>
               <div className="space-y-3">
-                <a href="tel:+442071234567" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />020 7123 4567</a>
+                <a href="tel:+441162123456" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />0116 212 3456</a>
                 <a href="mailto:atelier@petalsatelier.com" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Mail size={14} strokeWidth={1.3} />atelier@petalsatelier.com</a>
               </div>
             </div>

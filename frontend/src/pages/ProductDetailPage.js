@@ -157,7 +157,7 @@ export default function ProductDetailPage() {
             {/* Features */}
             <div className="pt-8 mt-8 border-t border-[#E5E5E5] space-y-4">
               <Feature icon={Award} text="Hand-tied by the atelier's lead florists" />
-              <Feature icon={Truck} text={`Complimentary London delivery over £100 · Saturday service available`} />
+              <Feature icon={Truck} text={`Complimentary Midlands delivery over £100 · Saturday service available`} />
               <Feature icon={Leaf} text="7-day freshness guarantee" />
               <Feature icon={Gift} text="Presented in our signature ivory atelier box" />
             </div>

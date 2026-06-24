@@ -16,12 +16,12 @@ const IMG = {
 
 /* ─────────── 8 DIRECTIONS ─────────── */
 const themes = [
-  /* 01 ───────── MAYFAIR ATELIER (current) ───────── */
+  /* 01 ───────── LEICESTER ATELIER (current) ───────── */
   {
-    id: "mayfair",
-    name: "Mayfair Atelier",
+    id: "leicester",
+    name: "Leicester Atelier",
     tag: "Currently live",
-    description: "Editorial light luxury. Cormorant + Montserrat, ivory base, taupe accents. Quiet, refined, Mayfair townhouse.",
+    description: "Editorial light luxury. Cormorant + Montserrat, ivory base, taupe accents. Quiet, refined, Leicester townhouse.",
     fonts: "Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@300;500",
     palette: ["#FAFAF7", "#1A1A1A", "#B3A89B", "#E8D8D0", "#C4CFC0"],
     render: () => (
@@ -37,7 +37,7 @@ const themes = [
         </div>
         <div className="grid grid-cols-5 flex-1">
           <div className="col-span-2 p-5 flex flex-col justify-center">
-            <p style={{ fontSize: 7, letterSpacing: "0.3em" }} className="uppercase text-[#7A7A7A] mb-2">— Floral Couture · London</p>
+            <p style={{ fontSize: 7, letterSpacing: "0.3em" }} className="uppercase text-[#7A7A7A] mb-2">— Floral Couture · Leicester</p>
             <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: 30, lineHeight: 0.95, letterSpacing: "-0.01em" }}>
               The language<br />of <em style={{ color: "#B3A89B" }}>flowers,</em><br />rewritten.
             </h2>
@@ -49,7 +49,7 @@ const themes = [
           {[IMG.rose, IMG.arch, IMG.bouquet].map((src, i) => (
             <div key={i}>
               <div className="aspect-[4/5] overflow-hidden mb-1"><img src={src} alt="" className="w-full h-full object-cover" /></div>
-              <p style={{ fontSize: 7, letterSpacing: "0.2em" }} className="uppercase text-[#7A7A7A]">{["Mayfair","Bridal","Garden"][i]}</p>
+              <p style={{ fontSize: 7, letterSpacing: "0.2em" }} className="uppercase text-[#7A7A7A]">{["Stoneygate","Bridal","Garden"][i]}</p>
               <p style={{ fontFamily: "'Cormorant Garamond', serif" }} className="text-[10px] text-[#1A1A1A]">from £{[185,245,135][i]}</p>
             </div>
           ))}
@@ -69,7 +69,7 @@ const themes = [
     render: () => (
       <div style={{ background: "#FFE7C7", color: "#1A1A1A", fontFamily: "'DM Mono', monospace" }} className="h-full flex flex-col relative overflow-hidden">
         <div style={{ background: "#1A1A1A", color: "#FFD93D" }} className="px-5 py-1.5 flex items-center justify-between">
-          <span style={{ fontSize: 8, letterSpacing: "0.18em" }}>★ FREE LONDON DELIVERY OVER £50 ★ NEW DROP FRIDAY ★</span>
+          <span style={{ fontSize: 8, letterSpacing: "0.18em" }}>★ FREE MIDLANDS DELIVERY OVER £50 ★ NEW DROP FRIDAY ★</span>
           <span style={{ fontSize: 8 }}>EST · 2008</span>
         </div>
         <div className="flex justify-between items-center px-5 py-3" style={{ background: "#FFE7C7" }}>
@@ -125,7 +125,7 @@ const themes = [
         </div>
         <div className="flex-1 grid grid-cols-12 grid-rows-6 border-b-2 border-black">
           <div className="col-span-7 row-span-6 border-r-2 border-black p-4 flex flex-col justify-between">
-            <p style={{ fontSize: 8 }}>FILE_004 · LONDON · 51.5074°N</p>
+            <p style={{ fontSize: 8 }}>FILE_004 · LEICESTER · 52.6369°N</p>
             <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 60, lineHeight: 0.85, letterSpacing: "-0.05em" }}>
               FLOWERS,<br />UNFILTER&shy;ED.
             </h2>
@@ -182,7 +182,7 @@ const themes = [
             <h2 style={{ fontFamily: "'Lora', serif", fontStyle: "italic", fontWeight: 500, fontSize: 30, lineHeight: 1, color: "#3D5022" }} className="mt-1">
               Wild English<br />garden flowers.
             </h2>
-            <p style={{ fontSize: 9 }} className="mt-2 leading-relaxed text-[#3D5022]/80">Hand-tied with foraged foliage. Delivered Tuesday &amp; Friday across SE London.</p>
+            <p style={{ fontSize: 9 }} className="mt-2 leading-relaxed text-[#3D5022]/80">Hand-tied with foraged foliage. Delivered Tuesday &amp; Friday across Leicestershire.</p>
             <button style={{ background: "#3D5022", color: "#F5EFD9", fontFamily: "'Cormorant SC', serif", fontSize: 9, letterSpacing: "0.3em" }} className="mt-3 px-3 py-1.5 uppercase w-fit rounded-full">Order Bouquet</button>
           </div>
           <div className="overflow-hidden relative">
@@ -341,7 +341,7 @@ const themes = [
               <img src={IMG.arch} alt="" className="w-full h-full object-cover" />
               <div style={{ background: "rgba(242,235,226,0.92)" }} className="absolute bottom-1 left-1 px-2 py-1">
                 <p style={{ fontFamily: "'Caveat', cursive", fontSize: 10, color: "#A57C57", lineHeight: 0.9 }}>Eloise &amp; Felix</p>
-                <p style={{ fontSize: 6, letterSpacing: "0.18em", fontWeight: 500 }} className="uppercase">— June '25 · Kensington</p>
+                <p style={{ fontSize: 6, letterSpacing: "0.18em", fontWeight: 500 }} className="uppercase">— June '25 · Stoneygate</p>
               </div>
             </div>
             <div style={{ background: "#fff", border: "1px solid #A57C57" }} className="p-3">
@@ -475,7 +475,7 @@ export default function ThemePreviewPage() {
             We've gone deliberately wide so you can feel the edges.
           </p>
           <p className="font-body text-xs uppercase tracking-[0.22em] text-[#B3A89B]">
-            Currently live · No. 01 · Mayfair Atelier
+            Currently live · No. 01 · Leicester Atelier
           </p>
         </div>
       </section>

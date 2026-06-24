@@ -24,9 +24,9 @@ export default function Footer() {
               tributes, corporate programmes and private residence installations.
             </p>
             <div className="space-y-3">
-              <a href="tel:+442071234567" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
+              <a href="tel:+441162123456" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
                 <Phone size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">020 7123 4567</span>
+                <span className="font-body text-sm">0116 212 3456</span>
               </a>
               <a href="mailto:atelier@petalsatelier.com" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
                 <Mail size={15} strokeWidth={1.3} />
@@ -46,7 +46,7 @@ export default function Footer() {
               )}
               <div className="flex items-center gap-3 text-[#7A7A7A]">
                 <MapPin size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">Mayfair, London</span>
+                <span className="font-body text-sm">Leicester, Midlands</span>
               </div>
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function Footer() {
       <div className="border-t border-[#E5E5E5]">
         <div className="px-6 md:px-12 max-w-[1400px] mx-auto py-6 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide">
-            © 2026 Petals Atelier — London. All rights reserved.
+            © 2026 Petals Atelier — Leicester. All rights reserved.
           </p>
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide italic">
             Floral couture, by hand.

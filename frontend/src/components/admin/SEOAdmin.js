@@ -206,7 +206,7 @@ export default function SEOAdmin() {
                   onChange={(e) => setEditing({ ...editing, keywords: e.target.value })}
                   className="light-input rounded-none mt-2"
                   data-testid="seo-form-keywords"
-                  placeholder="luxury florist london, traveller weddings, bespoke wedding flowers"
+                  placeholder="luxury florist leicester, midlands weddings, bespoke wedding flowers"
                 />
               </div>
               <div>

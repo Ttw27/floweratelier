@@ -27,13 +27,13 @@ export default function SympathyPage() {
             </h1>
             <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10 max-w-lg">
               Dignified, bespoke tributes crafted with the utmost care — we work closely with
-              funeral directors across London and the Home Counties to ensure seamless, quiet
+              funeral directors across Leicester and the Midlands to ensure seamless, quiet
               delivery on your most difficult day.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <a href="tel:+442071234567" data-testid="call-sympathy">
+              <a href="tel:+441162123456" data-testid="call-sympathy">
                 <Button className="btn-dark rounded-none inline-flex items-center gap-3">
-                  <Phone size={14} /> 020 7123 4567
+                  <Phone size={14} /> 0116 212 3456
                 </Button>
               </a>
               <Link to="/consultation" data-testid="consultation-sympathy">
@@ -112,7 +112,7 @@ export default function SympathyPage() {
             When you need us,<br /><span className="italic">quietly.</span>
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="tel:+442071234567"><Button className="btn-dark rounded-none inline-flex items-center gap-3"><Phone size={14} />020 7123 4567</Button></a>
+            <a href="tel:+441162123456"><Button className="btn-dark rounded-none inline-flex items-center gap-3"><Phone size={14} />0116 212 3456</Button></a>
             <Link to="/consultation"><Button className="btn-outline-dark rounded-none inline-flex items-center gap-3">Send an enquiry <ArrowRight size={14} /></Button></Link>
           </div>
         </div>

@@ -91,7 +91,7 @@ export default function FilmTVPhotoshootPage() {
           </div>
           <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-8">
             {[
-              { title: "Fast turnarounds", desc: "Same-day quotes, next-day delivery to set across London and the UK." },
+              { title: "Fast turnarounds", desc: "Same-day quotes, next-day delivery to set across the Midlands and the UK." },
               { title: "On-set styling", desc: "Our team comes to set to dress, restyle and reset between takes." },
               { title: "Continuity care", desc: "Hero stems preserved, swapped and replaced as the shoot progresses." },
               { title: "Production-friendly", desc: "We invoice through your production company, work to call-sheets, and disappear when the camera's rolling." },

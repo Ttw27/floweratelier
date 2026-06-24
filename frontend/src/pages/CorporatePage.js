@@ -28,8 +28,8 @@ export default function CorporatePage() {
                 Brands <br />in <span className="italic text-[#B3A89B]">bloom.</span>
               </h1>
               <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
-                Weekly programmes for Mayfair hotels and private members' clubs. Launch arches
-                for the Bond Street houses. Gala tablescapes across the City. We partner quietly,
+                Weekly programmes for Midlands hotels and private members' clubs. Launch arches
+                for the Highcross houses. Gala tablescapes across the city. We partner quietly,
                 and deliver impeccably.
               </p>
               <Link to="/consultation?service=corporate">
