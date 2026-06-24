@@ -103,9 +103,22 @@ export default function WorkshopDetailPage() {
                     Send a brief <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
                   </Button>
                 </div>
+              ) : upcoming.length === 0 ? (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <a href={whatsappHref} target="_blank" rel="noopener noreferrer" data-testid="workshop-detail-whatsapp">
+                    <Button className="bg-[#25D366] hover:bg-[#1ebe5b] text-white rounded-none py-6 px-8 w-full sm:w-auto">
+                      <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
+                    </Button>
+                  </a>
+                  <Link to={`/consultation?service=workshop&workshop=${workshop.slug}`}>
+                    <Button variant="outline" className="rounded-none py-6 px-8" data-testid="workshop-detail-nodates-cta">
+                      Arrange a date <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
+                    </Button>
+                  </Link>
+                </div>
               ) : (
-                <Button onClick={primaryCTA} disabled={upcoming.length === 0} className="btn-dark rounded-none py-6 px-8" data-testid="workshop-detail-book-cta">
-                  {upcoming.length === 0 ? "No dates available" : "Book a workshop"} {upcoming.length > 0 && <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />}
+                <Button onClick={primaryCTA} className="btn-dark rounded-none py-6 px-8" data-testid="workshop-detail-book-cta">
+                  Book a workshop <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
                 </Button>
               )}
             </div>
@@ -163,10 +176,22 @@ export default function WorkshopDetailPage() {
             </div>
 
             {sessions.length === 0 ? (
-              <div className="bg-white border border-[#E5E5E5] p-8 text-center">
-                <p className="font-body text-base text-[#1A1A1A] mb-3">No upcoming dates yet.</p>
-                <p className="font-body text-sm text-[#7A7A7A] mb-6">Drop us a message and we&rsquo;ll let you know when the next is scheduled.</p>
-                <Link to="/consultation"><Button variant="outline" className="rounded-none">Enquire</Button></Link>
+              <div className="bg-white border border-[#E5E5E5] p-8 md:p-10 text-center" data-testid="workshop-detail-no-dates">
+                <p className="accent-label justify-center mb-4"><span className="thin-rule" />No dates booked in yet</p>
+                <h3 className="font-heading text-2xl md:text-3xl font-light text-[#1A1A1A] mb-3">Wish to arrange a date &mdash; or host it at your own venue?</h3>
+                <p className="font-body text-sm text-[#5A5A5A] mb-6 max-w-xl mx-auto leading-relaxed">
+                  Please get in touch and we&rsquo;ll come back to you with the next available slots, or organise a private workshop around your room and your date.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
+                    <Button className="bg-[#25D366] hover:bg-[#1ebe5b] text-white rounded-none py-5 px-6 w-full sm:w-auto">
+                      <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
+                    </Button>
+                  </a>
+                  <Link to={`/consultation?service=workshop&workshop=${workshop.slug}`}>
+                    <Button variant="outline" className="rounded-none py-5 px-6 w-full sm:w-auto">Send a brief</Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

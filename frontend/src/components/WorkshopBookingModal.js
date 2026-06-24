@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { X, Calendar, Clock, MapPin, Users } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Users, MessageCircle } from "lucide-react";
+import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -17,6 +18,7 @@ const fmtDate = (iso) => {
 };
 
 export default function WorkshopBookingModal({ open, workshop, onClose }) {
+  const { settings } = useSettings();
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
@@ -127,10 +129,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
               {loadingSessions ? (
                 <p className="text-sm text-[#7A7A7A]">Loading dates…</p>
               ) : sessions.length === 0 ? (
-                <div className="bg-white border border-[#E5E5E5] p-6 text-center">
-                  <p className="font-body text-sm text-[#1A1A1A] mb-2">No upcoming dates published yet.</p>
-                  <p className="font-body text-xs text-[#7A7A7A]">Drop us a message and we&rsquo;ll let you know as soon as the next one&rsquo;s scheduled.</p>
-                </div>
+                <NoDatesCard workshop={workshop} settings={settings} onClose={onClose} />
               ) : (
                 <div className="space-y-3">
                   {sessions.map((s) => {
@@ -278,6 +277,35 @@ function Row({ label, value, bold = false }) {
     <div className={`flex justify-between items-center py-1 ${bold ? "font-heading text-base text-[#1A1A1A]" : "text-[13px] text-[#5A5A5A]"}`}>
       <span>{label}</span>
       <span>{value}</span>
+    </div>
+  );
+}
+
+function NoDatesCard({ workshop, settings, onClose }) {
+  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const waMsg = encodeURIComponent(
+    `Hello Petals Atelier — I'd like to arrange a date for the ${workshop.name} workshop (or host it at our own venue). Could you let me know what's available?`
+  );
+  const waHref = `https://wa.me/${waNumber}?text=${waMsg}`;
+  return (
+    <div className="bg-white border border-[#E5E5E5] p-6 md:p-8 text-center" data-testid="workshop-booking-no-dates">
+      <p className="accent-label justify-center mb-4"><span className="thin-rule" />No dates booked in yet</p>
+      <h4 className="font-heading text-2xl text-[#1A1A1A] mb-3 font-light">Wish to arrange a date — or host it at your own venue?</h4>
+      <p className="font-body text-sm text-[#5A5A5A] leading-relaxed mb-6 max-w-md mx-auto">
+        Please get in touch and we&rsquo;ll come back to you with the next available slots, or organise a private workshop around your room and your date.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href={waHref} target="_blank" rel="noopener noreferrer" data-testid="workshop-booking-no-dates-whatsapp">
+          <Button className="bg-[#25D366] hover:bg-[#1ebe5b] text-white rounded-none py-5 px-6 w-full sm:w-auto">
+            <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
+          </Button>
+        </a>
+        <a href={`/consultation?service=workshop&workshop=${workshop.slug}`} onClick={onClose} data-testid="workshop-booking-no-dates-enquire">
+          <Button variant="outline" className="rounded-none py-5 px-6 w-full sm:w-auto">
+            Send a brief
+          </Button>
+        </a>
+      </div>
     </div>
   );
 }
