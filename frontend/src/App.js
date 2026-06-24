@@ -20,6 +20,7 @@ import HouseInstallsPage from "./pages/HouseInstallsPage";
 import ShopFrontInstallsPage from "./pages/ShopFrontInstallsPage";
 import InShopDisplaysPage from "./pages/InShopDisplaysPage";
 import FilmTVPhotoshootPage from "./pages/FilmTVPhotoshootPage";
+import WorkshopsPage from "./pages/WorkshopsPage";
 import BespokePortfolioPage from "./pages/BespokePortfolioPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
@@ -69,6 +70,7 @@ function App() {
                 <Route path="/shop-front-installs" element={<ShopFrontInstallsPage />} />
                 <Route path="/in-shop-displays" element={<InShopDisplaysPage />} />
                 <Route path="/film-tv-photoshoot" element={<FilmTVPhotoshootPage />} />
+                <Route path="/workshops" element={<WorkshopsPage />} />
                 <Route path="/portfolio" element={<BespokePortfolioPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />

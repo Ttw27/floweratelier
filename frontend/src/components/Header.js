@@ -26,6 +26,7 @@ const SERVICES = [
   { name: "Shop Front Installs", path: "/shop-front-installs" },
   { name: "In-Shop Bespoke Displays", path: "/in-shop-displays" },
   { name: "Film, TV & Photoshoot", path: "/film-tv-photoshoot" },
+  { name: "Workshops", path: "/workshops" },
 ];
 
 export default function Header() {

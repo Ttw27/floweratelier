@@ -76,6 +76,7 @@ export default function Footer() {
               <li><Link to="/shop-front-installs" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-shop-front">Shop Front Installs</Link></li>
               <li><Link to="/in-shop-displays" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-in-shop">In-Shop Displays</Link></li>
               <li><Link to="/film-tv-photoshoot" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-film-tv">Film, TV &amp; Photoshoot</Link></li>
+              <li><Link to="/workshops" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-workshops">Workshops</Link></li>
               <li><Link to="/portfolio" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-portfolio">Bespoke Portfolio</Link></li>
             </ul>
           </div>
