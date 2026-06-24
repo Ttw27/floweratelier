@@ -144,10 +144,26 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 3. CMS layer extension: make service-page wording &amp; tier pricing admin-editable via `page_content` collection.
 4. Admin UI for Portfolio item CRUD.
 5. Replace legacy stock imagery on service pages with commissioned photography.
+6. **Workshop reminder email** — 48h before workshop send Resend/SendGrid email with studio address + parking.
 
 ## Backlog (P2)
 1. Instagram feed integration
 2. Customer testimonials with photos
 3. Blog / Inspiration section
 4. Typed `DeliveryAddress` sub-model in backend
-5. Break `server.py` (1,100+ lines) into routers (auth, products, portfolio, orders, admin)
+5. Break `server.py` (now 2,700+ lines) into routers (auth, products, portfolio, orders, workshops, admin)
+6. Pet Sympathy / Memorial vertical pages
+7. Memorial Anniversaries (recurring annual commissions)
+8. Seasonal pre-order drops (Valentine's, Mother's Day)
+
+## Changelog
+### 2026-06-24 — Workshops Booking Funnel + Box Designer UX
+- **Workshops** (Phase 4): admin-managed `workshops` (programmes) + dated `workshop_sessions` collections; customer hybrid layout (`/workshops` list + `/workshops/:slug` detail). 2-step booking modal (date → details + payment).
+  - Payment options via Stripe: **deposit** or **pay-in-full with 5% off**. Cancellation policy: deposits non-refundable; balance collected on the day (not via Stripe).
+  - Customer fields collected: name, email, phone, guests, dietary_requirements, notes.
+  - Spots-booked counter increments on Stripe-paid (status endpoint + webhook).
+  - New endpoints: `GET /api/workshops`, `GET /api/workshops/{slug}`, `GET /api/workshops/{slug}/sessions`, `POST /api/workshop-bookings`, `POST /api/workshop-checkout/session`, `GET /api/workshop-checkout/status/{session_id}`, full admin CRUD under `/api/admin/workshops*`, `POST /api/seed/workshops`.
+  - Seeded programmes: Christmas Door Wreath (£95), Halloween Wreath (£75), Care-Home Bouquet sessions (£18/resident).
+  - Admin: new Workshops tab with Programmes/Sessions/Bookings sub-tabs.
+- **Box Designer**: (1) double-click any text layer (or tap "Edit on canvas") to rewrite it via an inline textarea overlay; (2) layer-arrange controls in the inspector — Bring to Front / Forward / Backward / Send to Back.
+- Tested: pytest 21/21 + frontend Playwright e2e (`iteration_6.json`).

@@ -148,13 +148,13 @@ export default function WorkshopsAdmin() {
       {/* Sub-tabs */}
       <div className="flex gap-1 border-b border-[#E5E5E5] mb-6">
         {[
-          { id: "workshops", label: `Programmes (${workshops.length})` },
-          { id: "sessions",  label: `Sessions (${sessions.length})` },
-          { id: "bookings",  label: `Bookings (${bookings.length})` },
+          { id: "workshops", testId: "programmes", label: `Programmes (${workshops.length})` },
+          { id: "sessions",  testId: "sessions",   label: `Sessions (${sessions.length})` },
+          { id: "bookings",  testId: "bookings",   label: `Bookings (${bookings.length})` },
         ].map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`px-4 py-2 text-[11px] uppercase tracking-[0.18em] border-b-2 ${tab === t.id ? "border-[#1A1A1A] text-[#1A1A1A]" : "border-transparent text-[#7A7A7A] hover:text-[#1A1A1A]"}`}
-            data-testid={`workshops-subtab-${t.id}`}>
+            data-testid={`workshops-subtab-${t.testId}`}>
             {t.label}
           </button>
         ))}
