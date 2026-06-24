@@ -33,17 +33,51 @@ def admin_headers(session):
 
 # ===== Public Workshop endpoints =====
 class TestPublicWorkshops:
-    def test_list_workshops_three_seeded(self, session):
+    def test_list_workshops_four_seeded(self, session):
         r = session.get(f"{API}/workshops")
         assert r.status_code == 200, r.text
         data = r.json()
         assert isinstance(data, list)
         slugs = {w["slug"] for w in data}
-        assert {"christmas-door-wreath", "halloween-wreath", "care-home-bouquet"}.issubset(slugs), slugs
-        # check prices populated
+        assert {"christmas-door-wreath", "halloween-wreath",
+                "care-home-bouquet", "pub-social-club-night"}.issubset(slugs), slugs
+        # check prices populated and booking_mode present
         for w in data:
             assert w["price_per_guest"] >= 0
             assert "slug" in w and "name" in w
+            assert "booking_mode" in w
+            assert w["booking_mode"] in ("direct", "enquire")
+
+    def test_workshop_modes_split(self, session):
+        r = session.get(f"{API}/workshops")
+        data = r.json()
+        by_slug = {w["slug"]: w for w in data}
+        # direct
+        assert by_slug["christmas-door-wreath"]["booking_mode"] == "direct"
+        assert by_slug["christmas-door-wreath"]["price_per_guest"] == 95.0
+        assert by_slug["halloween-wreath"]["booking_mode"] == "direct"
+        assert by_slug["halloween-wreath"]["price_per_guest"] == 75.0
+        # enquire
+        ch = by_slug["care-home-bouquet"]
+        assert ch["booking_mode"] == "enquire"
+        assert ch["price_per_guest"] == 18.0
+        assert isinstance(ch["enquire_bullets"], list) and len(ch["enquire_bullets"]) > 0
+        assert isinstance(ch["enquire_venues"], list) and len(ch["enquire_venues"]) > 0
+        assert ch["whatsapp_message"]
+        assert ch["enquire_pitch"]
+        pb = by_slug["pub-social-club-night"]
+        assert pb["booking_mode"] == "enquire"
+        assert pb["price_per_guest"] == 45.0
+        assert len(pb["enquire_bullets"]) > 0
+        assert len(pb["enquire_venues"]) > 0
+        assert "Petals Atelier" in pb["whatsapp_message"] or "workshop" in pb["whatsapp_message"].lower()
+
+    def test_enquire_workshop_sessions_empty_but_200(self, session):
+        """Enquire workshops should not have sessions seeded, but endpoint should still 200."""
+        for slug in ("care-home-bouquet", "pub-social-club-night"):
+            r = session.get(f"{API}/workshops/{slug}/sessions")
+            assert r.status_code == 200, f"{slug}: {r.text}"
+            assert r.json() == [], f"{slug} should have no sessions, got {r.json()}"
 
     def test_workshop_detail_by_slug(self, session):
         r = session.get(f"{API}/workshops/christmas-door-wreath")
@@ -64,6 +98,105 @@ class TestPublicWorkshops:
         sessions = r.json()
         assert isinstance(sessions, list)
         assert len(sessions) >= 1, "expected at least one upcoming session"
+
+
+# ===== Enquire admin CRUD round-trip =====
+class TestEnquireAdminCRUD:
+    def test_create_enquire_then_flip_to_direct_roundtrip(self, session, admin_headers):
+        slug = f"test-enq-{uuid.uuid4().hex[:6]}"
+        payload = {
+            "slug": slug,
+            "name": "TEST Enquire Workshop",
+            "tag": "TEST",
+            "season": "TEST",
+            "short_description": "TEST short",
+            "description": "TEST long",
+            "includes": ["a", "b"],
+            "duration": "1h",
+            "group_size": "10",
+            "location_default": "Venue",
+            "image_url": "https://example.com/x.jpg",
+            "price_per_guest": 30.0,
+            "deposit_amount": 0.0,
+            "full_payment_discount_pct": 0.0,
+            "sort_order": 99,
+            "active": True,
+            "booking_mode": "enquire",
+            "enquire_pitch": "TEST pitch",
+            "enquire_bullets": ["bullet one", "bullet two", "bullet three"],
+            "enquire_venues": ["Pubs", "Care homes"],
+            "whatsapp_message": "Hi from TEST",
+        }
+        cr = session.post(f"{API}/admin/workshops", json=payload, headers=admin_headers)
+        assert cr.status_code == 200, cr.text
+        wid = cr.json()["id"]
+
+        # Verify via admin GET — fields persisted
+        gr = session.get(f"{API}/admin/workshops", headers=admin_headers)
+        assert gr.status_code == 200
+        found = next((x for x in gr.json() if x["id"] == wid), None)
+        assert found, "created workshop missing from admin list"
+        assert found["booking_mode"] == "enquire"
+        assert found["enquire_bullets"] == ["bullet one", "bullet two", "bullet three"]
+        assert found["enquire_venues"] == ["Pubs", "Care homes"]
+        assert found["whatsapp_message"] == "Hi from TEST"
+        assert found["enquire_pitch"] == "TEST pitch"
+
+        # PUT back to direct
+        upd = {**payload, "booking_mode": "direct"}
+        ur = session.put(f"{API}/admin/workshops/{wid}", json=upd, headers=admin_headers)
+        assert ur.status_code == 200, ur.text
+        assert ur.json()["booking_mode"] == "direct"
+
+        # Verify round-trip
+        gr2 = session.get(f"{API}/admin/workshops", headers=admin_headers)
+        found2 = next((x for x in gr2.json() if x["id"] == wid), None)
+        assert found2["booking_mode"] == "direct"
+
+        # cleanup
+        d = session.delete(f"{API}/admin/workshops/{wid}", headers=admin_headers)
+        assert d.status_code == 200, d.text
+
+
+# ===== Inquiry: workshop_host =====
+class TestWorkshopHostInquiry:
+    def test_post_inquiry_workshop_host_and_admin_lists_it(self, session, admin_headers):
+        payload = {
+            "name": "TEST Pub Owner",
+            "email": f"TEST_pub_{uuid.uuid4().hex[:6]}@example.com",
+            "phone": "+44 7000",
+            "message": "We'd like to host a flower workshop night.\nVenue: The Crown\nDate: 15/03/2026\nGuests: 18",
+            "service_type": "workshop_host",
+        }
+        r = session.post(f"{API}/inquiries", json=payload)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        # endpoint returns inquiry id (or echoes data)
+        # confirm retrieval via admin
+        gr = session.get(f"{API}/admin/inquiries", headers=admin_headers)
+        assert gr.status_code == 200, gr.text
+        all_inq = gr.json()
+        # Find ours
+        mine = [i for i in all_inq if i.get("email") == payload["email"]]
+        assert len(mine) >= 1, f"newly posted inquiry not retrievable; all={len(all_inq)}"
+        assert mine[0]["service_type"] == "workshop_host"
+        assert mine[0]["name"] == "TEST Pub Owner"
+
+
+# ===== Seed regression =====
+class TestSeedRegression:
+    def test_seed_workshops_reset_true_creates_4_workshops_and_4_sessions(self, session, admin_headers):
+        r = session.post(f"{API}/seed/workshops?reset=true", headers=admin_headers)
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["workshops"] == 4, data
+        # 2 direct workshops × 2 sessions each = 4
+        assert data["sessions"] == 4, data
+        # And the public list still has 4
+        pr = session.get(f"{API}/workshops")
+        slugs = {w["slug"] for w in pr.json()}
+        assert {"christmas-door-wreath", "halloween-wreath",
+                "care-home-bouquet", "pub-social-club-night"} == slugs
 
 
 # ===== Workshop bookings pricing =====

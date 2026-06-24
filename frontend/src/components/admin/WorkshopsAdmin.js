@@ -16,6 +16,9 @@ const emptyWorkshop = () => ({
   image_url: "",
   price_per_guest: 0, deposit_amount: 0, full_payment_discount_pct: 5,
   cancellation_policy: "Deposits are non-refundable. Balance is collected on the day.",
+  booking_mode: "direct",
+  enquire_pitch: "", enquire_venues: "", enquire_bullets: "",
+  whatsapp_message: "",
   sort_order: 0, active: true,
 });
 
@@ -85,6 +88,15 @@ export default function WorkshopsAdmin() {
         deposit_amount: parseFloat(w.deposit_amount) || 0,
         full_payment_discount_pct: parseFloat(w.full_payment_discount_pct) || 0,
         cancellation_policy: w.cancellation_policy || "",
+        booking_mode: w.booking_mode === "enquire" ? "enquire" : "direct",
+        enquire_pitch: w.enquire_pitch || "",
+        enquire_venues: typeof w.enquire_venues === "string"
+          ? w.enquire_venues.split("\n").map((s) => s.trim()).filter(Boolean)
+          : (w.enquire_venues || []),
+        enquire_bullets: typeof w.enquire_bullets === "string"
+          ? w.enquire_bullets.split("\n").map((s) => s.trim()).filter(Boolean)
+          : (w.enquire_bullets || []),
+        whatsapp_message: w.whatsapp_message || "",
         sort_order: parseInt(w.sort_order) || 0, active: !!w.active,
       };
       if (w.id) await axios.put(`${API_URL}/api/admin/workshops/${w.id}`, payload);
@@ -179,7 +191,12 @@ export default function WorkshopsAdmin() {
                   <p className="font-body text-[12px] text-[#1A1A1A] truncate">{w.name}</p>
                   <p className="font-body text-[11px] text-[#7A7A7A] truncate">{w.slug} · £{Number(w.price_per_guest).toFixed(0)}/guest · {w.active ? "Active" : "Hidden"}</p>
                   <div className="flex justify-end gap-2 mt-2">
-                    <button onClick={() => setEditingWorkshop({ ...w, includes: (w.includes || []).join("\n") })} className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid={`workshops-edit-${w.id}`}><Pencil size={14} /></button>
+                    <button onClick={() => setEditingWorkshop({
+                      ...w,
+                      includes: (w.includes || []).join("\n"),
+                      enquire_venues: (w.enquire_venues || []).join("\n"),
+                      enquire_bullets: (w.enquire_bullets || []).join("\n"),
+                    })} className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid={`workshops-edit-${w.id}`}><Pencil size={14} /></button>
                     <button onClick={() => removeWorkshop(w.id)} className="text-[#7A7A7A] hover:text-red-600" data-testid={`workshops-delete-${w.id}`}><Trash2 size={14} /></button>
                   </div>
                 </div>
@@ -302,6 +319,33 @@ export default function WorkshopsAdmin() {
               <Field label="Full-pay discount %"><Input type="number" step="0.1" value={editingWorkshop.full_payment_discount_pct} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, full_payment_discount_pct: e.target.value })} className="light-input rounded-none" /></Field>
               <Field label="Sort order"><Input type="number" value={editingWorkshop.sort_order} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, sort_order: e.target.value })} className="light-input rounded-none" /></Field>
               <div className="md:col-span-2"><Field label="Cancellation policy"><Textarea rows={2} value={editingWorkshop.cancellation_policy} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, cancellation_policy: e.target.value })} className="light-input rounded-none" /></Field></div>
+
+              {/* Booking mode toggle */}
+              <div className="md:col-span-2 border-t border-[#E5E5E5] pt-4">
+                <Label className="text-[#1A1A1A] text-sm">Booking mode</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <label className={`border p-3 cursor-pointer ${editingWorkshop.booking_mode !== "enquire" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5]"}`}>
+                    <input type="radio" name="booking_mode" value="direct" checked={editingWorkshop.booking_mode !== "enquire"} onChange={() => setEditingWorkshop({ ...editingWorkshop, booking_mode: "direct" })} className="mr-2" data-testid="workshops-form-mode-direct" />
+                    <strong className="text-sm text-[#1A1A1A]">Direct (Stripe)</strong>
+                    <p className="text-[11px] text-[#7A7A7A] mt-1">Customers pick a dated session and pay deposit or full.</p>
+                  </label>
+                  <label className={`border p-3 cursor-pointer ${editingWorkshop.booking_mode === "enquire" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5]"}`}>
+                    <input type="radio" name="booking_mode" value="enquire" checked={editingWorkshop.booking_mode === "enquire"} onChange={() => setEditingWorkshop({ ...editingWorkshop, booking_mode: "enquire" })} className="mr-2" data-testid="workshops-form-mode-enquire" />
+                    <strong className="text-sm text-[#1A1A1A]">Enquire (WhatsApp + form)</strong>
+                    <p className="text-[11px] text-[#7A7A7A] mt-1">For care homes, venues, hospices — bespoke quote, no Stripe.</p>
+                  </label>
+                </div>
+              </div>
+
+              {editingWorkshop.booking_mode === "enquire" && (
+                <>
+                  <div className="md:col-span-2"><Field label="Enquire sales pitch (paragraph)"><Textarea rows={3} value={editingWorkshop.enquire_pitch} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, enquire_pitch: e.target.value })} placeholder="Why your venue should host this — 1–2 sentences." className="light-input rounded-none" /></Field></div>
+                  <div className="md:col-span-2"><Field label="Commercial bullets (one per line)"><Textarea rows={4} value={editingWorkshop.enquire_bullets} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, enquire_bullets: e.target.value })} placeholder={"£45 per head\nYou keep all bar spend\n14–20 new midweek covers"} className="light-input rounded-none" /></Field></div>
+                  <div className="md:col-span-2"><Field label="Venue types we come to (one per line)"><Textarea rows={3} value={editingWorkshop.enquire_venues} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, enquire_venues: e.target.value })} placeholder={"Pubs\nMembers' clubs\nCommunity halls"} className="light-input rounded-none" /></Field></div>
+                  <div className="md:col-span-2"><Field label="WhatsApp pre-filled message"><Input value={editingWorkshop.whatsapp_message} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, whatsapp_message: e.target.value })} placeholder="Hello Petals Atelier — I'd like to enquire about…" className="light-input rounded-none" /></Field></div>
+                </>
+              )}
+
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={editingWorkshop.active} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, active: e.target.checked })} />
                 <span className="font-body text-xs text-[#1A1A1A]">Active</span>

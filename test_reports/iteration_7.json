@@ -1,0 +1,62 @@
+{
+  "summary": "Full backend + frontend regression for the Workshop Booking Funnel extension (DIRECT vs ENQUIRE modes). Backend pytest: 26/26 PASS (5 new tests added: 4-workshop seed verification, mode split & enquire field presence, enquire sessions empty-but-200, enquire admin CRUD round-trip incl. flip to direct, workshop_host inquiry round-trip, seed-reset = 4 workshops + 4 sessions). Frontend: /workshops correctly splits 2 direct cards + 2 enquire cards with all required data-testids; 'BY ENQUIRY' + 'Bespoke' labels rendered; Why-tiles (Per head / Bar / Midweek / Promotion) and venue-types strip (Pubs, Care homes, etc.) shown; WorkshopEnquireModal opens with valid wa.me/447123456789 URL-encoded message matching workshop.whatsapp_message, all form fields (name/venue/email/phone/date/guests/notes/submit) work and submit reaches the workshop-enquire-sent thank-you state. /workshops/pub-social-club-night detail page shows By-enquiry badge, Bespoke label, hero WhatsApp + Send-a-brief CTAs, hides 'Upcoming dates', shows workshop-detail-enquire-bottom dark CTA strip. /workshops/christmas-door-wreath still shows Upcoming dates + 2 session cards + Book a workshop CTA (no enquire CTAs). Admin Workshops tab: workshops-form-mode-direct/-enquire radios present; selecting 'enquire' reveals enquire_pitch + enquire_bullets + enquire_venues + whatsapp_message fields; create-workshop persists with booking_mode='enquire'; editing care-home-bouquet and saving with no changes preserves all enquire lists, mode, and whatsapp_message. Box Designer regression: arrange controls + Edit on canvas inline textarea still work as in iteration_6.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/workshops → 4 workshops with booking_mode field (christmas-door-wreath/halloween direct, care-home-bouquet/pub-social-club-night enquire)",
+    "Enquire workshops include enquire_pitch + enquire_venues (lists) + enquire_bullets (lists) + whatsapp_message",
+    "GET /api/workshops/care-home-bouquet/sessions → 200, [] (and same for pub-social-club-night)",
+    "GET /api/workshops/pub-social-club-night/sessions → 200, []",
+    "POST /api/workshop-bookings deposit 2 guests @95 → subtotal 190, due 90, balance 100, discount 0",
+    "POST /api/workshop-bookings full 1 guest @95 → subtotal 95, due 90.25, discount 4.75 (5% off)",
+    "Oversell rejected: capacity=1, guests=2 → 400 'spot remaining'",
+    "POST /api/workshop-checkout/session → stripe.com URL with amount==booking.amount_due_now",
+    "Admin auth required on all /admin/workshops*, /admin/workshop-sessions, /admin/workshop-bookings, /seed/workshops (401/403)",
+    "Admin CRUD enquire workshop: create with enquire_bullets+enquire_venues+whatsapp_message → PUT back to direct → both round-trip via GET /api/admin/workshops",
+    "POST /api/inquiries with service_type='workshop_host' → GET /api/admin/inquiries retrieves it (with same service_type)",
+    "POST /api/seed/workshops?reset=true → {workshops:4, sessions:4} (sessions only for direct)",
+    "Existing admin CRUD with session-blocking delete still works",
+    "Webhook 'workshop_booking' branch present (static check)",
+    "Regression: /api/products, /api/boxes, /api/cards, /api/templates, /api/auth/login all 200",
+    "Frontend /workshops: 2 direct cards have data-testid='workshop-book-<slug>'; 2 enquire cards have data-testid='workshop-enquire-<slug>'",
+    "Frontend /workshops shows 'BY ENQUIRY' badge + 'Bespoke' label on enquire cards",
+    "Frontend /workshops 'Host at your venue' sales strip shows Per head / Bar / Midweek / Promotion tiles + venue-types incl. Pubs, Care homes",
+    "WorkshopEnquireModal opens with data-testid='workshop-enquire-modal'; WhatsApp button href contains wa.me/447123456789 and URL-encoded workshop.whatsapp_message (verified literal 'Petals%20Atelier' and pub/club text encoded)",
+    "All enquire form fields present (name/venue/email/phone/date/guests/notes/submit); submit posts to /api/inquiries and shows workshop-enquire-sent thank-you state",
+    "/workshops/pub-social-club-night: By-enquiry badge + Bespoke label + workshop-detail-whatsapp + workshop-detail-enquire-cta in hero; 'Upcoming dates' hidden; 'Why host' bullets shown; workshop-detail-enquire-bottom dark CTA present; NO workshop-detail-book-cta",
+    "/workshops/christmas-door-wreath: workshop-detail-book-cta present; 'Upcoming dates' section + 2 session cards rendered; no workshop-detail-enquire-cta",
+    "Admin → Workshops: workshops-form-mode-direct + workshops-form-mode-enquire radios visible; enquire labels (Enquire sales pitch, Commercial bullets, Venue types, WhatsApp pre-filled) hidden in direct mode, revealed after toggling to enquire",
+    "Admin create enquire workshop via UI → persists with booking_mode='enquire' (verified via GET /api/admin/workshops)",
+    "Admin edit care-home-bouquet → mode-enquire pre-selected; saving with no changes preserves booking_mode='enquire', enquire_bullets (4), enquire_venues (4), whatsapp_message (86 chars) — list↔newline conversion works",
+    "Box Designer regression: modal opens, Add Text creates layer, designer-arrange-controls + 4 arrange buttons (testids: designer-bring-to-front, designer-bring-forward, designer-send-backward, designer-send-to-back) present and clickable, designer-edit-text-inline opens inline textarea appended to document.body (1 body-direct textarea observed)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_workshops.py",
+    "/app/test_reports/pytest/workshops_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "/app/backend/server.py is 2766 lines — well above the 700-line guideline. WORKSHOP_SEED block alone is now ~95 lines with the new pub-social-club-night entry. Strongly recommend extracting workshop routes + seed data into routers/workshops.py and data/workshop_seed.py for maintainability.",
+    "The 4 individual designer-arrange buttons use testid prefix 'designer-' (designer-bring-to-front / designer-bring-forward / designer-send-backward / designer-send-to-back) rather than the 'designer-arrange-*' pattern. Functional, but for spec consistency consider unifying to designer-arrange-front / designer-arrange-forward / designer-arrange-backward / designer-arrange-back.",
+    "Admin Workshops sub-tab testid for Programmes is still 'workshops-subtab-workshops' (carried over from iteration_6) while the visible label is 'Programmes'. Cosmetic.",
+    "WHATSAPP_NUMBER is hardcoded as '447123456789' in WorkshopEnquireModal.js and WorkshopDetailPage.js — confirmed intentional in this iteration; recommend moving to a single config / env var before production launch so the brand can change it without a redeploy.",
+    "POST /api/seed/workshops?reset=true deletes ALL existing workshop_sessions including bookings' referenced session ids. There is no FK protection — if any bookings exist in prod for sessions being deleted, those bookings will be orphaned. Consider adding a 'sessions referenced by bookings' check before reset, or scoping reset to non-booked sessions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_workshops.py (added 5 new tests + renamed 3-workshop assertion to 4-workshop; total 26 tests)"
+  ],
+  "success_rate": {"backend": "100% (26/26 pytest)", "frontend": "100% on all 16 review_request items"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (verified working — used for admin UI Workshops tab + admin API auth)",
+  "seed_data_creation": "Used POST /api/seed/workshops?reset=true once during the seed-regression test (cleanly restores 4 workshops + 4 sessions). One ephemeral TEST_ enquire workshop created+deleted in pytest; one ephemeral test-ui-enq-<hex> workshop created via UI flow then deleted via API. One TEST_ workshop_host inquiry created (not deleted — admin inquiries list now has +1 row).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Workshop pytest is at /app/backend/tests/test_workshops.py (26 tests, ~3.4s). The seed-regression test calls /api/seed/workshops?reset=true which wipes & re-seeds. Both direct workshops have 2 sessions each (4 total). Enquire workshops return [] for /sessions. WorkshopEnquireModal posts to /api/inquiries with service_type='workshop_host' and a multi-line message field assembled from name/venue/email/phone/date/guests/notes. WhatsApp number is hardcoded 447123456789 in both WorkshopEnquireModal.js and WorkshopDetailPage.js. The admin Workshops form converts enquire_bullets/enquire_venues between newline-strings (UI) and list[str] (API) — no-change save round-trip verified safe.",
+  "rca of the issue": "No bugs found in this iteration. Only minor cosmetic/code-review observations (file size, testid naming consistency, future env-var work for WhatsApp number, optional FK protection on seed-reset)."
+}

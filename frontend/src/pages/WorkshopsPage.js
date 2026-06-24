@@ -1,23 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Leaf, Heart } from "lucide-react";
+import { ArrowRight, Sparkles, Leaf, Heart, Beer, Building2, Users, TrendingUp, Camera, MessageCircle } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import WorkshopBookingModal from "../components/WorkshopBookingModal";
+import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 const HERO = "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1800&q=80";
 
-const TAG_ICONS = { Christmas: Sparkles, Halloween: Leaf, "Care Homes": Heart };
+const TAG_ICONS = { Christmas: Sparkles, Halloween: Leaf, "Care Homes": Heart, "Venue Partners": Beer };
 
 export default function WorkshopsPage() {
   const [workshops, setWorkshops] = useState([]);
   const [bookingFor, setBookingFor] = useState(null);
+  const [enquireFor, setEnquireFor] = useState(null);
 
   useEffect(() => {
     axios.get(`${API_URL}/api/workshops`).then((r) => setWorkshops(r.data || [])).catch(() => {});
   }, []);
+
+  const directWorkshops  = useMemo(() => workshops.filter((w) => w.booking_mode !== "enquire"), [workshops]);
+  const enquireWorkshops = useMemo(() => workshops.filter((w) => w.booking_mode === "enquire"), [workshops]);
+
+  const openCTA = (w) => (w.booking_mode === "enquire" ? setEnquireFor(w) : setBookingFor(w));
 
   return (
     <div className="pt-28" data-testid="workshops-page">
@@ -34,9 +41,9 @@ export default function WorkshopsPage() {
                 An evening<br />by the <span className="italic text-[#B3A89B]">studio bench</span>.
               </h1>
               <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
-                Hosted at the atelier, in your office, or in your care community. Seasonal wreath
-                workshops at Halloween &amp; Christmas, and dementia-friendly bouquet sessions
-                designed with activity coordinators — every guest leaves with something hand-made.
+                Hosted at the atelier, in your office, in your pub or in your care community. Seasonal
+                wreath nights at Halloween &amp; Christmas, bespoke workshop nights for pubs &amp;
+                clubs, and dementia-friendly bouquet sessions for care homes &amp; hospices.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <a href="#programmes">
@@ -44,103 +51,87 @@ export default function WorkshopsPage() {
                     See dates &amp; book <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
                   </Button>
                 </a>
-                <Link to="/consultation?service=workshop">
-                  <Button variant="outline" className="rounded-none py-6 px-8 w-full sm:w-auto" data-testid="workshops-cta-private">
-                    Host a private one
+                <a href="#host">
+                  <Button variant="outline" className="rounded-none py-6 px-8 w-full sm:w-auto" data-testid="workshops-cta-host">
+                    Host at your venue
                   </Button>
-                </Link>
+                </a>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Programmes */}
+      {/* Direct-book Programmes */}
       <section id="programmes" className="py-20 md:py-28 px-6 md:px-12 bg-white border-t border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto">
           <div className="max-w-2xl mb-14">
-            <p className="accent-label mb-4"><span className="thin-rule" />Programmes</p>
+            <p className="accent-label mb-4"><span className="thin-rule" />Book a date</p>
             <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-light text-[#1A1A1A] tracking-tight leading-[1.05]">
-              Built around the season &mdash; and around the room.
+              Open workshops at the atelier.
             </h2>
           </div>
 
-          {workshops.length === 0 ? (
-            <p className="font-body text-sm text-[#7A7A7A]">Loading workshops…</p>
+          {directWorkshops.length === 0 ? (
+            <p className="font-body text-sm text-[#7A7A7A]">No open workshops at the moment — check back soon.</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
-              {workshops.map((w) => {
-                const Icon = TAG_ICONS[w.tag] || Sparkles;
-                return (
-                  <article key={w.id} className="bg-[#FAFAF7] border border-[#E5E5E5] p-8 flex flex-col" data-testid={`workshop-card-${w.slug}`}>
-                    <div className="flex items-center gap-3 mb-5">
-                      <Icon size={18} strokeWidth={1.3} className="text-[#1A1A1A]" />
-                      <span className="font-body text-[10px] uppercase tracking-[0.22em] text-[#7A7A7A]">{w.tag}</span>
-                    </div>
-                    <h3 className="font-heading text-2xl text-[#1A1A1A] font-light mb-3 leading-snug">{w.name}</h3>
-                    <p className="font-body text-[10px] uppercase tracking-[0.22em] text-[#B3A89B] mb-5">{w.season}</p>
-                    <p className="font-body text-sm text-[#5A5A5A] leading-relaxed mb-6">{w.short_description || w.description}</p>
-
-                    <ul className="space-y-2 mb-6 flex-1">
-                      {(w.includes || []).slice(0, 3).map((line) => (
-                        <li key={line} className="flex gap-2 text-sm text-[#1A1A1A]">
-                          <span className="text-[#B3A89B] mt-1">·</span>
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="pt-5 border-t border-[#E5E5E5] flex items-center justify-between gap-3 mb-4">
-                      <div className="text-xs text-[#7A7A7A] uppercase tracking-wider">
-                        <p>{w.duration}</p>
-                        <p>{w.group_size}</p>
-                      </div>
-                      <p className="font-heading text-base text-[#1A1A1A]">from £{Number(w.price_per_guest).toFixed(0)}</p>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Button onClick={() => setBookingFor(w)} className="btn-dark rounded-none flex-1" data-testid={`workshop-book-${w.slug}`}>Book a date</Button>
-                      <Link to={`/workshops/${w.slug}`} className="flex-1">
-                        <Button variant="outline" className="rounded-none w-full" data-testid={`workshop-details-${w.slug}`}>Details</Button>
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
+              {directWorkshops.map((w) => <WorkshopCard key={w.id} w={w} onCTA={() => openCTA(w)} />)}
             </div>
           )}
         </div>
       </section>
 
-      {/* Who hosts */}
-      <section className="py-20 md:py-28 px-6 md:px-12 paper-accent border-t border-[#E5E5E5]">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-5">
-            <p className="accent-label mb-4"><span className="thin-rule" />Where we host</p>
-            <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] tracking-tight leading-[1.05] mb-6">
-              At the atelier, your office, or a community room.
-            </h2>
-            <p className="font-body text-base text-[#5A5A5A] leading-relaxed mb-4">
-              The atelier in Mayfair seats up to 14 around a single bench &mdash; perfect for hen-dos,
-              friend groups and small corporate teams. For larger groups, care homes and offices, we
-              travel to you with the whole studio in hand.
-            </p>
-            <p className="font-body text-base text-[#5A5A5A] leading-relaxed">
-              All workshops are run by a senior florist with full public liability insurance.
-            </p>
+      {/* Host at your venue — the sales pitch */}
+      <section id="host" className="py-20 md:py-28 px-6 md:px-12 paper-accent border-t border-[#E5E5E5]">
+        <div className="max-w-[1400px] mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end mb-14">
+            <div className="lg:col-span-7">
+              <p className="accent-label mb-4"><span className="thin-rule" />Host at your venue</p>
+              <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-light text-[#1A1A1A] tracking-tight leading-[1.05]">
+                Fill a quiet midweek night &mdash; we&rsquo;ll bring the room to life.
+              </h2>
+            </div>
+            <div className="lg:col-span-5">
+              <p className="font-body text-base text-[#5A5A5A] leading-relaxed">
+                A turnkey workshop night for pubs, members&rsquo; clubs, community halls, hotels,
+                care homes &amp; hospices. We arrive with everything &mdash; flowers, tools, dust sheets
+                and a senior florist. Your guests pay us per head, and you keep every penny on the
+                bar, food and door. We promote the night on our socials and tag your venue.
+              </p>
+            </div>
           </div>
-          <div className="lg:col-span-7 grid grid-cols-2 gap-4">
-            <Stat label="Hosted to date" value="120+" />
-            <Stat label="Guests welcomed" value="1,400+" />
-            <Stat label="Care homes partnered" value="11" />
-            <Stat label="Avg. group rating" value="4.9 / 5" />
+
+          {/* Why-host strip */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-14">
+            <Why icon={Users}      title="Per head, all-in"    body="Guests pay us directly — typically £45 a head. No hire fee for the venue." />
+            <Why icon={Beer}       title="You keep the bar"    body="Every penny of bar, food and door spend stays with the venue. Avg. +£15–£25 per guest." />
+            <Why icon={TrendingUp} title="Midweek footfall"     body="Tues–Thurs is our sweet spot — fills the room when you need it most." />
+            <Why icon={Camera}     title="Free promotion"      body="We share the night on our socials and tag the venue — 14–20 new tags per workshop." />
+          </div>
+
+          {/* Enquire workshop cards */}
+          {enquireWorkshops.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+              {enquireWorkshops.map((w) => <WorkshopCard key={w.id} w={w} onCTA={() => openCTA(w)} large />)}
+            </div>
+          )}
+
+          {/* Venue list strip */}
+          <div className="bg-white border border-[#E5E5E5] p-6 md:p-8">
+            <p className="accent-label mb-3"><span className="thin-rule" />We come to</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 font-body text-sm text-[#1A1A1A]">
+              {["Pubs & gastropubs", "Members' clubs", "Community halls", "Hotels", "Care homes", "Hospices", "Retirement villages", "PTAs & schools", "Hen-do venues", "Corporate offices"].map((v) => (
+                <span key={v} className="inline-flex items-center gap-2"><Building2 size={11} strokeWidth={1.3} className="text-[#B3A89B]" /> {v}</span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       <MiniPortfolio category="workshop" title={<>Recent <em>workshop</em> moments.</>} />
 
-      {/* CTA */}
+      {/* Final CTA */}
       <section className="py-20 md:py-28 px-6 md:px-12 bg-[#1A1A1A] text-white">
         <div className="max-w-3xl mx-auto text-center">
           <p className="accent-label text-white/70 mb-6"><span className="thin-rule bg-white/40" />Hosting one this season?</p>
@@ -148,30 +139,95 @@ export default function WorkshopsPage() {
             Tell us your date &mdash; we&rsquo;ll build the bench around it.
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/consultation?service=workshop">
-              <Button className="bg-white text-[#1A1A1A] hover:bg-[#FAFAF7] py-6 px-8 rounded-none w-full sm:w-auto" data-testid="workshops-bottom-cta">
-                Enquire about a private workshop <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
-              </Button>
-            </Link>
-            <a href="https://wa.me/447123456789?text=Hello%20Petals%20Atelier%20%E2%80%94%20I%20would%20like%20to%20book%20a%20workshop" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" className="border-white/50 text-white hover:bg-white hover:text-[#1A1A1A] rounded-none py-6 px-8 w-full sm:w-auto">
-                WhatsApp the studio
+            <a href="https://wa.me/447123456789?text=Hello%20Petals%20Atelier%20%E2%80%94%20I%27d%20like%20to%20host%20a%20workshop%20at%20our%20venue." target="_blank" rel="noopener noreferrer">
+              <Button className="bg-[#25D366] hover:bg-[#1ebe5b] text-white py-6 px-8 rounded-none w-full sm:w-auto" data-testid="workshops-bottom-whatsapp">
+                <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
               </Button>
             </a>
+            <Link to="/consultation?service=workshop">
+              <Button variant="outline" className="border-white/50 text-white hover:bg-white hover:text-[#1A1A1A] rounded-none py-6 px-8 w-full sm:w-auto">
+                Send a full brief <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
 
       <WorkshopBookingModal open={!!bookingFor} workshop={bookingFor} onClose={() => setBookingFor(null)} />
+      <WorkshopEnquireModal open={!!enquireFor} workshop={enquireFor} onClose={() => setEnquireFor(null)} />
     </div>
   );
 }
 
-function Stat({ label, value }) {
+function WorkshopCard({ w, onCTA, large = false }) {
+  const Icon = TAG_ICONS[w.tag] || Sparkles;
+  const isEnquire = w.booking_mode === "enquire";
   return (
-    <div className="bg-white border border-[#E5E5E5] p-6">
-      <p className="font-heading text-3xl text-[#1A1A1A] font-light mb-1">{value}</p>
-      <p className="font-body text-[10px] uppercase tracking-[0.22em] text-[#7A7A7A]">{label}</p>
+    <article className={`bg-[#FAFAF7] border border-[#E5E5E5] flex flex-col overflow-hidden ${large ? "lg:flex-row" : ""}`} data-testid={`workshop-card-${w.slug}`}>
+      {large && (
+        <div className="lg:w-2/5 h-64 lg:h-auto bg-[#F2EFEB] shrink-0">
+          {w.image_url && <img src={w.image_url} alt={w.name} className="w-full h-full object-cover" />}
+        </div>
+      )}
+      <div className={`p-8 flex flex-col ${large ? "lg:w-3/5" : ""}`}>
+        <div className="flex items-center gap-3 mb-5">
+          <Icon size={18} strokeWidth={1.3} className="text-[#1A1A1A]" />
+          <span className="font-body text-[10px] uppercase tracking-[0.22em] text-[#7A7A7A]">{w.tag}</span>
+          {isEnquire && (
+            <span className="ml-auto font-body text-[9px] uppercase tracking-[0.22em] text-[#B3A89B] border border-[#B3A89B] px-2 py-0.5">By enquiry</span>
+          )}
+        </div>
+        <h3 className="font-heading text-2xl text-[#1A1A1A] font-light mb-3 leading-snug">{w.name}</h3>
+        <p className="font-body text-[10px] uppercase tracking-[0.22em] text-[#B3A89B] mb-5">{w.season}</p>
+        <p className="font-body text-sm text-[#5A5A5A] leading-relaxed mb-6">{w.short_description || w.description}</p>
+
+        <ul className="space-y-2 mb-6 flex-1">
+          {(isEnquire ? w.enquire_bullets : w.includes)?.slice(0, large ? 5 : 3).map((line) => (
+            <li key={line} className="flex gap-2 text-sm text-[#1A1A1A]">
+              <span className="text-[#B3A89B] mt-1">·</span>
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+
+        <div className="pt-5 border-t border-[#E5E5E5] flex items-center justify-between gap-3 mb-4">
+          <div className="text-xs text-[#7A7A7A] uppercase tracking-wider">
+            <p>{w.duration}</p>
+            <p>{w.group_size}</p>
+          </div>
+          <p className="font-heading text-base text-[#1A1A1A]">{isEnquire ? "Bespoke pricing" : `from £${Number(w.price_per_guest).toFixed(0)}`}</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          {isEnquire ? (
+            <>
+              <Button onClick={onCTA} className="btn-dark rounded-none flex-1" data-testid={`workshop-enquire-${w.slug}`}>
+                <MessageCircle size={14} className="mr-2" /> Enquire
+              </Button>
+              <Link to={`/workshops/${w.slug}`} className="flex-1">
+                <Button variant="outline" className="rounded-none w-full" data-testid={`workshop-details-${w.slug}`}>Details</Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <Button onClick={onCTA} className="btn-dark rounded-none flex-1" data-testid={`workshop-book-${w.slug}`}>Book a date</Button>
+              <Link to={`/workshops/${w.slug}`} className="flex-1">
+                <Button variant="outline" className="rounded-none w-full" data-testid={`workshop-details-${w.slug}`}>Details</Button>
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function Why({ icon: Icon, title, body }) {
+  return (
+    <div className="bg-white border border-[#E5E5E5] p-5">
+      <Icon size={18} strokeWidth={1.3} className="text-[#1A1A1A] mb-3" />
+      <p className="font-heading text-base text-[#1A1A1A] mb-1">{title}</p>
+      <p className="font-body text-[12px] text-[#7A7A7A] leading-relaxed">{body}</p>
     </div>
   );
 }

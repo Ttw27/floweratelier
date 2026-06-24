@@ -2181,6 +2181,11 @@ class WorkshopCreate(BaseModel):
     deposit_amount: float = 0.0         # default deposit; sessions can override
     full_payment_discount_pct: float = 5.0  # 5% off if paid in full at booking
     cancellation_policy: str = "Deposits are non-refundable. Balance is collected on the day."
+    booking_mode: str = "direct"        # "direct" = Stripe pay-as-you-book | "enquire" = WhatsApp / lead form
+    enquire_pitch: str = ""             # sales pitch shown on the card / detail page when mode = enquire
+    enquire_venues: List[str] = []      # e.g. ["Pubs", "Members' clubs", "Community halls", "Hospices"]
+    enquire_bullets: List[str] = []     # commercial bullets, e.g. "£X per head", "Boosts midweek bar spend"
+    whatsapp_message: str = ""          # pre-filled enquiry message
     sort_order: int = 0
     active: bool = True
 
@@ -2551,6 +2556,7 @@ WORKSHOP_SEED = [
         "price_per_guest": 95.0,
         "deposit_amount": 45.0,
         "full_payment_discount_pct": 5.0,
+        "booking_mode": "direct",
         "sort_order": 10,
     },
     {
@@ -2568,6 +2574,7 @@ WORKSHOP_SEED = [
         "price_per_guest": 75.0,
         "deposit_amount": 35.0,
         "full_payment_discount_pct": 5.0,
+        "booking_mode": "direct",
         "sort_order": 20,
     },
     {
@@ -2583,9 +2590,48 @@ WORKSHOP_SEED = [
         "location_default": "On site at your care home",
         "image_url": "https://images.unsplash.com/photo-1499744937866-d7e566a20a61?w=1200&q=80",
         "price_per_guest": 18.0,
-        "deposit_amount": 9.0,
-        "full_payment_discount_pct": 5.0,
+        "deposit_amount": 0.0,
+        "full_payment_discount_pct": 0.0,
+        "booking_mode": "enquire",
+        "enquire_pitch": "Bespoke pricing for care homes, hospices and retirement villages — we tailor the session length and flower selection around your residents and your activity calendar.",
+        "enquire_venues": ["Care homes", "Hospices", "Retirement villages", "Dementia day-centres"],
+        "enquire_bullets": [
+            "Set price per resident — typically £18 each, all-in",
+            "Dementia-friendly, fully insured, DBS-checked florist",
+            "We bring everything — vases, flowers, tools, dust sheets",
+            "60–90 minute session, designed with your activity coordinator",
+        ],
+        "whatsapp_message": "Hello Petals Atelier — I'd like to enquire about a bouquet workshop for our care home.",
         "sort_order": 30,
+    },
+    {
+        "slug": "pub-social-club-night",
+        "name": "Flower Workshop Nights for Pubs & Social Clubs",
+        "tag": "Venue Partners",
+        "season": "Year-round · ideal midweek",
+        "short_description": "A midweek room-filler — guests pay us per head, you keep the bar.",
+        "description": "A turnkey workshop night for pubs, members' clubs and community halls. We turn up with everything — flowers, tools, dust sheets and a senior florist — your guests arrange a hand-tied bouquet or a seasonal wreath while you serve drinks and a sharing board. Guests pay us directly per head; you keep every penny on the bar and food.",
+        "includes": ["Florist-led 2-hour session", "All flowers, tools and aprons supplied", "We promote on our socials and tag the venue", "Bring 14–20 new midweek covers through the door"],
+        "duration": "2 hours (plus drinks after)",
+        "group_size": "Up to 14 guests · larger on request",
+        "location_default": "At your venue, anywhere in London & the Home Counties",
+        "image_url": "https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=1200&q=80",
+        "price_per_guest": 45.0,
+        "deposit_amount": 0.0,
+        "full_payment_discount_pct": 0.0,
+        "booking_mode": "enquire",
+        "enquire_pitch": "A near-zero-cost way to fill a quiet midweek night. We charge your guests per head, you keep all of the bar and food spend — and walk away with 14–20 new social-media tags showing off your room.",
+        "enquire_venues": ["Pubs & gastropubs", "Members' clubs", "Community halls", "Hotels", "PTAs & schools", "Hen-do venues"],
+        "enquire_bullets": [
+            "Guests pay us direct — typically £45 per head",
+            "You keep 100% of bar, food & ticket-on-the-door spend",
+            "Average £15–£25 extra bar spend per guest on the night",
+            "Midweek footfall — fills Tuesday / Wednesday / Thursday rooms",
+            "We promote on our socials and tag your venue",
+            "Other splits available (revenue share / flat hire) — ask us",
+        ],
+        "whatsapp_message": "Hi Petals Atelier — I run a pub/club and I'd love to host one of your flower workshop nights. Can you send pricing?",
+        "sort_order": 40,
     },
 ]
 
@@ -2596,12 +2642,24 @@ async def seed_workshops(reset: bool = False, admin=Depends(require_admin)):
         await db.workshop_sessions.delete_many({})
     if await db.workshops.count_documents({}) == 0:
         for w in WORKSHOP_SEED:
-            await db.workshops.insert_one({**w, "id": str(uuid.uuid4()), "active": True, "gallery_images": [],
-                                            "cancellation_policy": "Deposits are non-refundable. Balance is collected on the day."})
-    # Seed two upcoming sessions per workshop if none exist
+            doc = {
+                "id": str(uuid.uuid4()),
+                "active": True,
+                "gallery_images": [],
+                "cancellation_policy": "Deposits are non-refundable. Balance is collected on the day.",
+                **w,
+            }
+            # ensure all optional fields exist
+            doc.setdefault("booking_mode", "direct")
+            doc.setdefault("enquire_pitch", "")
+            doc.setdefault("enquire_venues", [])
+            doc.setdefault("enquire_bullets", [])
+            doc.setdefault("whatsapp_message", "")
+            await db.workshops.insert_one(doc)
+    # Seed two upcoming sessions per direct-booking workshop if none exist
     today = datetime.now(timezone.utc).date()
     if await db.workshop_sessions.count_documents({}) == 0:
-        for w in await db.workshops.find({}).to_list(length=100):
+        for w in await db.workshops.find({"booking_mode": "direct"}).to_list(length=100):
             for offset_days, start_time in [(28, "18:30"), (42, "11:00")]:
                 d = (today + timedelta(days=offset_days)).isoformat()
                 await db.workshop_sessions.insert_one({
