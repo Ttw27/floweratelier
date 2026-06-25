@@ -2,14 +2,17 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, Star, Building2 } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ServiceTiers from "../components/ServiceTiers";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1575081838238-d06e716afa28?w=1800";
 
 export default function ShopFrontInstallsPage() {
-  const programmes = [
-    { name: "Seasonal Quarterly", freq: "Four installs / year", desc: "A fresh full-window install at the turn of each season — Spring, Summer, Autumn and the all-important Christmas edit.", price: "from £2,200 / install" },
-    { name: "Monthly Refresh", freq: "Twelve installs / year", desc: "Higher footfall storefronts kept evergreen with monthly redesigns — perfect for fashion, beauty and jewellery flagships.", price: "from £1,650 / install" },
-    { name: "Campaign-Led", freq: "Per campaign", desc: "Bespoke window installs aligned to product launches, capsule drops and brand campaigns.", price: "from £3,800" },
+  const { content } = usePageContent("shop-front-installs");
+  const defaultTiers = [
+    { title: "Seasonal Quarterly", description: "A fresh full-window install at the turn of each season — Spring, Summer, Autumn and the all-important Christmas edit.", price_label: "from £2,200 / install", image_url: "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200" },
+    { title: "Monthly Refresh", description: "Higher footfall storefronts kept evergreen with monthly redesigns — perfect for fashion, beauty and jewellery flagships.", price_label: "from £1,650 / install", image_url: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200" },
+    { title: "Campaign-Led", description: "Bespoke window installs aligned to product launches, capsule drops and brand campaigns.", price_label: "from £3,800", image_url: "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200" },
   ];
 
   const idealFor = [
@@ -50,26 +53,7 @@ export default function ShopFrontInstallsPage() {
         </div>
       </section>
 
-      {/* Programmes */}
-      <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-5"><span className="thin-rule" />Programmes</p>
-          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
-            Three cadences.<br /><span className="italic">One standard.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-            {programmes.map((p, idx) => (
-              <div key={idx} className="bg-white border border-[#E5E5E5] p-10" data-testid={`shop-front-programme-${idx}`}>
-                <p className="accent-label mb-4 text-[#B3A89B]">{p.freq}</p>
-                <h3 className="font-heading text-3xl font-light text-[#1A1A1A] mb-4">{p.name}</h3>
-                <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-6">{p.desc}</p>
-                <p className="accent-label text-[#1A1A1A]">{p.price}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      <ServiceTiers content={content} defaultTiers={defaultTiers} eyebrow="Programmes" heading={<>Three cadences.<br /><span className="italic">One standard.</span></>} testId="shop-front-tiers" />
       {/* Ideal for */}
       <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">
         <div className="max-w-[1400px] mx-auto">

@@ -2,17 +2,20 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Camera, Film, Image } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ServiceTiers from "../components/ServiceTiers";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800";
 
 export default function FilmTVPhotoshootPage() {
-  const services = [
-    { icon: Camera, name: "Editorial & Beauty Shoots", desc: "Set florals for magazine editorials, beauty campaigns and skincare hero shots — colour-graded to the creative brief.", price: "from £1,450 / day" },
-    { icon: Image, name: "Fashion Lookbooks", desc: "Wild, garden or sculptural florals styled into lookbook and e-commerce shoots.", price: "from £1,850 / day" },
-    { icon: Film, name: "Music Videos", desc: "Hero floral builds for music video productions — petal baths, floor florals, floral architecture.", price: "from £3,200" },
-    { icon: Film, name: "Film & TV Set Florals", desc: "Period-accurate or contemporary floral set dressing — for series, features and commercials.", price: "from £2,800 / day" },
-    { icon: Camera, name: "Brand Campaign Florals", desc: "Hero stems, custom builds and bespoke florals shot for global advertising.", price: "from £1,200" },
-    { icon: Film, name: "Daily Studio Programmes", desc: "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", price: "from £680 / day" },
+  const { content } = usePageContent("film-tv-photoshoot");
+  const defaultTiers = [
+    { title: "Editorial & Beauty Shoots", description: "Set florals for magazine editorials, beauty campaigns and skincare hero shots — colour-graded to the creative brief.", price_label: "from £1,450 / day", image_url: "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=1200" },
+    { title: "Fashion Lookbooks", description: "Wild, garden or sculptural florals styled into lookbook and e-commerce shoots.", price_label: "from £1,850 / day", image_url: "https://images.unsplash.com/photo-1583336663277-620dc1996580?w=1200" },
+    { title: "Music Videos", description: "Hero floral builds for music video productions — petal baths, floor florals, floral architecture.", price_label: "from £3,200", image_url: "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=1200" },
+    { title: "Film & TV Set Florals", description: "Period-accurate or contemporary floral set dressing — for series, features and commercials.", price_label: "from £2,800 / day", image_url: "https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=1200" },
+    { title: "Brand Campaign Florals", description: "Hero stems, custom builds and bespoke florals shot for global advertising.", price_label: "from £1,200", image_url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200" },
+    { title: "Daily Studio Programmes", description: "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", price_label: "from £680 / day", image_url: "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200" },
   ];
 
   const credits = ["Vogue", "Tatler", "British GQ", "Harper's Bazaar", "Netflix", "BBC", "Burberry", "Charlotte Tilbury"];
@@ -57,28 +60,14 @@ export default function FilmTVPhotoshootPage() {
         </div>
       </section>
 
-      {/* Services */}
-      <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-5"><span className="thin-rule" />Services</p>
-          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
-            Built for<br /><span className="italic">production.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#E5E5E5] border border-[#E5E5E5]">
-            {services.map((s, idx) => {
-              const Icon = s.icon;
-              return (
-                <div key={idx} className="bg-white p-10" data-testid={`film-tv-service-${idx}`}>
-                  <Icon size={20} strokeWidth={1.3} className="text-[#B3A89B] mb-5" />
-                  <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-3">{s.name}</h3>
-                  <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-5">{s.desc}</p>
-                  <p className="accent-label text-[#1A1A1A]">{s.price}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* Services — editable in admin / Page Content */}
+      <ServiceTiers
+        content={content}
+        defaultTiers={defaultTiers}
+        eyebrow="Services"
+        heading={<>Built for<br /><span className="italic">production.</span></>}
+        testId="film-tv-tiers"
+      />
 
       {/* Logistics */}
       <section className="py-24 md:py-32 px-6 md:px-12 bg-[#1A1A1A] text-[#FAFAF7]">

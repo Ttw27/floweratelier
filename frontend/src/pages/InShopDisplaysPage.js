@@ -2,17 +2,20 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ServiceTiers from "../components/ServiceTiers";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
 
 export default function InShopDisplaysPage() {
-  const offerings = [
-    { name: "Counter & POS Florals", desc: "Beauty counter florals, checkout displays and product-launch styling — colour-coded to your brand palette.", price: "from £450 / visit" },
-    { name: "Showroom & Plinth Florals", desc: "Sculptural arrangements on display plinths for jewellery, watch and luxury showrooms.", price: "from £680 / visit" },
-    { name: "Bespoke Brand Activations", desc: "Floral takeovers of concept stores, capsule collections and product launches — designed end-to-end.", price: "from £4,400" },
-    { name: "Daily Café & Patisserie", desc: "Delicate florals on cake stands, counter tops and tableware — refreshed twice weekly.", price: "from £180 / visit" },
-    { name: "Fitting Room Posies", desc: "Small considered posies in every fitting room — for bridal, boutique and luxury retail.", price: "from £55 each" },
-    { name: "Permanent Programmes", desc: "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", price: "from £1,800 / month" },
+  const { content } = usePageContent("in-shop-displays");
+  const defaultTiers = [
+    { title: "Counter & POS Florals", description: "Beauty counter florals, checkout displays and product-launch styling — colour-coded to your brand palette.", price_label: "from £450 / visit", image_url: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200" },
+    { title: "Showroom & Plinth Florals", description: "Sculptural arrangements on display plinths for jewellery, watch and luxury showrooms.", price_label: "from £680 / visit", image_url: "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200" },
+    { title: "Bespoke Brand Activations", description: "Floral takeovers of concept stores, capsule collections and product launches — designed end-to-end.", price_label: "from £4,400", image_url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200" },
+    { title: "Daily Café & Patisserie", description: "Delicate florals on cake stands, counter tops and tableware — refreshed twice weekly.", price_label: "from £180 / visit", image_url: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200" },
+    { title: "Fitting Room Posies", description: "Small considered posies in every fitting room — for bridal, boutique and luxury retail.", price_label: "from £55 each", image_url: "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200" },
+    { title: "Permanent Programmes", description: "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", price_label: "from £1,800 / month", image_url: "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200" },
   ];
 
   return (
@@ -44,24 +47,14 @@ export default function InShopDisplaysPage() {
       </section>
 
       {/* Offerings */}
-      <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-5"><span className="thin-rule" />Offerings</p>
-          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
-            Six core<br /><span className="italic">programmes.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16">
-            {offerings.map((item, idx) => (
-              <div key={idx} className="pb-10 border-b border-[#E5E5E5]" data-testid={`in-shop-offering-${idx}`}>
-                <p className="font-heading text-5xl font-light text-[#B3A89B] mb-4">{String(idx + 1).padStart(2, "0")}</p>
-                <h3 className="font-heading text-3xl font-light text-[#1A1A1A] mb-4">{item.name}</h3>
-                <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-4">{item.desc}</p>
-                <p className="accent-label text-[#1A1A1A]">{item.price}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Offerings — editable in admin / Page Content */}
+      <ServiceTiers
+        content={content}
+        defaultTiers={defaultTiers}
+        eyebrow="Offerings"
+        heading={<>Six core<br /><span className="italic">programmes.</span></>}
+        testId="in-shop-tiers"
+      />
 
       {/* Why us */}
       <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">

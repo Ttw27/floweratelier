@@ -1,20 +1,23 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Phone, Heart, Sparkles, Crown } from "lucide-react";
+import { ArrowRight, Phone } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
+import ServiceTiers from "../components/ServiceTiers";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
 
 export default function TravellerWeddingsPage() {
-  const signatures = [
-    { name: "Floral Light-Up Letters", desc: "4ft custom-built letters spelling family names — hand-finished with roses, hydrangea and trailing greenery.", price: "from £3,200", icon: Sparkles },
-    { name: "Castle & Carriage Backdrops", desc: "Fairytale-castle ceremony backdrops, Cinderella carriages and statement entrance arches.", price: "from £8,500", icon: Crown },
-    { name: "Cake Walls & Statement Florals", desc: "8ft floral cake walls, oversized hanging chandeliers and entrance-arch installations.", price: "from £3,800", icon: Heart },
-    { name: "Top Table & Hall Florals", desc: "30ft top-table runners, hall ceiling florals and full reception design.", price: "from £4,800", icon: Sparkles },
-    { name: "Horse-Drawn Carriage Florals", desc: "Full floral drapes for the bridal horse and carriage on arrival.", price: "from £1,650", icon: Crown },
-    { name: "Bridal Party Bouquets", desc: "Bridal bouquet, bridesmaids, flower girls, page boys, mothers and groomsmen.", price: "from £85 each", icon: Heart },
+  const { content } = usePageContent("traveller-weddings");
+  const defaultTiers = [
+    { title: "Floral Light-Up Letters", description: "4ft custom-built letters spelling family names — hand-finished with roses, hydrangea and trailing greenery.", price_label: "from £3,200", image_url: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200" },
+    { title: "Castle & Carriage Backdrops", description: "Fairytale-castle ceremony backdrops, Cinderella carriages and statement entrance arches.", price_label: "from £8,500", image_url: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200" },
+    { title: "Cake Walls & Statement Florals", description: "8ft floral cake walls, oversized hanging chandeliers and entrance-arch installations.", price_label: "from £3,800", image_url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200" },
+    { title: "Top Table & Hall Florals", description: "30ft top-table runners, hall ceiling florals and full reception design.", price_label: "from £4,800", image_url: "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png" },
+    { title: "Horse-Drawn Carriage Florals", description: "Full floral drapes for the bridal horse and carriage on arrival.", price_label: "from £1,650", image_url: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200" },
+    { title: "Bridal Party Bouquets", description: "Bridal bouquet, bridesmaids, flower girls, page boys, mothers and groomsmen.", price_label: "from £85 each", image_url: "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=1200" },
   ];
 
   return (
@@ -71,28 +74,14 @@ export default function TravellerWeddingsPage() {
         </div>
       </section>
 
-      {/* Signature Pieces */}
-      <section className="py-24 md:py-32 px-6 md:px-12">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-5"><span className="thin-rule" />Signature Pieces</p>
-          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
-            What we<br /><span className="italic">specialise in.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#E5E5E5] border border-[#E5E5E5]">
-            {signatures.map((s, idx) => {
-              const Icon = s.icon;
-              return (
-                <div key={idx} className="bg-white p-10" data-testid={`traveller-wedding-signature-${idx}`}>
-                  <Icon size={20} strokeWidth={1.3} className="text-[#B3A89B] mb-5" />
-                  <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-3">{s.name}</h3>
-                  <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-4">{s.desc}</p>
-                  <p className="accent-label text-[#1A1A1A]">{s.price}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+      {/* Signature Pieces — editable in admin / Page Content */}
+      <ServiceTiers
+        content={content}
+        defaultTiers={defaultTiers}
+        eyebrow="Signature Pieces"
+        heading={<>What we<br /><span className="italic">specialise in.</span></>}
+        testId="traveller-wedding-tiers"
+      />
 
       {/* Budget Guide */}
       <section className="py-24 md:py-32 px-6 md:px-12 bg-[#1A1A1A] text-[#FAFAF7]">

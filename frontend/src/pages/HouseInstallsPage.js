@@ -2,14 +2,17 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
+import ServiceTiers from "../components/ServiceTiers";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800";
 
 export default function HouseInstallsPage() {
-  const programmes = [
-    { name: "Weekly Programme", freq: "Every week", desc: "Ever-changing seasonal floral programme across principal rooms — arranged in your own vessels or ours.", price: "from £450 / week" },
-    { name: "Fortnightly", freq: "Every two weeks", desc: "A refreshed edit across entrance, kitchen and dining rooms.", price: "from £295 / visit" },
-    { name: "Occasion-Led", freq: "Per event", desc: "Bespoke installs for private dinners, anniversaries and at-home entertaining.", price: "from £850 / event" },
+  const { content } = usePageContent("house-installs");
+  const defaultTiers = [
+    { title: "Weekly Programme", description: "Ever-changing seasonal floral programme across principal rooms — arranged in your own vessels or ours.", price_label: "from £450 / week", image_url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200" },
+    { title: "Fortnightly", description: "A refreshed edit across entrance, kitchen and dining rooms.", price_label: "from £295 / visit", image_url: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200" },
+    { title: "Occasion-Led", description: "Bespoke installs for private dinners, anniversaries and at-home entertaining.", price_label: "from £850 / event", image_url: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1200" },
   ];
 
   return (
@@ -40,25 +43,14 @@ export default function HouseInstallsPage() {
         </div>
       </section>
 
-      {/* Programmes */}
-      <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-5"><span className="thin-rule" />Programmes</p>
-          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
-            Three cadences.<br /><span className="italic">One standard.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-            {programmes.map((p, idx) => (
-              <div key={idx} className="bg-white border border-[#E5E5E5] p-10" data-testid={`house-programme-${idx}`}>
-                <p className="accent-label mb-4 text-[#B3A89B]">{p.freq}</p>
-                <h3 className="font-heading text-3xl font-light text-[#1A1A1A] mb-4">{p.name}</h3>
-                <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-6">{p.desc}</p>
-                <p className="accent-label text-[#1A1A1A]">{p.price}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Programmes — editable in admin / Page Content */}
+      <ServiceTiers
+        content={content}
+        defaultTiers={defaultTiers}
+        eyebrow="Programmes"
+        heading={<>Three rhythms.<br /><span className="italic">One standard.</span></>}
+        testId="house-installs-tiers"
+      />
 
       {/* How it works */}
       <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">

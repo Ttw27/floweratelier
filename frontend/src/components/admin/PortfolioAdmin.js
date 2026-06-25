@@ -94,6 +94,13 @@ export default function PortfolioAdmin() {
   };
 
   const filtered = filter ? items.filter((i) => i.category === filter) : items;
+  const PAGE_SIZE = 24;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [filter]);          // reset when filter changes
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
     <div className="bg-white border border-[#E5E5E5] p-6 md:p-8" data-testid="portfolio-admin-card">
@@ -118,7 +125,7 @@ export default function PortfolioAdmin() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filtered.length === 0 && <p className="text-sm text-[#7A7A7A] col-span-full">No portfolio items. Click &ldquo;Add item&rdquo; to upload one.</p>}
-        {filtered.map((i) => (
+        {pageItems.map((i) => (
           <div key={i.id} className="border border-[#E5E5E5] bg-white" data-testid={`portfolio-row-${i.id}`}>
             <div className="aspect-[4/3] bg-[#F2EFEB] relative overflow-hidden">
               {i.image && <img src={i.image} alt={i.title} className="w-full h-full object-cover" />}
@@ -144,6 +151,26 @@ export default function PortfolioAdmin() {
           </div>
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between flex-wrap gap-3" data-testid="portfolio-pagination">
+          <p className="font-body text-xs text-[#7A7A7A]">
+            Showing {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 border border-[#E5E5E5] text-[11px] uppercase tracking-[0.18em] disabled:opacity-30" data-testid="portfolio-page-prev">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((n) => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+              .map((n, idx, arr) => (
+                <span key={n} className="flex items-center">
+                  {idx > 0 && arr[idx - 1] !== n - 1 && <span className="px-1 text-[#7A7A7A]">…</span>}
+                  <button onClick={() => setPage(n)} className={`px-3 py-1.5 border text-[11px] uppercase tracking-[0.18em] ${page === n ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" : "border-[#E5E5E5] text-[#1A1A1A]"}`} data-testid={`portfolio-page-${n}`}>{n}</button>
+                </span>
+              ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 border border-[#E5E5E5] text-[11px] uppercase tracking-[0.18em] disabled:opacity-30" data-testid="portfolio-page-next">Next</button>
+          </div>
+        </div>
+      )}
 
       {/* Edit modal */}
       {editing && (

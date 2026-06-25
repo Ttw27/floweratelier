@@ -187,7 +187,7 @@ export default function AdminPage() {
         )}
 
         <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList className="bg-transparent border-b border-[#E5E5E5] rounded-none p-0 h-auto w-full justify-start">
+          <TabsList className="bg-transparent border-b border-[#E5E5E5] rounded-none p-0 h-auto w-full justify-start gap-y-1 flex flex-wrap">
             <TabsTrigger value="orders" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-orders-tab">Orders</TabsTrigger>
             <TabsTrigger value="inquiries" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-inquiries-tab">Inquiries</TabsTrigger>
             <TabsTrigger value="products" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-products-tab">Products</TabsTrigger>

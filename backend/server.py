@@ -307,11 +307,21 @@ async def get_me(user = Depends(require_user)):
 
 @api_router.get("/categories", response_model=List[CategoryResponse])
 async def get_categories():
-    categories = await db.categories.find({}, {"_id": 0}).to_list(100)
-    for cat in categories:
-        count = await db.products.count_documents({"category_id": cat["id"]})
-        cat["product_count"] = count
-    return categories
+    # Single aggregation: categories joined with their product counts (avoids N+1).
+    pipeline = [
+        {"$lookup": {
+            "from": "products",
+            "let": {"cat_id": "$id"},
+            "pipeline": [
+                {"$match": {"$expr": {"$eq": ["$category_id", "$$cat_id"]}}},
+                {"$count": "n"},
+            ],
+            "as": "_count",
+        }},
+        {"$addFields": {"product_count": {"$ifNull": [{"$arrayElemAt": ["$_count.n", 0]}, 0]}}},
+        {"$project": {"_id": 0, "_count": 0}},
+    ]
+    return await db.categories.aggregate(pipeline).to_list(200)
 
 @api_router.post("/categories", response_model=CategoryResponse)
 async def create_category(data: CategoryCreate, admin = Depends(require_admin)):
@@ -2324,22 +2334,22 @@ PAGE_CONTENT_SEED = [
         "hero_image": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1800",
         "hero_cta_label": "Discuss a façade install", "hero_cta_url": "/consultation?service=shop-front",
         "tiers": [
-            {"title": "Statement Façade", "description": "Full doorway / archway floral installations.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200", "sort_order": 10},
-            {"title": "Window Edit", "description": "Themed window-display florals refreshed monthly.", "price_label": "from £750", "image_url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200", "sort_order": 20},
-            {"title": "Seasonal Programme", "description": "Quarterly refreshes coordinated with your trading calendar.", "price_label": "from £4,500 / year", "image_url": "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200", "sort_order": 30},
+            {"title": "Seasonal Quarterly", "description": "A fresh full-window install at the turn of each season — Spring, Summer, Autumn and the all-important Christmas edit.", "price_label": "from £2,200 / install", "image_url": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200", "sort_order": 10},
+            {"title": "Monthly Refresh", "description": "Higher footfall storefronts kept evergreen with monthly redesigns — perfect for fashion, beauty and jewellery flagships.", "price_label": "from £1,650 / install", "image_url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200", "sort_order": 20},
+            {"title": "Campaign-Led", "description": "Bespoke window installs aligned to product launches, capsule drops and brand campaigns.", "price_label": "from £3,800", "image_url": "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200", "sort_order": 30},
         ],
     },
     {
         "slug": "house-installs", "label": "House Installs",
         "hero_eyebrow": "House Installs",
-        "hero_title_line1": "A home that", "hero_title_italic": "breathes.", "hero_title_line2": "",
-        "hero_subheading": "Residential floristry for the way you actually live — drawing-room arrangements, hallway statement vases, dinner-party centrepieces, refreshed weekly or for a single occasion.",
-        "hero_image": "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=1800",
-        "hero_cta_label": "Discuss a home programme", "hero_cta_url": "/consultation?service=house-install",
+        "hero_title_line1": "Your home,", "hero_title_italic": "season.", "hero_title_line2": "in",
+        "hero_subheading": "Private residence floral programmes — weekly, fortnightly or occasion-led. Discreet access, trusted keys, your home always in its finest edit.",
+        "hero_image": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800",
+        "hero_cta_label": "Discuss a home programme", "hero_cta_url": "/consultation?service=house",
         "tiers": [
-            {"title": "Weekly House Programme", "description": "Three to five arrangements styled and refreshed weekly.", "price_label": "from £180 / week", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 10},
-            {"title": "Dinner Party Centrepieces", "description": "Long-table runners or cluster centrepieces for a single evening.", "price_label": "from £320", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 20},
-            {"title": "Statement Hallway Installation", "description": "Floor-standing or pedestal installations for entrance halls.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1200", "sort_order": 30},
+            {"title": "Weekly Programme", "description": "Ever-changing seasonal floral programme across principal rooms — arranged in your own vessels or ours.", "price_label": "from £450 / week", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 10},
+            {"title": "Fortnightly", "description": "A refreshed edit across entrance, kitchen and dining rooms.", "price_label": "from £295 / visit", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 20},
+            {"title": "Occasion-Led", "description": "Bespoke installs for private dinners, anniversaries and at-home entertaining.", "price_label": "from £850 / event", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1200", "sort_order": 30},
         ],
     },
     {
@@ -2347,12 +2357,15 @@ PAGE_CONTENT_SEED = [
         "hero_eyebrow": "Film · TV · Photoshoot",
         "hero_title_line1": "Florals for", "hero_title_italic": "the lens.", "hero_title_line2": "",
         "hero_subheading": "Trusted by editorial photographers, stylists and production houses. Hero blooms, set dressing, table styling and continuity florals — produced to deadline.",
-        "hero_image": "https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=1800",
+        "hero_image": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800",
         "hero_cta_label": "Brief us a shoot", "hero_cta_url": "/consultation?service=film-tv",
         "tiers": [
-            {"title": "Editorial Set Florals", "description": "Hero arrangements styled to brief — fashion, beauty, interiors.", "price_label": "from £750", "image_url": "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=1200", "sort_order": 10},
-            {"title": "Continuity Florals (TV / Drama)", "description": "Multi-day floral continuity for series and film — replicas held in cold-store.", "price_label": "from £1,800 / day", "image_url": "https://images.unsplash.com/photo-1583336663277-620dc1996580?w=1200", "sort_order": 20},
-            {"title": "Brand & Beauty Macro", "description": "Single hero blooms for product macro and campaign photography.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=1200", "sort_order": 30},
+            {"title": "Editorial & Beauty Shoots", "description": "Set florals for magazine editorials, beauty campaigns and skincare hero shots — colour-graded to the creative brief.", "price_label": "from £1,450 / day", "image_url": "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=1200", "sort_order": 10},
+            {"title": "Fashion Lookbooks", "description": "Wild, garden or sculptural florals styled into lookbook and e-commerce shoots.", "price_label": "from £1,850 / day", "image_url": "https://images.unsplash.com/photo-1583336663277-620dc1996580?w=1200", "sort_order": 20},
+            {"title": "Music Videos", "description": "Hero floral builds for music video productions — petal baths, floor florals, floral architecture.", "price_label": "from £3,200", "image_url": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=1200", "sort_order": 30},
+            {"title": "Film & TV Set Florals", "description": "Period-accurate or contemporary floral set dressing — for series, features and commercials.", "price_label": "from £2,800 / day", "image_url": "https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=1200", "sort_order": 40},
+            {"title": "Brand Campaign Florals", "description": "Hero stems, custom builds and bespoke florals shot for global advertising.", "price_label": "from £1,200", "image_url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200", "sort_order": 50},
+            {"title": "Daily Studio Programmes", "description": "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", "price_label": "from £680 / day", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 60},
         ],
     },
     {
@@ -2360,13 +2373,31 @@ PAGE_CONTENT_SEED = [
         "hero_eyebrow": "Traveller Weddings",
         "hero_title_line1": "Stop them.", "hero_title_italic": "In their tracks.", "hero_title_line2": "",
         "hero_subheading": "Show-stopping bridal florals built for the camera and the day — abundant gold-trimmed bouquets, ten-foot ceremony arches, statement car installs and full-room tablescapes. We work nationally.",
-        "hero_image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1800",
+        "hero_image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800",
         "hero_cta_label": "Build a Traveller wedding", "hero_cta_url": "/consultation?service=traveller-wedding",
         "tiers": [
-            {"title": "Statement Bridal Bouquet", "description": "Abundant cascade bouquets with rhinestones, ribbon and ornament.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200", "sort_order": 10},
-            {"title": "Ten-Foot Ceremony Arch", "description": "Floor-standing flowering arches built on-site, broken down same evening.", "price_label": "from £4,500", "image_url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200", "sort_order": 20},
-            {"title": "Car / Carriage Florals", "description": "Bonnet, door & ribbon florals for the bridal car or carriage.", "price_label": "from £650", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
-            {"title": "Reception Tablescape (per table)", "description": "Long-table runners or tall-and-low centrepieces, by the table.", "price_label": "from £180 / table", "image_url": "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png", "sort_order": 40},
+            {"title": "Floral Light-Up Letters", "description": "4ft custom-built letters spelling family names — hand-finished with roses, hydrangea and trailing greenery.", "price_label": "from £3,200", "image_url": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200", "sort_order": 10},
+            {"title": "Castle & Carriage Backdrops", "description": "Fairytale-castle ceremony backdrops, Cinderella carriages and statement entrance arches.", "price_label": "from £8,500", "image_url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200", "sort_order": 20},
+            {"title": "Cake Walls & Statement Florals", "description": "8ft floral cake walls, oversized hanging chandeliers and entrance-arch installations.", "price_label": "from £3,800", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
+            {"title": "Top Table & Hall Florals", "description": "30ft top-table runners, hall ceiling florals and full reception design.", "price_label": "from £4,800", "image_url": "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png", "sort_order": 40},
+            {"title": "Horse-Drawn Carriage Florals", "description": "Full floral drapes for the bridal horse and carriage on arrival.", "price_label": "from £1,650", "image_url": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200", "sort_order": 50},
+            {"title": "Bridal Party Bouquets", "description": "Bridal bouquet, bridesmaids, flower girls, page boys, mothers and groomsmen.", "price_label": "from £85 each", "image_url": "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=1200", "sort_order": 60},
+        ],
+    },
+    {
+        "slug": "in-shop-displays", "label": "In-Shop Displays",
+        "hero_eyebrow": "In-Shop Bespoke Displays",
+        "hero_title_line1": "Inside the", "hero_title_italic": "moment", "hero_title_line2": "of purchase.",
+        "hero_subheading": "Considered floral displays for the retail floor — beauty counters, jewellery plinths, fitting rooms and patisserie tabletops. Designed to make every customer pause.",
+        "hero_image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800",
+        "hero_cta_label": "Discuss an in-shop programme", "hero_cta_url": "/consultation?service=in-shop",
+        "tiers": [
+            {"title": "Counter & POS Florals", "description": "Beauty counter florals, checkout displays and product-launch styling — colour-coded to your brand palette.", "price_label": "from £450 / visit", "image_url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200", "sort_order": 10},
+            {"title": "Showroom & Plinth Florals", "description": "Sculptural arrangements on display plinths for jewellery, watch and luxury showrooms.", "price_label": "from £680 / visit", "image_url": "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200", "sort_order": 20},
+            {"title": "Bespoke Brand Activations", "description": "Floral takeovers of concept stores, capsule collections and product launches — designed end-to-end.", "price_label": "from £4,400", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 30},
+            {"title": "Daily Café & Patisserie", "description": "Delicate florals on cake stands, counter tops and tableware — refreshed twice weekly.", "price_label": "from £180 / visit", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 40},
+            {"title": "Fitting Room Posies", "description": "Small considered posies in every fitting room — for bridal, boutique and luxury retail.", "price_label": "from £55 each", "image_url": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200", "sort_order": 50},
+            {"title": "Permanent Programmes", "description": "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", "price_label": "from £1,800 / month", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 60},
         ],
     },
     {
@@ -2395,19 +2426,6 @@ PAGE_CONTENT_SEED = [
             {"title": "Chuppah (Jewish Ceremony)", "description": "Four-pole chuppah with foliage canopy and statement corners.", "price_label": "from £3,200", "image_url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200", "sort_order": 20},
             {"title": "Church Altar & Aisle", "description": "Altar pedestals, pew-end posies, aisle markers.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 30},
             {"title": "Gurdwara Durbar Florals", "description": "Floor-level gurdwara florals styled with respect for tradition.", "price_label": "from £2,200", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
-        ],
-    },
-    {
-        "slug": "in-shop-displays", "label": "In-Shop Displays",
-        "hero_eyebrow": "In-Shop Displays",
-        "hero_title_line1": "The room", "hero_title_italic": "remembered.", "hero_title_line2": "",
-        "hero_subheading": "Floral takeovers, sampling tables and signature displays for retail concept spaces — staged, refreshed and dismantled by us.",
-        "hero_image": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1800",
-        "hero_cta_label": "Discuss an in-shop takeover", "hero_cta_url": "/consultation?service=in-shop",
-        "tiers": [
-            {"title": "Single-Day Takeover", "description": "Full-room floral takeover for sampling or press days.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200", "sort_order": 10},
-            {"title": "Two-Week Residency", "description": "Mid-space installation that lives for a fortnight, watered by us.", "price_label": "from £4,200", "image_url": "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200", "sort_order": 20},
-            {"title": "Seasonal Refresh Programme", "description": "Quarterly themed refreshes coordinated with your VM team.", "price_label": "from £6,500 / year", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 30},
         ],
     },
 ]

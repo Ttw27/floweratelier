@@ -1,0 +1,57 @@
+{
+  "summary": "Iteration 10 — Final pre-deploy. Backend 19/19 pytest PASS: /api/categories now returns 7 categories each with product_count populated via single-query $lookup (values exactly match /api/products grouped by category_id); POST /api/seed/page-content?reset=true returns {total:10, inserted:10}; shop-front-installs/house-installs/film-tv-photoshoot/traveller-weddings/in-shop-displays tier counts + titles + prices all match the brief (shop-front: 3 tiers titled ['Seasonal Quarterly','Monthly Refresh','Campaign-Led'] with prices ['from £2,200 / install','from £1,650 / install','from £3,800']; house-installs: 3 tiers with £450/week, £295/visit, £850/event; film-tv/traveller-weddings/in-shop-displays: 6 tiers each). Regression endpoints all green: workshops=4, products=21, cards=10, templates=3, /api/admin/portfolio=61, settings 200, /api/seo?path=/ 200, addons 200, admin login 200. Frontend: all 5 newly-wired service pages render <ServiceTiers> with the correct tile counts (shop-front=3, house=3, in-shop=6, film-tv=6, traveller-weddings=6) under the expected [data-testid='*-tiers'] containers, and the OLD selectors ([data-testid^='shop-front-programme-'], 'house-programme-', 'in-shop-offering-', 'film-tv-service-', 'traveller-wedding-signature-') are all GONE (0 matches each). Bespoke pages /faith-weddings and /traveller-funerals still render their hardcoded layouts. Admin → Service Pages tab shows 10 cards: 8 LIVE (Corporate, Film/TV/Photoshoot, House Installs, In-Shop Displays, Shop Front Installs, Sympathy & Funerals, Traveller Weddings, Weddings) + 2 EDITABLE (Faith Weddings, Traveller Funerals) — matches spec exactly. Admin TabsList wraps to 2 rows at 1280px (height 73px, scrollWidth==clientWidth → no horizontal scroll) and at 1024px (same). Portfolio admin pagination: 'Showing 1–24 of 61' on page 1 (PREV disabled), Next → 'Showing 25–48 of 61', page-3 → 'Showing 49–61 of 61'. Templates admin add-category UI fully working: created Valentines, toast 'Category added', removed via tpl-admin-cat-remove-<id>, toast 'Removed'. Page-content edit modal triggers exist for every slug as [data-testid='page-content-edit-<slug>'].",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/categories → 7 categories, each with product_count int field; values match Counter(p.category_id) over /api/products → confirms $lookup aggregation is correct and N+1 is gone",
+    "POST /api/seed/page-content?reset=true → {total:10, inserted:10}",
+    "GET /api/page-content/shop-front-installs → 3 tiers, titles=['Seasonal Quarterly','Monthly Refresh','Campaign-Led'], prices=['from £2,200 / install','from £1,650 / install','from £3,800']",
+    "GET /api/page-content/house-installs → 3 tiers, prices contain £450/week, £295/visit, £850/event",
+    "GET /api/page-content/film-tv-photoshoot → 6 tiers",
+    "GET /api/page-content/traveller-weddings → 6 tiers",
+    "GET /api/page-content/in-shop-displays → 6 tiers",
+    "GET /api/page-content/faith-weddings → 200 (record present, page kept bespoke)",
+    "GET /api/page-content/traveller-funerals → 200 (record present, page kept bespoke)",
+    "Regression: /api/workshops=4, /api/products=21, /api/cards=10, /api/templates=3, /api/admin/portfolio=61, /api/settings=200, /api/seo?path=/=200, /api/addons=200, POST /api/auth/login admin=200",
+    "FRONTEND /shop-front-installs → [data-testid='shop-front-tiers'] with 3 tiles; 0 old shop-front-programme-* selectors",
+    "FRONTEND /house-installs → [data-testid='house-installs-tiers'] with 3 tiles; 0 old house-programme-* selectors",
+    "FRONTEND /in-shop-displays → [data-testid='in-shop-tiers'] with 6 tiles; 0 old in-shop-offering-* selectors",
+    "FRONTEND /film-tv-photoshoot → [data-testid='film-tv-tiers'] with 6 tiles; 0 old film-tv-service-* selectors",
+    "FRONTEND /traveller-weddings → [data-testid='traveller-wedding-tiers'] with 6 tiles; 0 old traveller-wedding-signature-* selectors",
+    "FRONTEND /faith-weddings still renders bespoke layout (2,921 chars body content, title 'Flower Atelier — Leicester & Midlands…')",
+    "FRONTEND /traveller-funerals still renders bespoke layout (5,107 chars body content)",
+    "Admin → Service Pages: exactly 8 LIVE + 2 EDITABLE (verified per-card via DOM scrape)",
+    "Admin TabsList: 12 tabs, wraps to 2 rows, 0 horizontal overflow at 1280px AND 1024px (scrollWidth==clientWidth, height 73px)",
+    "Admin → Portfolio pagination: page1 'Showing 1–24 of 61' (Prev disabled), Next → '25–48', page-3 → '49–61'",
+    "Admin → Templates: tpl-admin-new-cat-name/-slug/-add-cat-btn present; created 'Valentines'/'valentines' (toast 'Category added'); deleted via tpl-admin-cat-remove-<id> (toast 'Removed')"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_10.py",
+    "/app/test_reports/pytest/iteration_10.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "/api/categories aggregation pipeline is clean — single $lookup with $size on the joined products array eliminates the previous per-category find().count() loop. Good fix.",
+    "PageContentAdmin LIVE_SLUGS expansion from 3 → 8 is in sync with the actual wired pages (weddings, sympathy, corporate + the 5 from this iteration). Faith-weddings/traveller-funerals correctly marked EDITABLE (intentional bespoke).",
+    "PortfolioAdmin client-side pagination: 24/page is computed against the filtered list; verified that PREV is correctly disabled on page 1 and that the count text follows 'Showing X–Y of Z' format. Note: filter changes do reset to page 1 (assumed from review brief; not exhaustively re-clicked but the UI behaves consistently).",
+    "AdminPage TabsList classes 'gap-y-1 flex flex-wrap' are correctly making the bar wrap; the active tab underline is still visible. No layout regression in any single-row-tab content panel.",
+    "server.py size still ~3000+ lines — same recommendation as iteration 9 (split routers); not blocking deploy.",
+    "Cookie banner still overlays the bottom-right corner during admin actions; not blocking, but worth noting that automated tests must dismiss it to avoid intercept of footer buttons."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_10.py (new — 19 tests covering categories aggregation, page-content reseed, all 5 wired pages tier shape, bespoke page presence, and full regression)"
+  ],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% on all review-request items"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (per /app/memory/test_credentials.md)",
+  "seed_data_creation": "Re-ran POST /api/seed/page-content?reset=true (this is intentional per review). Created+deleted a 'Valentines' template category via admin UI for cleanup verification. Did NOT mutate settings or page-content beyond that reset.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 14 review-request items pass (5 backend, 9 frontend including admin UX). No bugs found. The 2 EDITABLE pages (faith-weddings, traveller-funerals) are intentionally bespoke. Backend test file /app/backend/tests/test_iteration_10.py can be re-run as a smoke/regression suite — 19 tests, ~3 seconds. Note: shadcn TabsContent does NOT use role='tabpanel' in this build — when scoping queries to the active panel, use the visible tab's content container instead, or just query globally and filter."
+}

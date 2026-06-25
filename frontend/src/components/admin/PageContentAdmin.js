@@ -9,9 +9,14 @@ import { Plus, Pencil, X, Upload, Trash2, GripVertical } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Pages CURRENTLY rendering this CMS content. Other seeded slugs remain editable
-// but their hardcoded copy is still live until they're wired in the next release.
-const LIVE_SLUGS = new Set(["weddings", "sympathy", "corporate"]);
+// Pages CURRENTLY rendering this CMS content on the live site.
+// 8/10 wired — Faith Weddings & Traveller Funerals keep their bespoke layouts
+// (palette swatches / letter-size tables) which don't map cleanly to the generic tier shape.
+const LIVE_SLUGS = new Set([
+  "weddings", "sympathy", "corporate",
+  "shop-front-installs", "house-installs", "film-tv-photoshoot",
+  "traveller-weddings", "in-shop-displays",
+]);
 
 export default function PageContentAdmin() {
   const [pages, setPages] = useState([]);
