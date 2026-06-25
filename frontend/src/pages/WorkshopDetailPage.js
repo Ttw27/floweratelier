@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Calendar, Users, MapPin, Clock, MessageCircle, Building2 } from "lucide-react";
 import WorkshopBookingModal from "../components/WorkshopBookingModal";
 import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
+import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
-const WHATSAPP_NUMBER = "447123456789";
 
 const fmtDate = (iso) => {
   if (!iso) return "";
@@ -18,6 +18,7 @@ const fmtDate = (iso) => {
 
 export default function WorkshopDetailPage() {
   const { slug } = useParams();
+  const { settings } = useSettings();
   const [workshop, setWorkshop] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,8 @@ export default function WorkshopDetailPage() {
   const isEnquire = workshop.booking_mode === "enquire";
   const upcoming = sessions.filter((s) => (s.capacity || 0) - (s.spots_booked || 0) > 0);
   const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Flower Atelier — I'd like to enquire about ${workshop.name}.`);
-  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
+  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const whatsappHref = `https://wa.me/${waNumber}?text=${whatsappMsg}`;
 
   const primaryCTA = () => isEnquire ? setEnquireOpen(true) : setBookingOpen(true);
 

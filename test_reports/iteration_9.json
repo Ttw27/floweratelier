@@ -1,0 +1,57 @@
+{
+  "summary": "Iteration 9 — Page Content CMS + WhatsApp consolidation. Backend: 21/21 pytest PASS (CMS CRUD, seed idempotency, auth, regression for workshops/products/cards/portfolio/templates/seo/settings/admin login). Frontend: /weddings hero+tiers (4 tiles, all 4 expected prices £245/£95 each/£2,500/£1,800) verified; /sympathy 4 new tribute tiers (£180/£220/£240/£85) verified, old 'tribute-type-*' selectors removed; Admin Service Pages tab loads PageContentAdmin with 10 rows, edit modal opens with all required fields (eyebrow/title1/subheading/hero-file/hero-upload/tier-0..3/tier-add/save); edit roundtrip works — changed weddings hero_title_line1 to 'Test Wedding Day,', saved (toast 'Saved' appeared), live /weddings page reflected the change, reverted successfully. WhatsApp number consolidation works: PATCHed settings.whatsapp_number → 447999000111, both /workshops bottom CTA and /workshops/{slug} detail page picked up the new number in href (https://wa.me/447999000111?...), then restored to 447123456789. ONE BUG FOUND on /corporate page (see action_items).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PAGE_CONTENT_SEED['corporate']", "issue": "Seeded tier prices ('from £350 / week', 'from £2,800', 'from £4,500', 'from £1,500') do NOT match the review-request expectation ('from £1,200/month', 'from £3,500', 'from £2,500', 'from £95 per piece') NOR match the hardcoded frontend defaultTiers in CorporatePage.js (which also have £1,200/month etc.). Because ServiceTiers prefers CMS content.tiers over defaultTiers, the live /corporate page now shows the CMS-seeded values, overriding the hardcoded defaults. Fix: update PAGE_CONTENT_SEED 'corporate' entry in /app/backend/server.py (~line 2306) to match the 4 frontend defaults (Weekly Install Programmes £1,200/month, Product Launches & Openings £3,500, Gala Dinners & Award Events £2,500, Executive & Client Gifting £95 per piece) and re-seed (POST /api/seed/page-content?reset=true)."},
+      {"endpoint": "/api/workshops (seed data)", "issue": "Workshop.whatsapp_message values still say 'Hello Petals Atelier' (legacy brand). Minor inconsistency post-rebrand. Cosmetic — not in current scope but worth a one-shot update."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "/corporate tier section", "issue": "Displays CMS-seeded copy (Weekly Floral Programme £350/week, Press Day & Launches £2,800, Awards & Gala Tablescapes £4,500, Office & Hotel Lobby Installs £1,500) instead of the expected hardcoded defaults referenced in review request. Root cause is backend seed values, not the component itself.", "affected_selectors": ["[data-testid='corporate-tiers']", "[data-testid='corporate-tiers-tier-0..3']"]}
+    ],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "Backend 21/21 pytest tests PASS (CMS seed/get/admin-list/create/update/delete/inactive-404/regression/whatsapp-PATCH)",
+    "POST /api/seed/page-content → {total:10, inserted:varies}; idempotent second call inserted=0",
+    "GET /api/page-content/weddings → eyebrow='Weddings', title1='Your day,', italic='bloom.', 4 tiers with correct titles+prices",
+    "GET /api/page-content/unknown-slug → 404; GET on inactive record → 404",
+    "GET /api/admin/page-content unauthenticated → 401/403; authenticated → 10 docs",
+    "POST /api/admin/page-content duplicate slug → 400; new slug → 200",
+    "PUT /api/admin/page-content/weddings → persists; PUT missing slug → upserts (200)",
+    "DELETE missing slug → 404",
+    "Regression: workshops=4, products=21, cards=10, portfolio=61, templates=3, /api/seo+/api/settings 200, admin login 200",
+    "/weddings page: CMS hero (eyebrow, title 'Your day,'+'bloom.', subheading, CTA 'Book a wedding consultation'), tier section [data-testid='weddings-tiers'] with 4 tiles each containing expected title + price",
+    "/sympathy page: [data-testid='sympathy-tiers'] with 4 tiles; prices £180/£220/£240/£85 all present; old [data-testid^='tribute-type-'] selectors confirmed gone",
+    "Admin → Service Pages tab: PageContentAdmin loads, 10 rows present (all 10 expected slugs), Edit modal opens with all required form fields, Save persists, /weddings reflects edit, revert works",
+    "WhatsApp consolidation: PATCH settings.whatsapp_number → 447999000111 propagates to /workshops bottom CTA and /workshops/{slug} detail page (verified by reading rendered href attribute)"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_page_content.py",
+    "/app/test_reports/pytest/iteration_9.xml"
+  ],
+  "action_items": [
+    "Update PAGE_CONTENT_SEED entry for 'corporate' in /app/backend/server.py (~line 2306–2318) so the 4 tier titles + price_label values match the 4 hardcoded defaultTiers in /app/frontend/src/pages/CorporatePage.js (Weekly Install Programmes from £1,200/month, Product Launches & Openings from £3,500, Gala Dinners & Award Events from £2,500, Executive & Client Gifting from £95 per piece). Then call POST /api/seed/page-content?reset=true once to overwrite the existing corporate doc. (Or alternatively: keep CMS seed as authoritative and update CorporatePage.js + the review-request reference.) — main agent should pick the canonical source.",
+    "(Optional cleanup) Update workshops seed `whatsapp_message` strings from 'Hello Petals Atelier' → 'Hello Flower Atelier' for brand consistency."
+  ],
+  "critical_code_review_comments": [
+    "PageContent CRUD endpoints correctly exclude MongoDB _id projection (find_one/find use {'_id': 0}). Good.",
+    "PUT /api/admin/page-content/{slug} performs an upsert when slug missing — intentional per review request; behaviour is documented.",
+    "ServiceTiers.js correctly prefers content.tiers when present (length>0), falls back to defaultTiers — but this means any drift between CMS seed and frontend defaults is hidden until the CMS is reset/cleared. Consider a 'NOT YET LIVE' visual indicator in the admin when a page's JSX is still hardcoded (the 7 non-live pages) — currently relies on a static EDITABLE badge.",
+    "server.py is now 3030 lines (file-size threshold). Splitting page_content, workshops, portfolio, products into separate routers would help maintainability.",
+    "WhatsApp number fallback '447123456789' is duplicated across 4 files (WorkshopsPage, WorkshopDetailPage, WorkshopBookingModal, WorkshopEnquireModal) — consider exporting a constant or letting useSettings provide it with the fallback baked in."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_page_content.py (new — 21 tests)"
+  ],
+  "success_rate": {"backend": "100% (21/21)", "frontend": "~92% — only /corporate tier prices fail to match expected review values"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (per /app/memory/test_credentials.md)",
+  "seed_data_creation": "Used the existing POST /api/seed/page-content (idempotent). Test class TestAdmin temporarily creates+deletes 'TEST-newpage-zzz' and 'TEST-upsert-zzz' slugs; both cleaned up. Settings.whatsapp_number temporarily mutated to 447999000111 and restored to 447123456789 inside tests.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend CMS is solid. The only blocker is the corporate seed price mismatch (see action_items). All other CMS, admin UI, edit roundtrip, and WhatsApp consolidation flows verified working end-to-end. The 7 'EDITABLE'-badge pages were intentionally NOT validated for frontend rendering (per agent_to_agent_context_note — their JSX is still hardcoded).",
+  "rca of the issue": "/corporate price mismatch RCA: PAGE_CONTENT_SEED in server.py line 2306–2318 (slug='corporate') was authored with a different set of prices/titles than the hardcoded defaultTiers array in CorporatePage.js. Because the frontend ServiceTiers component prefers content.tiers when present, the CMS seed wins and overrides the hardcoded defaults. Reproduction: GET /api/page-content/corporate → returns the £350/£2,800/£4,500/£1,500 set; visit /corporate → renders those values; review request expected the defaultTiers set. Fix: replace the corporate tiers array in PAGE_CONTENT_SEED with the 4 entries from CorporatePage.js defaultTiers, then POST /api/seed/page-content?reset=true."
+}

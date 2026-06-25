@@ -2206,6 +2206,226 @@ async def seed_cards_addons(reset: bool = False, admin=Depends(require_admin)):
     }
 
 
+# ==================== PAGE CONTENT CMS ====================
+
+class PageTier(BaseModel):
+    title: str
+    description: str = ""
+    price_label: str = ""           # e.g. "from £245"
+    image_url: str = ""
+    sort_order: int = 0
+
+class PageContentCreate(BaseModel):
+    slug: str                                # weddings, sympathy, corporate, ...
+    label: str = ""                          # human label for admin
+    hero_eyebrow: str = ""
+    hero_title_line1: str = ""               # e.g. "Your day,"
+    hero_title_italic: str = ""              # italic emphasis word, e.g. "bloom."
+    hero_title_line2: str = ""               # optional second line
+    hero_subheading: str = ""
+    hero_image: str = ""
+    hero_cta_label: str = ""
+    hero_cta_url: str = ""
+    tiers: List[PageTier] = []
+    active: bool = True
+
+class PageContentResponse(PageContentCreate):
+    id: str
+
+@api_router.get("/page-content/{slug}", response_model=PageContentResponse)
+async def get_page_content(slug: str):
+    doc = await db.page_content.find_one({"slug": slug, "active": True}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Page content not found")
+    return PageContentResponse(**doc)
+
+@api_router.get("/admin/page-content", response_model=List[PageContentResponse])
+async def admin_list_page_content(admin=Depends(require_admin)):
+    docs = await db.page_content.find({}, {"_id": 0}).sort("slug", 1).to_list(100)
+    return [PageContentResponse(**d) for d in docs]
+
+@api_router.post("/admin/page-content", response_model=PageContentResponse)
+async def admin_create_page_content(data: PageContentCreate, admin=Depends(require_admin)):
+    if await db.page_content.find_one({"slug": data.slug}):
+        raise HTTPException(400, "Slug already exists")
+    doc = {**data.model_dump(), "id": str(uuid.uuid4())}
+    await db.page_content.insert_one(doc)
+    return PageContentResponse(**doc)
+
+@api_router.put("/admin/page-content/{slug}", response_model=PageContentResponse)
+async def admin_update_page_content(slug: str, data: PageContentCreate, admin=Depends(require_admin)):
+    existing = await db.page_content.find_one({"slug": slug}, {"_id": 0})
+    if not existing:
+        # upsert allows admin to "create by editing"
+        doc = {**data.model_dump(), "id": str(uuid.uuid4()), "slug": slug}
+        await db.page_content.insert_one(doc)
+        return PageContentResponse(**doc)
+    payload = data.model_dump()
+    payload["slug"] = slug  # don't let slug change via PUT
+    await db.page_content.update_one({"slug": slug}, {"$set": payload})
+    return PageContentResponse(id=existing["id"], **payload)
+
+@api_router.delete("/admin/page-content/{slug}")
+async def admin_delete_page_content(slug: str, admin=Depends(require_admin)):
+    res = await db.page_content.delete_one({"slug": slug})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Page content not found")
+    return {"deleted": slug}
+
+
+PAGE_CONTENT_SEED = [
+    {
+        "slug": "weddings", "label": "Weddings",
+        "hero_eyebrow": "Weddings",
+        "hero_title_line1": "Your day,", "hero_title_italic": "bloom.", "hero_title_line2": "in",
+        "hero_subheading": "From intimate ceremonies to destination weddings across the UK and Europe — we design, install and dismantle entirely in-house. One florist. One vision. Impeccably executed.",
+        "hero_image": "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1800",
+        "hero_cta_label": "Book a wedding consultation", "hero_cta_url": "/consultation?service=wedding",
+        "tiers": [
+            {"title": "Bridal Couture Bouquet", "description": "The crowning composition — garden roses, ranunculus and sweet peas, hand-tied with silk.", "price_label": "from £245", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 10},
+            {"title": "Bridesmaids & Attendants", "description": "Coordinated miniature editions for the wedding party.", "price_label": "from £95 each", "image_url": "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=1200", "sort_order": 20},
+            {"title": "Ceremony Installations", "description": "Altars, arches, chuppahs and statement pedestals.", "price_label": "from £2,500", "image_url": "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png", "sort_order": 30},
+            {"title": "Reception Tablescapes", "description": "Low runners, elevated centrepieces and candlescape design.", "price_label": "from £1,800", "image_url": "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png", "sort_order": 40},
+        ],
+    },
+    {
+        "slug": "sympathy", "label": "Sympathy & Funerals",
+        "hero_eyebrow": "Sympathy & Funeral",
+        "hero_title_line1": "Honouring lives,", "hero_title_italic": "with grace.", "hero_title_line2": "",
+        "hero_subheading": "Dignified, bespoke tributes crafted with the utmost care — we work closely with funeral directors across Leicester and the Midlands to ensure seamless, quiet delivery on your most difficult day.",
+        "hero_image": "https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1400",
+        "hero_cta_label": "Request a consultation", "hero_cta_url": "/consultation?service=sympathy",
+        "tiers": [
+            {"title": "Casket & Coffin Tributes", "description": "Hand-tied sprays for the service.", "price_label": "from £180", "image_url": "https://images.unsplash.com/photo-1593019776922-e6ad79c69947?w=1200", "sort_order": 10},
+            {"title": "Standing Arrangements", "description": "Elegant pedestal and easel tributes.", "price_label": "from £220", "image_url": "https://images.unsplash.com/photo-1486818203489-37b06f23a3a8?w=1200", "sort_order": 20},
+            {"title": "Letter Tributes", "description": "Meaningful words in bloom — DAD, MUM, NAN.", "price_label": "from £240", "image_url": "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=1200", "sort_order": 30},
+            {"title": "Sympathy Bouquets", "description": "For the family, with care.", "price_label": "from £85", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1200", "sort_order": 40},
+        ],
+    },
+    {
+        "slug": "corporate", "label": "Corporate",
+        "hero_eyebrow": "Corporate",
+        "hero_title_line1": "Bloom your", "hero_title_italic": "brand.", "hero_title_line2": "",
+        "hero_subheading": "Weekly programmes for Midlands hotels and private members' clubs. Launch arches, press-day florals, awards-night tablescapes and product photography. We partner quietly with marketing teams.",
+        "hero_image": "https://images.unsplash.com/photo-1530092285049-1c42085fd395?w=1800",
+        "hero_cta_label": "Discuss a corporate programme", "hero_cta_url": "/consultation?service=corporate",
+        "tiers": [
+            {"title": "Weekly Floral Programme", "description": "Recurring fresh installations for reception desks, club bars and lifts.", "price_label": "from £350 / week", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 10},
+            {"title": "Press Day & Launches", "description": "Branded floral installations, sampling tables and photography florals.", "price_label": "from £2,800", "image_url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200", "sort_order": 20},
+            {"title": "Awards & Gala Tablescapes", "description": "Long-table runners, centrepieces and stage florals.", "price_label": "from £4,500", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
+            {"title": "Office & Hotel Lobby Installs", "description": "Statement permanent installations refreshed monthly.", "price_label": "from £1,500", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
+        ],
+    },
+    {
+        "slug": "shop-front-installs", "label": "Shop Front Installs",
+        "hero_eyebrow": "Shop Fronts",
+        "hero_title_line1": "Stop traffic.", "hero_title_italic": "Quietly.", "hero_title_line2": "",
+        "hero_subheading": "Statement floral installations for boutique facades, jewellery flagships and lifestyle stores across the Midlands — quarterly, monthly or one-off.",
+        "hero_image": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1800",
+        "hero_cta_label": "Discuss a façade install", "hero_cta_url": "/consultation?service=shop-front",
+        "tiers": [
+            {"title": "Statement Façade", "description": "Full doorway / archway floral installations.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200", "sort_order": 10},
+            {"title": "Window Edit", "description": "Themed window-display florals refreshed monthly.", "price_label": "from £750", "image_url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200", "sort_order": 20},
+            {"title": "Seasonal Programme", "description": "Quarterly refreshes coordinated with your trading calendar.", "price_label": "from £4,500 / year", "image_url": "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200", "sort_order": 30},
+        ],
+    },
+    {
+        "slug": "house-installs", "label": "House Installs",
+        "hero_eyebrow": "House Installs",
+        "hero_title_line1": "A home that", "hero_title_italic": "breathes.", "hero_title_line2": "",
+        "hero_subheading": "Residential floristry for the way you actually live — drawing-room arrangements, hallway statement vases, dinner-party centrepieces, refreshed weekly or for a single occasion.",
+        "hero_image": "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=1800",
+        "hero_cta_label": "Discuss a home programme", "hero_cta_url": "/consultation?service=house-install",
+        "tiers": [
+            {"title": "Weekly House Programme", "description": "Three to five arrangements styled and refreshed weekly.", "price_label": "from £180 / week", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 10},
+            {"title": "Dinner Party Centrepieces", "description": "Long-table runners or cluster centrepieces for a single evening.", "price_label": "from £320", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 20},
+            {"title": "Statement Hallway Installation", "description": "Floor-standing or pedestal installations for entrance halls.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1200", "sort_order": 30},
+        ],
+    },
+    {
+        "slug": "film-tv-photoshoot", "label": "Film / TV / Photoshoot",
+        "hero_eyebrow": "Film · TV · Photoshoot",
+        "hero_title_line1": "Florals for", "hero_title_italic": "the lens.", "hero_title_line2": "",
+        "hero_subheading": "Trusted by editorial photographers, stylists and production houses. Hero blooms, set dressing, table styling and continuity florals — produced to deadline.",
+        "hero_image": "https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=1800",
+        "hero_cta_label": "Brief us a shoot", "hero_cta_url": "/consultation?service=film-tv",
+        "tiers": [
+            {"title": "Editorial Set Florals", "description": "Hero arrangements styled to brief — fashion, beauty, interiors.", "price_label": "from £750", "image_url": "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=1200", "sort_order": 10},
+            {"title": "Continuity Florals (TV / Drama)", "description": "Multi-day floral continuity for series and film — replicas held in cold-store.", "price_label": "from £1,800 / day", "image_url": "https://images.unsplash.com/photo-1583336663277-620dc1996580?w=1200", "sort_order": 20},
+            {"title": "Brand & Beauty Macro", "description": "Single hero blooms for product macro and campaign photography.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=1200", "sort_order": 30},
+        ],
+    },
+    {
+        "slug": "traveller-weddings", "label": "Traveller Weddings",
+        "hero_eyebrow": "Traveller Weddings",
+        "hero_title_line1": "Stop them.", "hero_title_italic": "In their tracks.", "hero_title_line2": "",
+        "hero_subheading": "Show-stopping bridal florals built for the camera and the day — abundant gold-trimmed bouquets, ten-foot ceremony arches, statement car installs and full-room tablescapes. We work nationally.",
+        "hero_image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1800",
+        "hero_cta_label": "Build a Traveller wedding", "hero_cta_url": "/consultation?service=traveller-wedding",
+        "tiers": [
+            {"title": "Statement Bridal Bouquet", "description": "Abundant cascade bouquets with rhinestones, ribbon and ornament.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200", "sort_order": 10},
+            {"title": "Ten-Foot Ceremony Arch", "description": "Floor-standing flowering arches built on-site, broken down same evening.", "price_label": "from £4,500", "image_url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200", "sort_order": 20},
+            {"title": "Car / Carriage Florals", "description": "Bonnet, door & ribbon florals for the bridal car or carriage.", "price_label": "from £650", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
+            {"title": "Reception Tablescape (per table)", "description": "Long-table runners or tall-and-low centrepieces, by the table.", "price_label": "from £180 / table", "image_url": "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png", "sort_order": 40},
+        ],
+    },
+    {
+        "slug": "traveller-funerals", "label": "Traveller Funerals",
+        "hero_eyebrow": "Traveller Funerals",
+        "hero_title_line1": "A goodbye, made", "hero_title_italic": "magnificent.", "hero_title_line2": "",
+        "hero_subheading": "Large-format named tributes, full-coffin sprays, gates, photo-frames and themed pieces — produced to a tight calendar, delivered nationally and handed directly to your funeral director.",
+        "hero_image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1800",
+        "hero_cta_label": "Speak to the studio", "hero_cta_url": "/consultation?service=traveller-funeral",
+        "tiers": [
+            {"title": "Named Letter Tributes", "description": "DAD / MUM / NAN / GRANDAD — 3ft and 5ft sizes available.", "price_label": "from £320", "image_url": "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=1200", "sort_order": 10},
+            {"title": "Full Coffin Spray", "description": "Top-to-toe sprays in season — roses, lilies, chrysanthemum.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1593019776922-e6ad79c69947?w=1200", "sort_order": 20},
+            {"title": "Photo-Frame & Themed Tributes", "description": "Bespoke shape pieces — boxing ring, horse, lorry, football badge.", "price_label": "from £580", "image_url": "https://images.unsplash.com/photo-1486818203489-37b06f23a3a8?w=1200", "sort_order": 30},
+            {"title": "Gates of Heaven", "description": "Five-foot standing gates with named scrollwork.", "price_label": "from £680", "image_url": "https://images.unsplash.com/photo-1466692476655-9e1d3eba2c97?w=1200", "sort_order": 40},
+        ],
+    },
+    {
+        "slug": "faith-weddings", "label": "Faith Weddings",
+        "hero_eyebrow": "Faith Weddings",
+        "hero_title_line1": "Vows, set", "hero_title_italic": "in bloom.", "hero_title_line2": "",
+        "hero_subheading": "Mandap installations, chuppahs, church altars and gurdwara durbar florals — designed with respect for tradition and an editorial sensibility.",
+        "hero_image": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1800",
+        "hero_cta_label": "Begin a faith-wedding brief", "hero_cta_url": "/consultation?service=faith-wedding",
+        "tiers": [
+            {"title": "Mandap Installation", "description": "Four-pillar mandap with full canopy florals.", "price_label": "from £4,800", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 10},
+            {"title": "Chuppah (Jewish Ceremony)", "description": "Four-pole chuppah with foliage canopy and statement corners.", "price_label": "from £3,200", "image_url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200", "sort_order": 20},
+            {"title": "Church Altar & Aisle", "description": "Altar pedestals, pew-end posies, aisle markers.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 30},
+            {"title": "Gurdwara Durbar Florals", "description": "Floor-level gurdwara florals styled with respect for tradition.", "price_label": "from £2,200", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
+        ],
+    },
+    {
+        "slug": "in-shop-displays", "label": "In-Shop Displays",
+        "hero_eyebrow": "In-Shop Displays",
+        "hero_title_line1": "The room", "hero_title_italic": "remembered.", "hero_title_line2": "",
+        "hero_subheading": "Floral takeovers, sampling tables and signature displays for retail concept spaces — staged, refreshed and dismantled by us.",
+        "hero_image": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1800",
+        "hero_cta_label": "Discuss an in-shop takeover", "hero_cta_url": "/consultation?service=in-shop",
+        "tiers": [
+            {"title": "Single-Day Takeover", "description": "Full-room floral takeover for sampling or press days.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200", "sort_order": 10},
+            {"title": "Two-Week Residency", "description": "Mid-space installation that lives for a fortnight, watered by us.", "price_label": "from £4,200", "image_url": "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200", "sort_order": 20},
+            {"title": "Seasonal Refresh Programme", "description": "Quarterly themed refreshes coordinated with your VM team.", "price_label": "from £6,500 / year", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 30},
+        ],
+    },
+]
+
+@api_router.post("/seed/page-content")
+async def seed_page_content(reset: bool = False, admin=Depends(require_admin)):
+    if reset:
+        await db.page_content.delete_many({})
+    existing_slugs = set([d["slug"] for d in await db.page_content.find({}, {"slug": 1}).to_list(200)])
+    inserted = 0
+    for p in PAGE_CONTENT_SEED:
+        if p["slug"] in existing_slugs:
+            continue
+        await db.page_content.insert_one({**p, "id": str(uuid.uuid4()), "active": True})
+        inserted += 1
+    return {"total": await db.page_content.count_documents({}), "inserted": inserted}
+
+
 # ==================== WORKSHOPS ====================
 
 class WorkshopCreate(BaseModel):

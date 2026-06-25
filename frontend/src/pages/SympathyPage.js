@@ -4,15 +4,16 @@ import { ArrowRight, Phone } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
+import ServiceTiers from "../components/ServiceTiers";
+import { usePageContent } from "../hooks/usePageContent";
 
 export default function SympathyPage() {
-  const tributeTypes = [
-    { name: "Casket & Coffin Tributes", desc: "Hand-tied sprays for the service" },
-    { name: "Standing Arrangements", desc: "Elegant pedestal and easel tributes" },
-    { name: "Traditional Wreaths", desc: "Classic circular forms, quietly composed" },
-    { name: "Letter Tributes", desc: "Meaningful words in bloom" },
-    { name: "Sympathy Bouquets", desc: "For the family, with care" },
-    { name: "Bespoke Commissions", desc: "Reflecting a life lived" },
+  const { content } = usePageContent("sympathy");
+  const defaultTiers = [
+    { title: "Casket & Coffin Tributes", description: "Hand-tied sprays for the service.", price_label: "from £180", image_url: "https://images.unsplash.com/photo-1593019776922-e6ad79c69947?w=1200" },
+    { title: "Standing Arrangements", description: "Elegant pedestal and easel tributes.", price_label: "from £220", image_url: "https://images.unsplash.com/photo-1486818203489-37b06f23a3a8?w=1200" },
+    { title: "Letter Tributes", description: "Meaningful words in bloom — DAD, MUM, NAN.", price_label: "from £240", image_url: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=1200" },
+    { title: "Sympathy Bouquets", description: "For the family, with care.", price_label: "from £85", image_url: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1200" },
   ];
 
   return (
@@ -62,24 +63,14 @@ export default function SympathyPage() {
         </div>
       </section>
 
-      {/* Tribute Types */}
-      <section className="py-24 md:py-32 px-6 md:px-12">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-5"><span className="thin-rule" />Tributes</p>
-          <h2 className="font-heading text-4xl md:text-6xl font-light text-[#1A1A1A] leading-[1.05] mb-16 max-w-3xl">
-            Forms of<br /><span className="italic">remembrance.</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-[#E5E5E5] border border-[#E5E5E5]">
-            {tributeTypes.map((type, idx) => (
-              <div key={idx} className="bg-[#FAFAF7] p-10" data-testid={`tribute-type-${idx}`}>
-                <p className="font-heading text-3xl font-light text-[#B3A89B] mb-3">{String(idx + 1).padStart(2, "0")}</p>
-                <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-3">{type.name}</h3>
-                <p className="font-body text-sm text-[#7A7A7A] leading-relaxed">{type.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Tributes — pricing editable in admin / Page Content */}
+      <ServiceTiers
+        content={content}
+        defaultTiers={defaultTiers}
+        eyebrow="Tributes"
+        heading={<>Forms of<br /><span className="italic">remembrance.</span></>}
+        testId="sympathy-tiers"
+      />
 
       {/* Bespoke Consultation — primary path */}
       <BespokeConsultationCTA

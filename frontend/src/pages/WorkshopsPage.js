@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles, Leaf, Heart, Beer, Building2, Users, TrendingUp, 
 import MiniPortfolio from "../components/MiniPortfolio";
 import WorkshopBookingModal from "../components/WorkshopBookingModal";
 import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
+import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 const HERO = "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1800&q=80";
@@ -13,6 +14,7 @@ const HERO = "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1800&q
 const TAG_ICONS = { Christmas: Sparkles, Halloween: Leaf, "Care Homes": Heart, "Venue Partners": Beer };
 
 export default function WorkshopsPage() {
+  const { settings } = useSettings();
   const [workshops, setWorkshops] = useState([]);
   const [bookingFor, setBookingFor] = useState(null);
   const [enquireFor, setEnquireFor] = useState(null);
@@ -25,6 +27,9 @@ export default function WorkshopsPage() {
   const enquireWorkshops = useMemo(() => workshops.filter((w) => w.booking_mode === "enquire"), [workshops]);
 
   const openCTA = (w) => (w.booking_mode === "enquire" ? setEnquireFor(w) : setBookingFor(w));
+
+  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const waHref = `https://wa.me/${waNumber}?text=${encodeURIComponent("Hello Flower Atelier — I'd like to host a workshop at our venue.")}`;
 
   return (
     <div className="pt-28" data-testid="workshops-page">
@@ -139,7 +144,7 @@ export default function WorkshopsPage() {
             Tell us your date &mdash; we&rsquo;ll build the bench around it.
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="https://wa.me/447123456789?text=Hello%20Flower%20Atelier%20%E2%80%94%20I%27d%20like%20to%20host%20a%20workshop%20at%20our%20venue." target="_blank" rel="noopener noreferrer">
+            <a href={waHref} target="_blank" rel="noopener noreferrer">
               <Button className="bg-[#25D366] hover:bg-[#1ebe5b] text-white py-6 px-8 rounded-none w-full sm:w-auto" data-testid="workshops-bottom-whatsapp">
                 <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
               </Button>

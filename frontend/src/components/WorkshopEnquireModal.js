@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { X, MessageCircle, CheckCircle2 } from "lucide-react";
+import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
-const WHATSAPP_NUMBER = "447123456789";
 
 export default function WorkshopEnquireModal({ open, workshop, onClose }) {
+  const { settings } = useSettings();
   const [form, setForm] = useState({ name: "", venue_name: "", email: "", phone: "", target_date: "", guests: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -25,7 +26,8 @@ export default function WorkshopEnquireModal({ open, workshop, onClose }) {
   if (!open || !workshop) return null;
 
   const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Flower Atelier — I'd like to enquire about ${workshop.name}.`);
-  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
+  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const whatsappHref = `https://wa.me/${waNumber}?text=${whatsappMsg}`;
 
   const submit = async (e) => {
     e.preventDefault();
