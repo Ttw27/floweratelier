@@ -157,6 +157,13 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 8. Seasonal pre-order drops (Valentine's, Mother's Day)
 
 ## Changelog
+### 2026-06-25 (latest) — Faith Weddings & Traveller Funerals fully wired to CMS (10/10 LIVE)
+- **Bespoke editors** in `PageContentAdmin.js`: new `FaithTraditionsEditor` (palette swatches, details bullets, image upload per tradition) and `TravellerFuneralsEditor` (letter_tributes / bespoke_builds / classic_tributes — table-style CRUD). Renders conditionally for `faith-weddings` & `traveller-funerals` slugs alongside the generic tier editor.
+- **Traveller Funerals hero block** now reads `hero_eyebrow / hero_title_* / hero_subheading / hero_cta_label / hero_cta_url / hero_image` from `page_content` with fallbacks.
+- **PageContent.extra** (`Dict[str, Any]`) round-trips through Pydantic for both slugs — palette hex lists, letter/build tables and classic-tribute string lists all persist correctly.
+- All 10 service pages now show **Live** badge in admin; "Editable" pathway retired.
+- Tested: pytest 16/16 backend + frontend (iteration_11.json). Zero blocking bugs. Cosmetic fix applied for empty `hero_title_line2` fallback on Traveller Funerals.
+
 ### 2026-06-25 (final) — 8/10 service pages now LIVE, N+1 fix, admin polish (DEPLOY READY)
 - **Wired 5 more service pages** to the CMS — Shop Front Installs, House Installs, In-Shop Displays, Film/TV/Photoshoot, Traveller Weddings now render hero + tier pricing from `page_content` collection. **8/10 service pages LIVE** in admin. Faith Weddings & Traveller Funerals stay bespoke (palette swatches / letter-size tables — would lose structure in generic tier shape). PAGE_CONTENT_SEED updated to match the richer 3-/6-tier defaults of each page.
 - **N+1 fix**: `/api/categories` now uses a single `$lookup` aggregation pipeline (was N+1 product-count queries). Single DB hit regardless of category count.

@@ -46,7 +46,7 @@ export default function TravellerFuneralsPage() {
           <div className="lg:col-span-6">
             <p className="accent-label mb-8"><span className="thin-rule" />{content?.hero_eyebrow || "Traveller Funerals"}</p>
             <h1 className="font-heading text-5xl md:text-7xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight mb-8" data-testid="traveller-funerals-title">
-              {content?.hero_title_line1 || "A final tribute"}<br /><span className="italic text-[#B3A89B]">{content?.hero_title_italic || "worthy"}</span>{content?.hero_title_line2 ? <> {content.hero_title_line2}</> : <> of the life.</>}
+              {content?.hero_title_line1 || "A final tribute"}<br /><span className="italic text-[#B3A89B]">{content?.hero_title_italic || "worthy"}</span>{content ? (content.hero_title_line2 ? <> {content.hero_title_line2}</> : null) : <> of the life.</>}
             </h1>
             <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-6 max-w-lg">
               {content?.hero_subheading || "We've crafted bespoke floral tributes for traveller funerals across the UK — letter tributes from 1ft to 3ft+, full 3D floral builds, and classic pieces that honour the loved one's life in the truest possible way."}
