@@ -157,6 +157,14 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 8. Seasonal pre-order drops (Valentine's, Mother's Day)
 
 ## Changelog
+### 2026-06-25 (later) — Service-Page CMS + WhatsApp single config (deploy-ready)
+- **Service-Page CMS (NEW)**: `page_content` collection with full admin CRUD. 10 service pages seeded (weddings, sympathy, corporate, shop-front-installs, house-installs, film-tv-photoshoot, traveller-weddings, traveller-funerals, faith-weddings, in-shop-displays). Each row contains hero block (eyebrow, two-line title, italic emphasis word, subheading, hero image, CTA label+url) **and** an editable tier array (title, description, price_label, image_url, sort_order). New shared `<ServiceHero>` + `<ServiceTiers>` components + `usePageContent(slug)` hook. New **Service Pages** admin tab with hero + tier editor (move up/down, image upload, paste URL).
+- **Wired pages (LIVE badge)**: Weddings (hero + tiers), Sympathy (tiers), Corporate (tiers). Other 7 pages show **EDITABLE** badge in admin — content is saved but their JSX still uses hardcoded copy until the next wiring pass.
+- **WhatsApp consolidation**: removed all `WHATSAPP_NUMBER` constants; 4 components now read from `useSettings().whatsapp_number` with `447123456789` fallback (`WorkshopBookingModal`, `WorkshopEnquireModal`, `WorkshopDetailPage`, `WorkshopsPage`).
+- Workshop seed `whatsapp_message` strings rebranded `Petals → Flower`.
+- Tested: pytest 21/21 + frontend full CMS edit-roundtrip on /weddings, /sympathy, /corporate (iteration_9.json). Final fix applied for corporate seed price mismatch and verified.
+- **Deploy-ready** (`deployment_agent: status: warn`, no blockers; one N+1 perf warning already backlogged). Stripe/Mongo/CORS env-driven, no hardcoded secrets.
+
 ### 2026-06-25 — Brand rebrand to "Flower Atelier" + Portfolio Admin + remove next-day promises
 - **Rebrand**: 35+ source-tree replacements (`Petals Atelier` → `Flower Atelier`). Header & Footer wordmarks updated; index.html `<title>`; SEOAdmin placeholders; product "Atelier No. 20 — Petals Signature" → "Atelier No. 20 — Signature"; "Petals Plush Bear" → "Plush Bear"; site-settings + home `/` SEO record updated via API; admin login email kept as `admin@petalsatelier.com` (no auth break).
 - **Remove delivery promises**: stripped "next-day", "tomorrow", "Same-week" everywhere. HomePage hero badge "Next-day Midlands" → "Midlands delivery". HomePage hero copy "delivered…tomorrow" → "delivered across the Midlands, with bespoke services UK-wide". FilmTV "next-day delivery to set" → "flexible scheduling on set". Letter Tribute product description rewritten. Seed bumped to `v7-leicester-r5`.
