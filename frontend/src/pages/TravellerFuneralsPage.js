@@ -44,14 +44,12 @@ export default function TravellerFuneralsPage() {
       <section className="py-20 md:py-28 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center">
           <div className="lg:col-span-6">
-            <p className="accent-label mb-8"><span className="thin-rule" />Traveller Funerals</p>
+            <p className="accent-label mb-8"><span className="thin-rule" />{content?.hero_eyebrow || "Traveller Funerals"}</p>
             <h1 className="font-heading text-5xl md:text-7xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight mb-8" data-testid="traveller-funerals-title">
-              A final tribute<br /><span className="italic text-[#B3A89B]">worthy</span> of the life.
+              {content?.hero_title_line1 || "A final tribute"}<br /><span className="italic text-[#B3A89B]">{content?.hero_title_italic || "worthy"}</span>{content?.hero_title_line2 ? <> {content.hero_title_line2}</> : <> of the life.</>}
             </h1>
             <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-6 max-w-lg">
-              We&rsquo;ve crafted bespoke floral tributes for traveller funerals across the UK — letter
-              tributes from 1ft to 3ft+, full 3D floral builds, and classic pieces that honour
-              the loved one&rsquo;s life in the truest possible way.
+              {content?.hero_subheading || "We've crafted bespoke floral tributes for traveller funerals across the UK — letter tributes from 1ft to 3ft+, full 3D floral builds, and classic pieces that honour the loved one's life in the truest possible way."}
             </p>
             <p className="font-body text-base text-[#1A1A1A] leading-relaxed mb-10 max-w-lg italic">
               Proud, generous, dignified — and built to be seen.
@@ -62,15 +60,15 @@ export default function TravellerFuneralsPage() {
                   <Phone size={14} /> 0116 212 3456
                 </Button>
               </a>
-              <Link to="/consultation?service=traveller_funeral" data-testid="traveller-funerals-consultation">
+              <Link to={content?.hero_cta_url || "/consultation?service=traveller_funeral"} data-testid="traveller-funerals-consultation">
                 <Button className="btn-outline-dark rounded-none inline-flex items-center gap-3">
-                  Request a callback <ArrowRight size={14} />
+                  {content?.hero_cta_label || "Request a callback"} <ArrowRight size={14} />
                 </Button>
               </Link>
             </div>
           </div>
           <div className="lg:col-span-6">
-            <img src={HERO} alt="Traveller funeral tribute" className="w-full aspect-[4/5] object-cover" />
+            <img src={content?.hero_image || HERO} alt="Traveller funeral tribute" className="w-full aspect-[4/5] object-cover" />
           </div>
         </div>
       </section>

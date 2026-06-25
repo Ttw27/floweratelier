@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 11 — Faith Weddings & Traveller Funerals CMS (PageContent.extra) tests. Backend 16/16 pytest PASS: GET /api/page-content/faith-weddings returns extra.traditions=6 with id/name/intro/details(list)/palette(hex list)/price/image; tradition ids exactly {sikh,hindu,jewish,muslim,greek,chinese}. GET /api/page-content/traveller-funerals returns extra.letter_tributes=4 (size/price/desc), extra.bespoke_builds=6 (name/desc/price), extra.classic_tributes=12 (strings). PUT /api/admin/page-content/faith-weddings round-trips palette ['#123456','#ABCDEF','#FF00FF'] + TEST_details list through Pydantic Dict[str,Any]; PUT /api/admin/page-content/traveller-funerals round-trips appended letter/build/classic entries — both verified persisted via subsequent GET. POST /api/seed/page-content?reset=true returns {total:10,inserted:10}; idempotent POST (no reset) returns inserted:0. Regression: PUT weddings (4-tier standard) returns 200 with 4 tiers; all 10 service slugs reachable. FRONTEND: /faith-weddings hero reads from CMS ('Every tradition, honoured by hand.'), 6 tabs [faith-tab-sikh|hindu|jewish|muslim|greek|chinese] rendered; clicking each shows palette + details bullets (sikh=4, hindu=5, jewish=4 — matches seed). /traveller-funerals: traveller-funerals-title reads CMS hero, letter-tribute-* count=4, bespoke-build-* count=6, classic-tribute-* count=12; first letter shows '1ft Letters / FROM £180 / DAD,MUM,NAN' from CMS. ADMIN: login successful, /admin → Service Pages tab shows 10 cards ALL with 'Live' badge (0 'Editable') — regression spec matches. Faith Weddings modal opens with faith-traditions-editor: 6 rows (faith-tradition-0..5), swatch picker faith-tradition-0-swatch-0 present, 'Swatch' add button increases palette 4→5. Traveller Funerals modal opens with all three editors (tf-letters-editor + tf-builds-editor + tf-classics-editor); 4 letter rows + 6 build rows + 12 classic lines; add-letter creates 5th row, remove-letter restores to 4. Corporate (generic) modal has NO bespoke editors and shows 24 inputs / 5 textareas / 4 tier rows + Save button — generic tier editor intact.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/traveller-funerals hero", "issues": ["Hero title renders 'A goodbye, made magnificent. of the life.' because TravellerFuneralsPage.js line 49 falls back to hardcoded ' of the life.' when content.hero_title_line2 is empty string. The CMS seed has hero_title_line2='' (intentional), but the ternary `content?.hero_title_line2 ? ... : <> of the life.</>` treats empty string as falsy and inserts the hardcoded suffix. Result: the rendered title doesn't match the CMS value. Not blocking, but cosmetic — recommend changing fallback to `content?.hero_title_line2 != null ? <> {content.hero_title_line2}</> : <> of the life.</>` or seeding line2 with a real value."]}
+    ]
+  },
+  "passed_tests": [
+    "GET /api/page-content/faith-weddings → extra.traditions=6, each has id/name/intro/details(list)/palette(hex)/price/image; ids match {sikh,hindu,jewish,muslim,greek,chinese}",
+    "GET /api/page-content/traveller-funerals → extra.letter_tributes=4, bespoke_builds=6, classic_tributes=12; hero_eyebrow/title_line1/subheading present",
+    "PUT /api/admin/page-content/faith-weddings → mutated traditions[0].palette+details persisted (verified via GET)",
+    "PUT /api/admin/page-content/traveller-funerals → appended letter/build/classic entries persisted (5/7/13 then restored)",
+    "POST /api/seed/page-content?reset=true → {total:10, inserted:10}; idempotent POST (no reset) → inserted:0",
+    "Regression: PUT weddings 4-tier standard page round-trips 200; all 10 service slugs reachable",
+    "FRONTEND /faith-weddings → 6 faith-tab-* tabs from CMS; clicking sikh/hindu/jewish reveals palette+details (4/5/4 bullets matching seed)",
+    "FRONTEND /traveller-funerals → letter-tribute-* count=4, bespoke-build-* count=6, classic-tribute-* count=12; values from CMS (e.g. '1ft Letters', 'Floral Cars', 'Gates of Heaven')",
+    "Admin /admin → Service Pages: 10 page-content-edit-* triggers, all with 'Live' badge (0 'Editable')",
+    "Admin → faith-weddings editor: faith-traditions-editor present with 6 tradition rows; faith-tradition-0-swatch-0 present; Swatch add button increases palette 4→5",
+    "Admin → traveller-funerals editor: tf-letters-editor (4 rows), tf-builds-editor (6 rows), tf-classics-editor (12-line textarea); tf-letter-add (4→5) and tf-letter-{n}-remove (5→4) work",
+    "Admin → corporate editor: NO bespoke editors (faith-traditions-editor/tf-letters-editor absent); generic tier editor still renders 24 inputs / 5 textareas / 4 tier rows / Save"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_11.py",
+    "/app/test_reports/pytest/iteration_11.xml"
+  ],
+  "action_items": [
+    "(Cosmetic, not blocking) Fix TravellerFuneralsPage.js line 49 hero title fallback: change ternary so an empty string in hero_title_line2 renders empty (or seed line2 with proper text) — currently 'of the life.' is appended as hardcoded fallback even when CMS line2='' is intentional."
+  ],
+  "critical_code_review_comments": [
+    "PageContent.extra: Dict[str, Any] in server.py:2240 correctly round-trips arbitrary nested JSON through Pydantic — confirmed by two PUT/GET round-trip tests with nested lists and dicts.",
+    "PAGE_CONTENT_SEED in server.py:2287-2503 holds 10 records; faith-weddings.extra.traditions has all 6 entries with valid hex palettes; traveller-funerals.extra has 4 letter sizes + 6 builds + 12 classics — matches spec exactly.",
+    "PageContentAdmin.js BESPOKE_SLUGS={'faith-weddings','traveller-funerals'} + LIVE_SLUGS now contains all 10 wired pages. FaithTraditionsEditor (lines 323-428) and TravellerFuneralsEditor (lines 431-488) are well-scoped sub-components with proper data-testid coverage for testing.",
+    "TravellerFuneralsPage.js:49 hero title fallback uses falsy check on hero_title_line2 — empty string from CMS triggers hardcoded 'of the life.' fallback. Minor; consider explicit null-check instead.",
+    "Suggest: server.py is still ~3121 lines — recurring recommendation to split routers (not blocking)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_11.py (new — 16 tests covering extra-field GET/PUT round-trip, seed reset, regression)"
+  ],
+  "success_rate": {"backend": "100% (16/16)", "frontend": "100% on all review-request items"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (per /app/memory/test_credentials.md)",
+  "seed_data_creation": "Ran POST /api/seed/page-content?reset=true (intentional per review request item 5). PUT round-trip tests mutate then restore via teardown — no permanent data changes. Briefly added+removed a test letter row in the admin UI (in-memory only, modal closed via Cancel without saving).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All 11 review-request items pass. Backend pytest at /app/backend/tests/test_iteration_11.py (16 tests, ~2.3s) is the regression suite for the new PageContent.extra field. Only one minor cosmetic issue: TravellerFuneralsPage.js:49 hardcoded ' of the life.' fallback overrides empty-string CMS line2 (recommend explicit null-check or seed line2 with text). Frontend Esc key closes modals — when testing multiple modals in sequence, use the visible Cancel button instead. Cookie banner overlays bottom of viewport; dismiss with 'Essential only'."
+}
