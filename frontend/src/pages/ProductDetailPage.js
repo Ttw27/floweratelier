@@ -43,7 +43,7 @@ export default function ProductDetailPage() {
   const isBouquet = product?.is_bouquet !== false; // default true
   const waNumber = (settings?.whatsapp_number || "").replace(/\D/g, "");
   const waHref = waNumber
-    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hi Petals Atelier — I have a question about "${product?.name || "this bouquet"}".`)}`
+    ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hi Flower Atelier — I have a question about "${product?.name || "this bouquet"}".`)}`
     : null;
 
   const handleQuickAdd = async () => {

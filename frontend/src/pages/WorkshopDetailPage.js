@@ -59,7 +59,7 @@ export default function WorkshopDetailPage() {
 
   const isEnquire = workshop.booking_mode === "enquire";
   const upcoming = sessions.filter((s) => (s.capacity || 0) - (s.spots_booked || 0) > 0);
-  const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Petals Atelier — I'd like to enquire about ${workshop.name}.`);
+  const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Flower Atelier — I'd like to enquire about ${workshop.name}.`);
   const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
 
   const primaryCTA = () => isEnquire ? setEnquireOpen(true) : setBookingOpen(true);

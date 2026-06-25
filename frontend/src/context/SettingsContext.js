@@ -9,7 +9,7 @@ const DEFAULTS = {
   utility_bar_enabled: true,
   whatsapp_number: "",
   whatsapp_enabled: true,
-  whatsapp_default_message: "Hello Petals Atelier — I'd like to enquire about your floristry.",
+  whatsapp_default_message: "Hello Flower Atelier — I'd like to enquire about your floristry.",
 };
 
 export function SettingsProvider({ children }) {

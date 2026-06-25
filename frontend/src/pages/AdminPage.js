@@ -18,6 +18,7 @@ import AddonsAdmin from "../components/admin/AddonsAdmin";
 import BoxesAdmin from "../components/admin/BoxesAdmin";
 import TemplatesAdmin from "../components/admin/TemplatesAdmin";
 import WorkshopsAdmin from "../components/admin/WorkshopsAdmin";
+import PortfolioAdmin from "../components/admin/PortfolioAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -60,7 +61,7 @@ export default function AdminPage() {
         seo_default_title: settings.seo_default_title || "",
         seo_default_description: settings.seo_default_description || "",
         seo_default_og_image: settings.seo_default_og_image || "",
-        seo_site_name: settings.seo_site_name || "Petals Atelier",
+        seo_site_name: settings.seo_site_name || "Flower Atelier",
       });
     }
   }, [settings]);
@@ -194,6 +195,7 @@ export default function AdminPage() {
             <TabsTrigger value="templates" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-templates-tab">Templates</TabsTrigger>
             <TabsTrigger value="addons" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-addons-tab">Add-ons</TabsTrigger>
             <TabsTrigger value="workshops" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-workshops-tab">Workshops</TabsTrigger>
+            <TabsTrigger value="portfolio" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-portfolio-tab">Portfolio</TabsTrigger>
             <TabsTrigger value="seo" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-seo-tab">SEO</TabsTrigger>
             <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
           </TabsList>
@@ -408,6 +410,10 @@ export default function AdminPage() {
 
           <TabsContent value="workshops" data-testid="admin-workshops-content">
             <WorkshopsAdmin />
+          </TabsContent>
+
+          <TabsContent value="portfolio" data-testid="admin-portfolio-content">
+            <PortfolioAdmin />
           </TabsContent>
 
           <TabsContent value="settings" data-testid="admin-settings-content">

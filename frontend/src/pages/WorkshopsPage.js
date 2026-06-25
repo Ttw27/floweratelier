@@ -139,7 +139,7 @@ export default function WorkshopsPage() {
             Tell us your date &mdash; we&rsquo;ll build the bench around it.
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="https://wa.me/447123456789?text=Hello%20Petals%20Atelier%20%E2%80%94%20I%27d%20like%20to%20host%20a%20workshop%20at%20our%20venue." target="_blank" rel="noopener noreferrer">
+            <a href="https://wa.me/447123456789?text=Hello%20Flower%20Atelier%20%E2%80%94%20I%27d%20like%20to%20host%20a%20workshop%20at%20our%20venue." target="_blank" rel="noopener noreferrer">
               <Button className="bg-[#25D366] hover:bg-[#1ebe5b] text-white py-6 px-8 rounded-none w-full sm:w-auto" data-testid="workshops-bottom-whatsapp">
                 <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
               </Button>

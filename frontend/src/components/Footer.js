@@ -16,7 +16,7 @@ export default function Footer() {
           {/* Brand & Contact */}
           <div className="lg:col-span-5">
             <Link to="/" className="inline-flex items-baseline gap-2 mb-8">
-              <span className="font-heading text-3xl font-light text-[#1A1A1A]">Petals</span>
+              <span className="font-heading text-3xl font-light text-[#1A1A1A]">Flower</span>
               <span className="font-heading text-3xl font-light italic text-[#B3A89B]">Atelier</span>
             </Link>
             <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-10 max-w-sm">
@@ -28,9 +28,9 @@ export default function Footer() {
                 <Phone size={15} strokeWidth={1.3} />
                 <span className="font-body text-sm">0116 212 3456</span>
               </a>
-              <a href="mailto:atelier@petalsatelier.com" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
+              <a href="mailto:atelier@floweratelier.com" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
                 <Mail size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">atelier@petalsatelier.com</span>
+                <span className="font-body text-sm">atelier@floweratelier.com</span>
               </a>
               {waHref && settings?.whatsapp_enabled !== false && (
                 <a
@@ -103,7 +103,7 @@ export default function Footer() {
       <div className="border-t border-[#E5E5E5]">
         <div className="px-6 md:px-12 max-w-[1400px] mx-auto py-6 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide">
-            © 2026 Petals Atelier — Leicester. All rights reserved.
+            © 2026 Flower Atelier — Leicester. All rights reserved.
           </p>
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide italic">
             Floral couture, by hand.
@@ -114,7 +114,7 @@ export default function Footer() {
       {/* Large Brand Display */}
       <div className="overflow-hidden py-10 border-t border-[#E5E5E5]">
         <p className="display-serif text-[18vw] md:text-[12vw] text-[#EFE9E1] text-center leading-[0.85] select-none italic">
-          Petals Atelier
+          Flower Atelier
         </p>
       </div>
     </footer>

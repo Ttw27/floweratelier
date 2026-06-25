@@ -29,11 +29,11 @@ export default function SEOHead() {
         setMeta(res.data);
       } catch {
         setMeta({
-          title: settings?.seo_default_title || "Petals Atelier",
+          title: settings?.seo_default_title || "Flower Atelier",
           description: settings?.seo_default_description || "",
           og_image: settings?.seo_default_og_image || "",
           robots: "index,follow",
-          site_name: settings?.seo_site_name || "Petals Atelier",
+          site_name: settings?.seo_site_name || "Flower Atelier",
         });
       }
     };
@@ -57,7 +57,7 @@ export default function SEOHead() {
       <meta property="og:type" content="website" />
       <meta property="og:url" content={canonical} />
       {meta.og_image ? <meta property="og:image" content={meta.og_image} /> : null}
-      <meta property="og:site_name" content={meta.site_name || "Petals Atelier"} />
+      <meta property="og:site_name" content={meta.site_name || "Flower Atelier"} />
       {/* Twitter */}
       <meta name="twitter:card" content={meta.og_image ? "summary_large_image" : "summary"} />
       <meta name="twitter:title" content={meta.title} />

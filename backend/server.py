@@ -944,6 +944,50 @@ async def get_admin_inquiries(admin = Depends(require_admin)):
     inquiries = await db.inquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
     return inquiries
 
+
+# ==================== ADMIN: PORTFOLIO CRUD ====================
+
+class PortfolioItemCreate(BaseModel):
+    title: str
+    category: str   # wedding, sympathy, corporate, house, shop, workshop, etc.
+    description: str = ""
+    image: str
+    location: Optional[str] = None
+    price_from: Optional[float] = None
+    tags: List[str] = []
+    featured: bool = False
+
+@api_router.get("/admin/portfolio", response_model=List[PortfolioItemResponse])
+async def admin_list_portfolio(admin = Depends(require_admin)):
+    items = await db.portfolio.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return items
+
+@api_router.post("/admin/portfolio", response_model=PortfolioItemResponse)
+async def admin_create_portfolio(data: PortfolioItemCreate, admin = Depends(require_admin)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.portfolio.insert_one(doc)
+    return doc
+
+@api_router.put("/admin/portfolio/{item_id}", response_model=PortfolioItemResponse)
+async def admin_update_portfolio(item_id: str, data: PortfolioItemCreate, admin = Depends(require_admin)):
+    existing = await db.portfolio.find_one({"id": item_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(404, "Portfolio item not found")
+    patch = data.model_dump()
+    await db.portfolio.update_one({"id": item_id}, {"$set": patch})
+    return {**existing, **patch}
+
+@api_router.delete("/admin/portfolio/{item_id}")
+async def admin_delete_portfolio(item_id: str, admin = Depends(require_admin)):
+    res = await db.portfolio.delete_one({"id": item_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Portfolio item not found")
+    return {"deleted": item_id}
+
 # ==================== SEED DATA ====================
 
 @api_router.post("/seed")
@@ -1046,7 +1090,7 @@ async def seed_data(reset: bool = False):
         # Order-direct standard-size pieces — no consultation required
         {
             "id": str(uuid.uuid4()), "name": "Letter Tribute — 1ft 'DAD'",
-            "description": "A 1-foot floral letter tribute in red carnation and white chrysanthemum on a bespoke timber frame. Standard size, ready for next-day delivery anywhere in the UK.",
+            "description": "A 1-foot floral letter tribute in red carnation and white chrysanthemum on a bespoke timber frame. Standard size, available for funeral commissions anywhere in the UK.",
             "price": 180.00, "original_price": None, "category_id": categories[6]["id"],
             "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
             "sizes": [{"name": "1ft", "price_modifier": 0}, {"name": "2ft", "price_modifier": 140}],
@@ -1705,7 +1749,7 @@ class SiteSettings(BaseModel):
     utility_bar_enabled: bool = True
     whatsapp_number: str = ""  # E.164 digits-only, e.g. "447123456789"
     whatsapp_enabled: bool = True
-    whatsapp_default_message: str = "Hello Petals Atelier — I'd like to enquire about your floristry."
+    whatsapp_default_message: str = "Hello Flower Atelier — I'd like to enquire about your floristry."
     # Tracking pixels
     meta_pixel_id: str = ""
     ga4_id: str = ""           # e.g. G-XXXXXXX
@@ -1717,15 +1761,15 @@ class SiteSettings(BaseModel):
     delivery_blocked_dates: List[str] = []       # ["2026-12-24", "2026-12-25"]
     delivery_window_days: int = 28               # how many days ahead to surface
     # Default SEO fallbacks (used when a route has no per-page override)
-    seo_default_title: str = "Petals Atelier — Leicester & Midlands Luxury Floristry"
+    seo_default_title: str = "Flower Atelier — Leicester & Midlands Luxury Floristry"
     seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in Leicester and across the Midlands. Editorial design, dignified service, delivered nationwide."
     seo_default_og_image: str = ""
-    seo_site_name: str = "Petals Atelier"
+    seo_site_name: str = "Flower Atelier"
 
 DEFAULT_SETTINGS = SiteSettings(
     utility_bar_text="",
     whatsapp_number="447123456789",
-    whatsapp_default_message="Hello Petals Atelier — I'd like to enquire about your floristry.",
+    whatsapp_default_message="Hello Flower Atelier — I'd like to enquire about your floristry.",
 ).model_dump()
 
 @api_router.get("/settings")
@@ -2098,7 +2142,7 @@ CARD_SEED = [
 
 ADDON_SEED = [
     # Treats (teddies, chocolates, drinks)
-    {"name": "Petals Plush Bear", "sub_type": "treat", "price": 24.0, "image_url": "https://images.unsplash.com/photo-1559454403-b8fb88521f43?w=640&q=70", "description": "Hand-stitched cream teddy, 30cm.", "sort_order": 10},
+    {"name": "Plush Bear", "sub_type": "treat", "price": 24.0, "image_url": "https://images.unsplash.com/photo-1559454403-b8fb88521f43?w=640&q=70", "description": "Hand-stitched cream teddy, 30cm.", "sort_order": 10},
     {"name": "Ivory Knit Bear", "sub_type": "treat", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=640&q=70", "description": "Cable-knit organic cotton bear.", "sort_order": 20},
     {"name": "House Truffle Box", "sub_type": "treat", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1481391319762-47dff72954d9?w=640&q=70", "description": "Twelve hand-rolled single-origin truffles.", "sort_order": 30},
     {"name": "Salted Caramel Selection", "sub_type": "treat", "price": 22.0, "image_url": "https://images.unsplash.com/photo-1582176604856-e824b4736522?w=640&q=70", "description": "Eight artisan caramels from a Dorset chocolatier.", "sort_order": 40},
@@ -2127,7 +2171,7 @@ ADDON_SEED = [
     {"name": "Atelier No. 17 — Black Pepper & Pomelo", "sub_type": "candle", "price": 32.0, "image_url": "https://images.unsplash.com/photo-1599371619178-1c5d9bc4b06e?w=640&q=70", "description": "Sharp pink pepper over pomelo.", "sort_order": 170},
     {"name": "Atelier No. 18 — Smoked Vanilla", "sub_type": "candle", "price": 30.0, "image_url": "https://images.unsplash.com/photo-1599371619207-42f15bd5f97b?w=640&q=70", "description": "Bourbon vanilla & woodsmoke.", "sort_order": 180},
     {"name": "Atelier No. 19 — White Tea", "sub_type": "candle", "price": 28.0, "image_url": "https://images.unsplash.com/photo-1602874801006-9da3f8e1d05a?w=640&q=70", "description": "Clean, quiet, restorative.", "sort_order": 190},
-    {"name": "Atelier No. 20 — Petals Signature", "sub_type": "candle", "price": 38.0, "image_url": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=640&q=70", "description": "Our house blend — rose, fig, oud.", "sort_order": 200},
+    {"name": "Atelier No. 20 — Signature", "sub_type": "candle", "price": 38.0, "image_url": "https://images.unsplash.com/photo-1603006905003-be475563bc59?w=640&q=70", "description": "Our house blend — rose, fig, oud.", "sort_order": 200},
 
     # Jewellery boxes
     {"name": "Ivory Linen Jewellery Box — Small", "sub_type": "jewellery_box", "price": 22.0, "image_url": "https://images.unsplash.com/photo-1611652022419-a9419f74343d?w=640&q=70", "description": "Linen-wrapped, suede-lined, 9×9cm.", "sort_order": 10},
@@ -2551,7 +2595,7 @@ WORKSHOP_SEED = [
         "includes": ["All materials, secateurs & wire", "Mulled wine, cheese and mince pies", "A take-home wreath box for the journey"],
         "duration": "2.5 hours",
         "group_size": "Up to 14 guests",
-        "location_default": "Petals Atelier — Leicester",
+        "location_default": "Flower Atelier — Leicester",
         "image_url": "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1200&q=80",
         "price_per_guest": 95.0,
         "deposit_amount": 45.0,
@@ -2569,7 +2613,7 @@ WORKSHOP_SEED = [
         "includes": ["All materials, base, wire & secateurs", "Spiced cider & seasonal grazing board", "Studio photography of your finished piece"],
         "duration": "2 hours",
         "group_size": "Up to 14 guests",
-        "location_default": "Petals Atelier — Leicester",
+        "location_default": "Flower Atelier — Leicester",
         "image_url": "https://images.unsplash.com/photo-1572731120259-3a4f9a5b2bcd?w=1200&q=80",
         "price_per_guest": 75.0,
         "deposit_amount": 35.0,
@@ -2601,7 +2645,7 @@ WORKSHOP_SEED = [
             "We bring everything — vases, flowers, tools, dust sheets",
             "60–90 minute session, designed with your activity coordinator",
         ],
-        "whatsapp_message": "Hello Petals Atelier — I'd like to enquire about a bouquet workshop for our care home.",
+        "whatsapp_message": "Hello Flower Atelier — I'd like to enquire about a bouquet workshop for our care home.",
         "sort_order": 30,
     },
     {
@@ -2630,7 +2674,7 @@ WORKSHOP_SEED = [
             "We promote on our socials and tag your venue",
             "Other splits available (revenue share / flat hire) — ask us",
         ],
-        "whatsapp_message": "Hi Petals Atelier — I run a pub/club and I'd love to host one of your flower workshop nights. Can you send pricing?",
+        "whatsapp_message": "Hi Flower Atelier — I run a pub/club and I'd love to host one of your flower workshop nights. Can you send pricing?",
         "sort_order": 40,
     },
 ]
@@ -2707,7 +2751,7 @@ async def get_seo_for_path(path: str = "/"):
         "canonical": "",
         "robots": "index,follow",
         "structured_data": None,
-        "site_name": settings.get("seo_site_name", "Petals Atelier"),
+        "site_name": settings.get("seo_site_name", "Flower Atelier"),
     }
     doc = await db.seo_pages.find_one({"path": path}, {"_id": 0})
     if not doc:
@@ -2745,7 +2789,7 @@ async def delete_seo_page(path: str, admin=Depends(require_admin)):
 # Root endpoint
 @api_router.get("/")
 async def root():
-    return {"message": "Petals Atelier - Luxury Floristry API"}
+    return {"message": "Flower Atelier - Luxury Floristry API"}
 
 # Include the router in the main app
 app.include_router(api_router)

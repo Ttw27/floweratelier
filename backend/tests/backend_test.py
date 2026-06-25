@@ -1,5 +1,5 @@
 """
-Backend pytest suite for Petals Atelier (v2 light luxury).
+Backend pytest suite for Flower Atelier (v2 light luxury).
 Tests: auth, products/categories, portfolio, inquiries, delivery options, orders,
 admin dashboard, seed idempotency.
 """

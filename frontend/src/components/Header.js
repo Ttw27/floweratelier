@@ -82,7 +82,7 @@ export default function Header() {
             {/* Logo */}
             <Link to="/" className="flex items-baseline gap-2" data-testid="logo-link">
               <span className="font-heading text-2xl md:text-[28px] font-light text-[#1A1A1A] tracking-tight">
-                Petals
+                Flower
               </span>
               <span className="font-heading text-2xl md:text-[28px] font-light italic text-[#B3A89B]">
                 Atelier

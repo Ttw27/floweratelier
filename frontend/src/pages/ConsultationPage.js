@@ -66,7 +66,7 @@ export default function ConsultationPage() {
           </p>
           <div className="space-y-2 font-body text-sm text-[#7A7A7A]">
             <p className="flex items-center justify-center gap-2"><Phone size={14} strokeWidth={1.3} />0116 212 3456</p>
-            <p className="flex items-center justify-center gap-2"><Mail size={14} strokeWidth={1.3} />atelier@petalsatelier.com</p>
+            <p className="flex items-center justify-center gap-2"><Mail size={14} strokeWidth={1.3} />atelier@floweratelier.com</p>
           </div>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function ConsultationPage() {
               <p className="accent-label mb-5 text-[#1A1A1A]">Direct</p>
               <div className="space-y-3">
                 <a href="tel:+441162123456" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />0116 212 3456</a>
-                <a href="mailto:atelier@petalsatelier.com" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Mail size={14} strokeWidth={1.3} />atelier@petalsatelier.com</a>
+                <a href="mailto:atelier@floweratelier.com" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Mail size={14} strokeWidth={1.3} />atelier@floweratelier.com</a>
               </div>
             </div>
           </div>

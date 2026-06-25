@@ -118,8 +118,8 @@ export default function HomePage() {
                 <em className="text-[#B3A89B]">artfully</em> composed.
               </h1>
               <p className="font-body text-sm md:text-base text-[#7A7A7A] leading-relaxed mb-6 max-w-md">
-                Editorial bouquets hand-tied in our Leicester atelier — delivered across the Midlands
-                tomorrow, with bespoke services UK-wide.
+                Editorial bouquets hand-tied in our Leicester atelier &mdash; delivered across the Midlands,
+                with bespoke services UK-wide.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 mb-7">
                 <Link to="/collection" data-testid="hero-shop-btn">
@@ -133,7 +133,7 @@ export default function HomePage() {
               </div>
               {/* Trust micro-row */}
               <div className="grid grid-cols-3 gap-4 pt-5 border-t border-[#E5E5E5]">
-                <div><Truck size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Next-day Midlands</p></div>
+                <div><Truck size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Midlands delivery</p></div>
                 <div><Award size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">Leicester atelier</p></div>
                 <div><Leaf size={14} strokeWidth={1.3} className="text-[#1A1A1A] mb-1.5" /><p className="font-body text-[10px] uppercase tracking-[0.15em] text-[#7A7A7A]">7-day freshness</p></div>
               </div>

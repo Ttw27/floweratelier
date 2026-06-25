@@ -37,7 +37,7 @@ const themes = [
         </div>
         <div className="grid grid-cols-5 flex-1">
           <div className="col-span-2 p-5 flex flex-col justify-center">
-            <p style={{ fontSize: 7, letterSpacing: "0.3em" }} className="uppercase text-[#7A7A7A] mb-2">— Floral Couture · Leicester</p>
+            <p style={{ fontSize: 7, letterSpacing: "0.3em" }} className="uppercase text-[#7A7A7A] mb-2">— Flower Atelier · Leicester</p>
             <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: 30, lineHeight: 0.95, letterSpacing: "-0.01em" }}>
               The language<br />of <em style={{ color: "#B3A89B" }}>flowers,</em><br />rewritten.
             </h2>
@@ -270,7 +270,7 @@ const themes = [
     render: () => (
       <div style={{ background: "#F4F1E9", color: "#1A1A1A", fontFamily: "'Inter', sans-serif" }} className="h-full flex flex-col">
         <div className="flex justify-between items-baseline px-6 py-4 border-b border-black/15">
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: 16 }}>Petals Atelier</span>
+          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontWeight: 300, fontSize: 16 }}>Flower Atelier</span>
           <span style={{ fontWeight: 200, fontSize: 8, letterSpacing: "0.4em" }} className="uppercase text-[#929386]">— Catalogue · Vol. IV</span>
         </div>
         <div className="flex-1 grid grid-cols-12 gap-px">

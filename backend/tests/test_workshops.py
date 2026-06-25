@@ -70,7 +70,7 @@ class TestPublicWorkshops:
         assert pb["price_per_guest"] == 45.0
         assert len(pb["enquire_bullets"]) > 0
         assert len(pb["enquire_venues"]) > 0
-        assert "Petals Atelier" in pb["whatsapp_message"] or "workshop" in pb["whatsapp_message"].lower()
+        assert "Flower Atelier" in pb["whatsapp_message"] or "workshop" in pb["whatsapp_message"].lower()
 
     def test_enquire_workshop_sessions_empty_but_200(self, session):
         """Enquire workshops should not have sessions seeded, but endpoint should still 200."""

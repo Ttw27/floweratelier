@@ -24,7 +24,7 @@ export default function WorkshopEnquireModal({ open, workshop, onClose }) {
 
   if (!open || !workshop) return null;
 
-  const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Petals Atelier — I'd like to enquire about ${workshop.name}.`);
+  const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Flower Atelier — I'd like to enquire about ${workshop.name}.`);
   const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`;
 
   const submit = async (e) => {

@@ -225,7 +225,7 @@ export default function SEOAdmin() {
                   value={editing.canonical}
                   onChange={(e) => setEditing({ ...editing, canonical: e.target.value })}
                   className="light-input rounded-none mt-2"
-                  placeholder="https://www.petalsatelier.com/page"
+                  placeholder="https://www.floweratelier.com/page"
                   data-testid="seo-form-canonical"
                 />
               </div>

@@ -284,7 +284,7 @@ function Row({ label, value, bold = false }) {
 function NoDatesCard({ workshop, settings, onClose }) {
   const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
   const waMsg = encodeURIComponent(
-    `Hello Petals Atelier — I'd like to arrange a date for the ${workshop.name} workshop (or host it at our own venue). Could you let me know what's available?`
+    `Hello Flower Atelier — I'd like to arrange a date for the ${workshop.name} workshop (or host it at our own venue). Could you let me know what's available?`
   );
   const waHref = `https://wa.me/${waNumber}?text=${waMsg}`;
   return (
