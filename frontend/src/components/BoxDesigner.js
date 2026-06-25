@@ -82,7 +82,9 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
       setTplName(initialName || "");
       if (categories?.[0]) setTplCategoryId(categories[0].id);
     }
-  }, [open, initialBg, initialLayers, initialName, categories]);
+    // categories?.[0]?.id is used to track changes to the first category id rather than the
+    // array reference itself (the default `[]` parameter creates a new array every render).
+  }, [open, initialBg, initialLayers, initialName, categories?.[0]?.id]);
 
   // Track container width so the canvas scales to fit (no overlap)
   useEffect(() => {

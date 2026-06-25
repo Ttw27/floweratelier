@@ -16,9 +16,9 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(formData.email, formData.password);
+      const userData = await login(formData.email, formData.password);
       toast.success("Welcome back");
-      navigate("/");
+      navigate(userData?.is_admin ? "/admin" : "/");
     } catch (error) {
       toast.error(error.response?.data?.detail || "Invalid credentials");
     } finally { setLoading(false); }

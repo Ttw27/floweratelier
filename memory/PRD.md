@@ -157,7 +157,13 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 8. Seasonal pre-order drops (Valentine's, Mother's Day)
 
 ## Changelog
-### 2026-06-25 (latest) — Faith Weddings & Traveller Funerals fully wired to CMS (10/10 LIVE)
+### 2026-06-25 (deploy-ready) — CRITICAL BoxDesigner infinite render loop fixed + UX polish
+- **CRITICAL BUG FIX (`BoxDesigner.js`)**: SendFlow modal was triggering 600+ &ldquo;Maximum update depth exceeded&rdquo; React errors on every product page. Root cause: BoxDesigner's reset `useEffect` had `categories` in deps, but `categories = []` default parameter creates a NEW empty array reference on every render &rarr; effect fires &rarr; `setLayers([])` &rarr; re-render &rarr; new `[]` default &rarr; infinite loop. Fix: depend on `categories?.[0]?.id` (stable primitive) instead of the array reference.
+- **Admin login redirect**: `/login` now routes admins to `/admin` (was always going to `/`).
+- Pre-deploy regression sweep (iteration_12.json): 24/24 backend tests + 12 admin tabs + 16 public routes + rebrand audit all pass; no London / next-day copy anywhere; zero blocking bugs.
+- `deployment_agent` status: **warn** &mdash; only two non-blocking N+1 perf warnings remain (cart fetch + order creation product lookups; tracked in backlog).
+
+### 2026-06-25 — Faith Weddings & Traveller Funerals fully wired to CMS (10/10 LIVE)
 - **Bespoke editors** in `PageContentAdmin.js`: new `FaithTraditionsEditor` (palette swatches, details bullets, image upload per tradition) and `TravellerFuneralsEditor` (letter_tributes / bespoke_builds / classic_tributes — table-style CRUD). Renders conditionally for `faith-weddings` & `traveller-funerals` slugs alongside the generic tier editor.
 - **Traveller Funerals hero block** now reads `hero_eyebrow / hero_title_* / hero_subheading / hero_cta_label / hero_cta_url / hero_image` from `page_content` with fallbacks.
 - **PageContent.extra** (`Dict[str, Any]`) round-trips through Pydantic for both slugs — palette hex lists, letter/build tables and classic-tribute string lists all persist correctly.
