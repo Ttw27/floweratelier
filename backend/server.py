@@ -994,7 +994,7 @@ async def admin_delete_portfolio(item_id: str, admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v7-leicester-r4"
+    current_version = "v7-leicester-r5"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
@@ -1090,7 +1090,7 @@ async def seed_data(reset: bool = False):
         # Order-direct standard-size pieces — no consultation required
         {
             "id": str(uuid.uuid4()), "name": "Letter Tribute — 1ft 'DAD'",
-            "description": "A 1-foot floral letter tribute in red carnation and white chrysanthemum on a bespoke timber frame. Standard size, available for funeral commissions anywhere in the UK.",
+            "description": "A 1-foot floral letter tribute in red carnation and white chrysanthemum on a bespoke timber frame. Standard size, available for funeral commissions across the Midlands and UK-wide bespoke options.",
             "price": 180.00, "original_price": None, "category_id": categories[6]["id"],
             "images": ["https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200"],
             "sizes": [{"name": "1ft", "price_modifier": 0}, {"name": "2ft", "price_modifier": 140}],

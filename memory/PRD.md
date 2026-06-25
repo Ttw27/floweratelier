@@ -157,6 +157,15 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 8. Seasonal pre-order drops (Valentine's, Mother's Day)
 
 ## Changelog
+### 2026-06-25 — Brand rebrand to "Flower Atelier" + Portfolio Admin + remove next-day promises
+- **Rebrand**: 35+ source-tree replacements (`Petals Atelier` → `Flower Atelier`). Header & Footer wordmarks updated; index.html `<title>`; SEOAdmin placeholders; product "Atelier No. 20 — Petals Signature" → "Atelier No. 20 — Signature"; "Petals Plush Bear" → "Plush Bear"; site-settings + home `/` SEO record updated via API; admin login email kept as `admin@petalsatelier.com` (no auth break).
+- **Remove delivery promises**: stripped "next-day", "tomorrow", "Same-week" everywhere. HomePage hero badge "Next-day Midlands" → "Midlands delivery". HomePage hero copy "delivered…tomorrow" → "delivered across the Midlands, with bespoke services UK-wide". FilmTV "next-day delivery to set" → "flexible scheduling on set". Letter Tribute product description rewritten. Seed bumped to `v7-leicester-r5`.
+- **Portfolio Admin (NEW)**: full CRUD endpoints (`/api/admin/portfolio` GET/POST/PUT/DELETE). New `PortfolioAdmin` tab with category filter (11 service categories), Add Item modal with image upload (file picker + URL paste), title/category/location/price-from/description/tags/featured toggle. Verified: 61 portfolio items now editable.
+- **Mobile-friendly verified**: tested viewport 390×844 — hamburger menu present, hero stacks vertically, no horizontal scroll, footer responsive.
+- **Templates upload**: already supported via `TemplatesAdmin` (3 seeded; admin can add more from canvas JSON).
+- **Deployment-ready**: ran deployment_agent — `status: warn` (no blockers). 3 N+1 query patterns noted as P2 perf optimisation backlog. Stripe/MongoDB/CORS all properly env-var driven.
+- Tested: pytest 20/21 + frontend rebrand DOM scan 100% (iteration_8.json). The 1 failing pytest case (Letter Tribute description) was fixed and re-seeded after the report.
+
 ### 2026-06-24 (later) — Workshop booking modes: direct vs enquire (+ venue partners)
 - **`booking_mode` flag on workshops**: `"direct"` (current Stripe deposit/full flow) or `"enquire"` (WhatsApp + lead form, no Stripe, no sessions).
 - **Care Homes** workshop migrated to `enquire` mode (bespoke pricing per resident).
