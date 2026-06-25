@@ -4,100 +4,24 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1800";
 
-const TRADITIONS = [
-  {
-    id: "sikh",
-    name: "Sikh — Anand Karaj",
-    intro: "Gurdwara floral programmes designed with deep respect for tradition.",
-    details: [
-      "Marigold and rose garlands for the gurdwara entrance",
-      "Palki canopy floral decoration",
-      "Mala — exchange garlands for groom and bride",
-      "Sukhmani sahib pathi venue florals",
-    ],
-    palette: ["#FFA500", "#E63946", "#FFE5B4", "#FFFFFF"],
-    price: "from £4,200",
-    image: "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?w=1200",
-  },
-  {
-    id: "hindu",
-    name: "Hindu — Mandap",
-    intro: "Mandap installations and ceremony florals — vibrant, sacred, generous.",
-    details: [
-      "Four-pillar floral mandap installation",
-      "Marigold thoran for the entrance",
-      "Varmala garlands for the exchange",
-      "Kalash decoration and pheras florals",
-      "Sangeet and Mehndi event florals on request",
-    ],
-    palette: ["#FF6B35", "#E63946", "#FFA500", "#F4A261"],
-    price: "from £6,800",
-    image: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200",
-  },
-  {
-    id: "jewish",
-    name: "Jewish — Chuppah",
-    intro: "Chuppah canopies and reception florals — quiet, elegant, dignified.",
-    details: [
-      "Floral chuppah canopy construction",
-      "Ketubah signing table arrangement",
-      "Bedeken room florals",
-      "Reception centrepieces and aisle styling",
-    ],
-    palette: ["#FFFFFF", "#F5F5F2", "#E8D8D0", "#C4CFC0"],
-    price: "from £5,400",
-    image: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200",
-  },
-  {
-    id: "muslim",
-    name: "Muslim — Nikah & Mehndi",
-    intro: "Ceremony décor designed with cultural sensitivity — from quiet Nikahs to vibrant Mehndis.",
-    details: [
-      "Nikah ceremony backdrop in cream and gold",
-      "Walima reception design",
-      "Mehndi event florals — vibrant and joyful",
-      "Stage installations and bridal seating florals",
-    ],
-    palette: ["#FFFFF0", "#D4AF37", "#FFC4D7", "#FAFAF7"],
-    price: "from £5,800",
-    image: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200",
-  },
-  {
-    id: "greek",
-    name: "Greek Orthodox — Stephana",
-    intro: "Church florals and crown stephana for traditional Greek Orthodox ceremonies.",
-    details: [
-      "Crown stephana for groom and bride",
-      "Church entrance floral arch",
-      "Lambada candle decoration",
-      "Reception florals in white, ivory and gold",
-    ],
-    palette: ["#FFFFFF", "#D4AF37", "#F5E9D7", "#E8D8D0"],
-    price: "from £3,200",
-    image: "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1200",
-  },
-  {
-    id: "chinese",
-    name: "Chinese — Tea Ceremony",
-    intro: "Tea ceremony installations honouring double-happiness and traditional symbolism.",
-    details: [
-      "Tea ceremony stage florals in red and gold",
-      "Double-happiness floral installations",
-      "Traditional peony arrangements",
-      "Banquet table florals",
-    ],
-    palette: ["#C8232C", "#D4AF37", "#FFC4D7", "#FFE5B4"],
-    price: "from £2,800",
-    image: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200",
-  },
+const DEFAULT_TRADITIONS = [
+  { id: "sikh", name: "Sikh — Anand Karaj", intro: "Gurdwara floral programmes designed with deep respect for tradition.", details: ["Marigold and rose garlands for the gurdwara entrance", "Palki canopy floral decoration", "Mala — exchange garlands for groom and bride", "Sukhmani sahib pathi venue florals"], palette: ["#FFA500", "#E63946", "#FFE5B4", "#FFFFFF"], price: "from £4,200", image: "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?w=1200" },
+  { id: "hindu", name: "Hindu — Mandap", intro: "Mandap installations and ceremony florals — vibrant, sacred, generous.", details: ["Four-pillar floral mandap installation", "Marigold thoran for the entrance", "Varmala garlands for the exchange", "Kalash decoration and pheras florals", "Sangeet and Mehndi event florals on request"], palette: ["#FF6B35", "#E63946", "#FFA500", "#F4A261"], price: "from £6,800", image: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200" },
+  { id: "jewish", name: "Jewish — Chuppah", intro: "Chuppah canopies and reception florals — quiet, elegant, dignified.", details: ["Floral chuppah canopy construction", "Ketubah signing table arrangement", "Bedeken room florals", "Reception centrepieces and aisle styling"], palette: ["#FFFFFF", "#F5F5F2", "#E8D8D0", "#C4CFC0"], price: "from £5,400", image: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200" },
+  { id: "muslim", name: "Muslim — Nikah & Mehndi", intro: "Ceremony décor designed with cultural sensitivity — from quiet Nikahs to vibrant Mehndis.", details: ["Nikah ceremony backdrop in cream and gold", "Walima reception design", "Mehndi event florals — vibrant and joyful", "Stage installations and bridal seating florals"], palette: ["#FFFFF0", "#D4AF37", "#FFC4D7", "#FAFAF7"], price: "from £5,800", image: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200" },
+  { id: "greek", name: "Greek Orthodox — Stephana", intro: "Church florals and crown stephana for traditional Greek Orthodox ceremonies.", details: ["Crown stephana for groom and bride", "Church entrance floral arch", "Lambada candle decoration", "Reception florals in white, ivory and gold"], palette: ["#FFFFFF", "#D4AF37", "#F5E9D7", "#E8D8D0"], price: "from £3,200", image: "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1200" },
+  { id: "chinese", name: "Chinese — Tea Ceremony", intro: "Tea ceremony installations honouring double-happiness and traditional symbolism.", details: ["Tea ceremony stage florals in red and gold", "Double-happiness floral installations", "Traditional peony arrangements", "Banquet table florals"], palette: ["#C8232C", "#D4AF37", "#FFC4D7", "#FFE5B4"], price: "from £2,800", image: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200" },
 ];
 
 export default function FaithWeddingsPage() {
-  const [active, setActive] = useState("sikh");
-  const current = TRADITIONS.find((t) => t.id === active);
+  const { content } = usePageContent("faith-weddings");
+  const TRADITIONS = (content?.extra?.traditions && content.extra.traditions.length > 0) ? content.extra.traditions : DEFAULT_TRADITIONS;
+  const [active, setActive] = useState(TRADITIONS[0]?.id || "sikh");
+  const current = TRADITIONS.find((t) => t.id === active) || TRADITIONS[0];
 
   return (
     <div className="pt-28" data-testid="faith-weddings-page">
@@ -105,22 +29,20 @@ export default function FaithWeddingsPage() {
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[60vh] lg:min-h-[70vh]">
           <div className="lg:col-span-7 order-1 h-[55vh] lg:h-auto">
-            <img src={HERO} alt="Faith and cultural weddings" className="w-full h-full object-cover" />
+            <img src={content?.hero_image || HERO} alt="Faith and cultural weddings" className="w-full h-full object-cover" />
           </div>
           <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 bg-[#FAFAF7]">
             <div className="max-w-md">
-              <p className="accent-label mb-8"><span className="thin-rule" />Faith &amp; Cultural Weddings</p>
+              <p className="accent-label mb-8"><span className="thin-rule" />{content?.hero_eyebrow || "Faith & Cultural Weddings"}</p>
               <h1 className="font-heading text-5xl md:text-7xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight mb-8" data-testid="faith-weddings-title">
-                Every <span className="italic text-[#B3A89B]">tradition,</span><br />honoured by hand.
+                {content?.hero_title_line1 || "Every"} <span className="italic text-[#B3A89B]">{content?.hero_title_italic || "tradition,"}</span><br />{content?.hero_title_line2 || "honoured by hand."}
               </h1>
               <p className="font-body text-base text-[#7A7A7A] leading-relaxed mb-10">
-                Sikh, Hindu, Jewish, Muslim, Greek Orthodox, Chinese — we design floral
-                programmes with deep respect for tradition, working closely with families,
-                priests and faith leaders.
+                {content?.hero_subheading || "Sikh, Hindu, Jewish, Muslim, Greek Orthodox, Chinese — we design floral programmes with deep respect for tradition, working closely with families, priests and faith leaders."}
               </p>
-              <Link to="/consultation?service=faith_wedding">
+              <Link to={content?.hero_cta_url || "/consultation?service=faith_wedding"}>
                 <Button className="btn-dark rounded-none inline-flex items-center gap-3" data-testid="faith-wedding-consultation">
-                  Begin a consultation <ArrowRight size={14} />
+                  {content?.hero_cta_label || "Begin a consultation"} <ArrowRight size={14} />
                 </Button>
               </Link>
             </div>

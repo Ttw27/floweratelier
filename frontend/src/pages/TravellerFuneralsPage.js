@@ -4,40 +4,39 @@ import { ArrowRight, Phone, Heart } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import ReadyCollectionCTA from "../components/ReadyCollectionCTA";
 import BespokeConsultationCTA from "../components/BespokeConsultationCTA";
+import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1800";
 
+const DEFAULT_LETTER_TRIBUTES = [
+  { size: "1ft Letters", price: "from £180", desc: "Single letters or short names — \u2018DAD\u2019, \u2018MUM\u2019, \u2018NAN\u2019" },
+  { size: "2ft Letters", price: "from £320", desc: "Larger letters with a sturdy bespoke timber frame and full backing" },
+  { size: "3ft Letters", price: "from £650", desc: "Statement letters — visible the length of the service, fully framed" },
+  { size: "Oversized & Bespoke", price: "from £950", desc: "Multi-letter phrases, custom names and oversized commissions" },
+];
+
+const DEFAULT_BESPOKE_BUILDS = [
+  { name: "Floral Cars", desc: "Full-size 3D floral car tributes — Bentley, Rolls Royce, Mercedes, classic British models — finished with detailed grille, badge and number plate.", price: "from £4,200" },
+  { name: "Floral Caravans", desc: "Six-foot 3D caravan tributes — fully built on steel frame with personalised registration plate and door details.", price: "from £2,800" },
+  { name: "Floral Horses", desc: "Life-size floral horse tributes — for the lifelong horseman, with floral mane and detailed bridle work.", price: "from £3,500" },
+  { name: "Floral Hearses", desc: "Carriage and hearse tributes — fully sculpted in floral, with horses where requested.", price: "from £5,800" },
+  { name: "Personal Items", desc: "Pint glasses, steering wheels, snooker cues, lurchers, fishing rods — anything that meant something. We work from photographs.", price: "from £580" },
+  { name: "Football Crests", desc: "Hand-built crest tributes in full club colours on bespoke timber frame.", price: "from £720" },
+];
+
+const DEFAULT_CLASSIC_TRIBUTES = [
+  "Gates of Heaven (1ft–6ft)", "Open Bibles & Open Books", "Crosses (1ft–6ft)",
+  "Open & Closed Hearts", "Pillows & Cushions", "Casket Sprays", "Full Coffin Sprays",
+  "Hearse Top-Pieces", "Horse-Drawn Carriage Sprays", "Wreaths & Standing Easels",
+  "Phrases — \u2018Gone but not forgotten\u2019, \u2018With the angels now\u2019, \u2018Rest easy\u2019",
+  "Birthdate & age numerals",
+];
+
 export default function TravellerFuneralsPage() {
-  const letterTributes = [
-    { size: "1ft Letters", price: "from £180", desc: "Single letters or short names — '\u2018DAD\u2019, \u2018MUM\u2019, \u2018NAN\u2019" },
-    { size: "2ft Letters", price: "from £320", desc: "Larger letters with a sturdy bespoke timber frame and full backing" },
-    { size: "3ft Letters", price: "from £650", desc: "Statement letters — visible the length of the service, fully framed" },
-    { size: "Oversized & Bespoke", price: "from £950", desc: "Multi-letter phrases, custom names and oversized commissions" },
-  ];
-
-  const bespokeBuilds = [
-    { name: "Floral Cars", desc: "Full-size 3D floral car tributes — Bentley, Rolls Royce, Mercedes, classic British models — finished with detailed grille, badge and number plate.", price: "from £4,200" },
-    { name: "Floral Caravans", desc: "Six-foot 3D caravan tributes — fully built on steel frame with personalised registration plate and door details.", price: "from £2,800" },
-    { name: "Floral Horses", desc: "Life-size floral horse tributes — for the lifelong horseman, with floral mane and detailed bridle work.", price: "from £3,500" },
-    { name: "Floral Hearses", desc: "Carriage and hearse tributes — fully sculpted in floral, with horses where requested.", price: "from £5,800" },
-    { name: "Personal Items", desc: "Pint glasses, steering wheels, snooker cues, lurchers, fishing rods — anything that meant something. We work from photographs.", price: "from £580" },
-    { name: "Football Crests", desc: "Hand-built crest tributes in full club colours on bespoke timber frame.", price: "from £720" },
-  ];
-
-  const classicTributes = [
-    "Gates of Heaven (1ft–6ft)",
-    "Open Bibles & Open Books",
-    "Crosses (1ft–6ft)",
-    "Open & Closed Hearts",
-    "Pillows & Cushions",
-    "Casket Sprays",
-    "Full Coffin Sprays",
-    "Hearse Top-Pieces",
-    "Horse-Drawn Carriage Sprays",
-    "Wreaths & Standing Easels",
-    "Phrases — \u2018Gone but not forgotten\u2019, \u2018With the angels now\u2019, \u2018Rest easy\u2019",
-    "Birthdate & age numerals",
-  ];
+  const { content } = usePageContent("traveller-funerals");
+  const letterTributes  = (content?.extra?.letter_tributes  && content.extra.letter_tributes.length  > 0) ? content.extra.letter_tributes  : DEFAULT_LETTER_TRIBUTES;
+  const bespokeBuilds   = (content?.extra?.bespoke_builds   && content.extra.bespoke_builds.length   > 0) ? content.extra.bespoke_builds   : DEFAULT_BESPOKE_BUILDS;
+  const classicTributes = (content?.extra?.classic_tributes && content.extra.classic_tributes.length > 0) ? content.extra.classic_tributes : DEFAULT_CLASSIC_TRIBUTES;
 
   return (
     <div className="pt-28" data-testid="traveller-funerals-page">

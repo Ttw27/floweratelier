@@ -9,14 +9,15 @@ import { Plus, Pencil, X, Upload, Trash2, GripVertical } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Pages CURRENTLY rendering this CMS content on the live site.
-// 8/10 wired — Faith Weddings & Traveller Funerals keep their bespoke layouts
-// (palette swatches / letter-size tables) which don't map cleanly to the generic tier shape.
+// Pages CURRENTLY rendering this CMS content on the live site — all 10 wired now.
 const LIVE_SLUGS = new Set([
   "weddings", "sympathy", "corporate",
   "shop-front-installs", "house-installs", "film-tv-photoshoot",
   "traveller-weddings", "in-shop-displays",
+  "faith-weddings", "traveller-funerals",
 ]);
+
+const BESPOKE_SLUGS = new Set(["faith-weddings", "traveller-funerals"]);
 
 export default function PageContentAdmin() {
   const [pages, setPages] = useState([]);
@@ -68,6 +69,7 @@ export default function PageContentAdmin() {
           image_url: t.image_url || "",
           sort_order: typeof t.sort_order === "number" ? t.sort_order : i * 10,
         })),
+        extra: p.extra || {},
         active: p.active !== false,
       };
       await axios.put(`${API_URL}/api/admin/page-content/${p.slug}`, payload);

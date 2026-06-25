@@ -8,7 +8,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
@@ -2237,6 +2237,7 @@ class PageContentCreate(BaseModel):
     hero_cta_label: str = ""
     hero_cta_url: str = ""
     tiers: List[PageTier] = []
+    extra: Dict[str, Any] = Field(default_factory=dict)  # bespoke per-page schema (traditions, letter sizes, …)
     active: bool = True
 
 class PageContentResponse(PageContentCreate):
@@ -2405,28 +2406,100 @@ PAGE_CONTENT_SEED = [
         "hero_eyebrow": "Traveller Funerals",
         "hero_title_line1": "A goodbye, made", "hero_title_italic": "magnificent.", "hero_title_line2": "",
         "hero_subheading": "Large-format named tributes, full-coffin sprays, gates, photo-frames and themed pieces — produced to a tight calendar, delivered nationally and handed directly to your funeral director.",
-        "hero_image": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1800",
+        "hero_image": "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=1800",
         "hero_cta_label": "Speak to the studio", "hero_cta_url": "/consultation?service=traveller-funeral",
-        "tiers": [
-            {"title": "Named Letter Tributes", "description": "DAD / MUM / NAN / GRANDAD — 3ft and 5ft sizes available.", "price_label": "from £320", "image_url": "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=1200", "sort_order": 10},
-            {"title": "Full Coffin Spray", "description": "Top-to-toe sprays in season — roses, lilies, chrysanthemum.", "price_label": "from £450", "image_url": "https://images.unsplash.com/photo-1593019776922-e6ad79c69947?w=1200", "sort_order": 20},
-            {"title": "Photo-Frame & Themed Tributes", "description": "Bespoke shape pieces — boxing ring, horse, lorry, football badge.", "price_label": "from £580", "image_url": "https://images.unsplash.com/photo-1486818203489-37b06f23a3a8?w=1200", "sort_order": 30},
-            {"title": "Gates of Heaven", "description": "Five-foot standing gates with named scrollwork.", "price_label": "from £680", "image_url": "https://images.unsplash.com/photo-1466692476655-9e1d3eba2c97?w=1200", "sort_order": 40},
-        ],
+        "tiers": [],
+        "extra": {
+            "letter_tributes": [
+                {"size": "1ft Letters",       "price": "from £180", "desc": "Single letters or short names — 'DAD', 'MUM', 'NAN'"},
+                {"size": "2ft Letters",       "price": "from £320", "desc": "Larger letters with a sturdy bespoke timber frame and full backing"},
+                {"size": "3ft Letters",       "price": "from £650", "desc": "Statement letters — visible the length of the service, fully framed"},
+                {"size": "Oversized & Bespoke","price": "from £950", "desc": "Multi-letter phrases, custom names and oversized commissions"},
+            ],
+            "bespoke_builds": [
+                {"name": "Floral Cars",      "desc": "Full-size 3D floral car tributes — Bentley, Rolls Royce, Mercedes, classic British models — finished with detailed grille, badge and number plate.", "price": "from £4,200"},
+                {"name": "Floral Caravans",  "desc": "Six-foot 3D caravan tributes — fully built on steel frame with personalised registration plate and door details.", "price": "from £2,800"},
+                {"name": "Floral Horses",    "desc": "Life-size floral horse tributes — for the lifelong horseman, with floral mane and detailed bridle work.", "price": "from £3,500"},
+                {"name": "Floral Hearses",   "desc": "Carriage and hearse tributes — fully sculpted in floral, with horses where requested.", "price": "from £5,800"},
+                {"name": "Personal Items",   "desc": "Pint glasses, steering wheels, snooker cues, lurchers, fishing rods — anything that meant something. We work from photographs.", "price": "from £580"},
+                {"name": "Football Crests",  "desc": "Hand-built crest tributes in full club colours on bespoke timber frame.", "price": "from £720"},
+            ],
+            "classic_tributes": [
+                "Gates of Heaven (1ft–6ft)",
+                "Open Bibles & Open Books",
+                "Crosses (1ft–6ft)",
+                "Open & Closed Hearts",
+                "Pillows & Cushions",
+                "Casket Sprays",
+                "Full Coffin Sprays",
+                "Hearse Top-Pieces",
+                "Horse-Drawn Carriage Sprays",
+                "Wreaths & Standing Easels",
+                "Phrases — 'Gone but not forgotten', 'With the angels now', 'Rest easy'",
+                "Birthdate & age numerals",
+            ],
+        },
     },
     {
         "slug": "faith-weddings", "label": "Faith Weddings",
-        "hero_eyebrow": "Faith Weddings",
-        "hero_title_line1": "Vows, set", "hero_title_italic": "in bloom.", "hero_title_line2": "",
-        "hero_subheading": "Mandap installations, chuppahs, church altars and gurdwara durbar florals — designed with respect for tradition and an editorial sensibility.",
-        "hero_image": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1800",
-        "hero_cta_label": "Begin a faith-wedding brief", "hero_cta_url": "/consultation?service=faith-wedding",
-        "tiers": [
-            {"title": "Mandap Installation", "description": "Four-pillar mandap with full canopy florals.", "price_label": "from £4,800", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 10},
-            {"title": "Chuppah (Jewish Ceremony)", "description": "Four-pole chuppah with foliage canopy and statement corners.", "price_label": "from £3,200", "image_url": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200", "sort_order": 20},
-            {"title": "Church Altar & Aisle", "description": "Altar pedestals, pew-end posies, aisle markers.", "price_label": "from £1,800", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 30},
-            {"title": "Gurdwara Durbar Florals", "description": "Floor-level gurdwara florals styled with respect for tradition.", "price_label": "from £2,200", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
-        ],
+        "hero_eyebrow": "Faith & Cultural Weddings",
+        "hero_title_line1": "Every", "hero_title_italic": "tradition,", "hero_title_line2": "honoured by hand.",
+        "hero_subheading": "Sikh, Hindu, Jewish, Muslim, Greek Orthodox, Chinese — we design floral programmes with deep respect for tradition, working closely with families, priests and faith leaders.",
+        "hero_image": "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1800",
+        "hero_cta_label": "Begin a consultation", "hero_cta_url": "/consultation?service=faith_wedding",
+        "tiers": [],
+        "extra": {
+            "traditions": [
+                {
+                    "id": "sikh", "name": "Sikh — Anand Karaj",
+                    "intro": "Gurdwara floral programmes designed with deep respect for tradition.",
+                    "details": ["Marigold and rose garlands for the gurdwara entrance", "Palki canopy floral decoration", "Mala — exchange garlands for groom and bride", "Sukhmani sahib pathi venue florals"],
+                    "palette": ["#FFA500", "#E63946", "#FFE5B4", "#FFFFFF"],
+                    "price": "from £4,200",
+                    "image": "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?w=1200",
+                },
+                {
+                    "id": "hindu", "name": "Hindu — Mandap",
+                    "intro": "Mandap installations and ceremony florals — vibrant, sacred, generous.",
+                    "details": ["Four-pillar floral mandap installation", "Marigold thoran for the entrance", "Varmala garlands for the exchange", "Kalash decoration and pheras florals", "Sangeet and Mehndi event florals on request"],
+                    "palette": ["#FF6B35", "#E63946", "#FFA500", "#F4A261"],
+                    "price": "from £6,800",
+                    "image": "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1200",
+                },
+                {
+                    "id": "jewish", "name": "Jewish — Chuppah",
+                    "intro": "Chuppah canopies and reception florals — quiet, elegant, dignified.",
+                    "details": ["Floral chuppah canopy construction", "Ketubah signing table arrangement", "Bedeken room florals", "Reception centrepieces and aisle styling"],
+                    "palette": ["#FFFFFF", "#F5F5F2", "#E8D8D0", "#C4CFC0"],
+                    "price": "from £5,400",
+                    "image": "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200",
+                },
+                {
+                    "id": "muslim", "name": "Muslim — Nikah & Mehndi",
+                    "intro": "Ceremony décor designed with cultural sensitivity — from quiet Nikahs to vibrant Mehndis.",
+                    "details": ["Nikah ceremony backdrop in cream and gold", "Walima reception design", "Mehndi event florals — vibrant and joyful", "Stage installations and bridal seating florals"],
+                    "palette": ["#FFFFF0", "#D4AF37", "#FFC4D7", "#FAFAF7"],
+                    "price": "from £5,800",
+                    "image": "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=1200",
+                },
+                {
+                    "id": "greek", "name": "Greek Orthodox — Stephana",
+                    "intro": "Church florals and crown stephana for traditional Greek Orthodox ceremonies.",
+                    "details": ["Crown stephana for groom and bride", "Church entrance floral arch", "Lambada candle decoration", "Reception florals in white, ivory and gold"],
+                    "palette": ["#FFFFFF", "#D4AF37", "#F5E9D7", "#E8D8D0"],
+                    "price": "from £3,200",
+                    "image": "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=1200",
+                },
+                {
+                    "id": "chinese", "name": "Chinese — Tea Ceremony",
+                    "intro": "Tea ceremony installations honouring double-happiness and traditional symbolism.",
+                    "details": ["Tea ceremony stage florals in red and gold", "Double-happiness floral installations", "Traditional peony arrangements", "Banquet table florals"],
+                    "palette": ["#C8232C", "#D4AF37", "#FFC4D7", "#FFE5B4"],
+                    "price": "from £2,800",
+                    "image": "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200",
+                },
+            ],
+        },
     },
 ]
 
