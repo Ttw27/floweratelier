@@ -2310,10 +2310,10 @@ PAGE_CONTENT_SEED = [
         "hero_image": "https://images.unsplash.com/photo-1530092285049-1c42085fd395?w=1800",
         "hero_cta_label": "Discuss a corporate programme", "hero_cta_url": "/consultation?service=corporate",
         "tiers": [
-            {"title": "Weekly Floral Programme", "description": "Recurring fresh installations for reception desks, club bars and lifts.", "price_label": "from £350 / week", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 10},
-            {"title": "Press Day & Launches", "description": "Branded floral installations, sampling tables and photography florals.", "price_label": "from £2,800", "image_url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200", "sort_order": 20},
-            {"title": "Awards & Gala Tablescapes", "description": "Long-table runners, centrepieces and stage florals.", "price_label": "from £4,500", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
-            {"title": "Office & Hotel Lobby Installs", "description": "Statement permanent installations refreshed monthly.", "price_label": "from £1,500", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
+            {"title": "Weekly Install Programmes", "description": "Rotating seasonal arrangements for hotels, clubs, offices and showrooms — delivered weekly with account-managed continuity.", "price_label": "from £1,200 / month", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 10},
+            {"title": "Product Launches & Openings", "description": "Statement floral architecture — arches, pedestals, installations and press-wall floral detailing.", "price_label": "from £3,500", "image_url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200", "sort_order": 20},
+            {"title": "Gala Dinners & Award Events", "description": "Tablescape design, room decoration and guest floral gifts.", "price_label": "from £2,500", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
+            {"title": "Executive & Client Gifting", "description": "Curated gift programmes for VIPs, clients and executives — delivered nationally.", "price_label": "from £95 per piece", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
         ],
     },
     {
