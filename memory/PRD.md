@@ -157,6 +157,14 @@ Weddings · Sympathy · Corporate · House · Shop-window — with image, descri
 8. Seasonal pre-order drops (Valentine's, Mother's Day)
 
 ## Changelog
+### 2026-06-25 (final) — 8/10 service pages now LIVE, N+1 fix, admin polish (DEPLOY READY)
+- **Wired 5 more service pages** to the CMS — Shop Front Installs, House Installs, In-Shop Displays, Film/TV/Photoshoot, Traveller Weddings now render hero + tier pricing from `page_content` collection. **8/10 service pages LIVE** in admin. Faith Weddings & Traveller Funerals stay bespoke (palette swatches / letter-size tables — would lose structure in generic tier shape). PAGE_CONTENT_SEED updated to match the richer 3-/6-tier defaults of each page.
+- **N+1 fix**: `/api/categories` now uses a single `$lookup` aggregation pipeline (was N+1 product-count queries). Single DB hit regardless of category count.
+- **Admin tabs wrap**: TabsList now uses `flex flex-wrap gap-y-1` — 12 tabs wrap to 2 rows on desktop; zero horizontal scroll at 1280px / 1024px (verified by testing agent).
+- **Portfolio pagination**: 24 items/page with Prev / numbered / Next controls. Filter changes reset to page 1.
+- **Templates add-category** confirmed working — existing `tpl-admin-new-cat-name`/-`slug`/-`add-cat-btn` UI verified live by testing agent (created+deleted a "Valentines" category as a round-trip).
+- Tested: pytest 19/19 + frontend 100% on all 14 review items (iteration_10.json). Zero bugs.
+
 ### 2026-06-25 (later) — Service-Page CMS + WhatsApp single config (deploy-ready)
 - **Service-Page CMS (NEW)**: `page_content` collection with full admin CRUD. 10 service pages seeded (weddings, sympathy, corporate, shop-front-installs, house-installs, film-tv-photoshoot, traveller-weddings, traveller-funerals, faith-weddings, in-shop-displays). Each row contains hero block (eyebrow, two-line title, italic emphasis word, subheading, hero image, CTA label+url) **and** an editable tier array (title, description, price_label, image_url, sort_order). New shared `<ServiceHero>` + `<ServiceTiers>` components + `usePageContent(slug)` hook. New **Service Pages** admin tab with hero + tier editor (move up/down, image upload, paste URL).
 - **Wired pages (LIVE badge)**: Weddings (hero + tiers), Sympathy (tiers), Corporate (tiers). Other 7 pages show **EDITABLE** badge in admin — content is saved but their JSX still uses hardcoded copy until the next wiring pass.
