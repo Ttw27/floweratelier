@@ -1,0 +1,64 @@
+{
+  "summary": "Iteration 8 — rebrand to 'Flower Atelier', removal of next-day/tomorrow copy, new Admin Portfolio CRUD, and image upload regression. Backend pytest 20/21 PASS (1 real bug found). Frontend homepage rebrand fully verified via DOM scan: zero 'Petals Atelier' and zero 'next-day/tomorrow' occurrences, header/footer wordmark = 'Flower Atelier', hero badges = 'Midlands delivery / Leicester atelier / 7-day freshness', footer email mailto:atelier@floweratelier.com, phone 0116 212 3456, body copy 'delivered across the Midlands, with bespoke services UK-wide', '© 2026 Flower Atelier — Leicester', <title> = 'Flower Atelier — Bespoke Luxury Florist, Leicester'. Admin Portfolio tab UI test inconclusive due to post-login navigation behaviour during the automation run (see action_items). Backend admin Portfolio CRUD (list, create, update, delete, 401/403 auth-gating, 404 on missing) all verified via API. Image upload POST /api/uploads/image works (returns /api/uploads/<uuid>.png URL) and rejects text/plain with 400. Regression: 4 workshops / 21 products / 10 cards / 3 templates / boxes / admin login all green. /api/seo and /api/settings both return Flower Atelier branding with no forbidden delivery copy.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/products", "issue": "Product id=8aee4412-40fa-424a-b27a-45389fbcad11 (name='Letter Tribute — 1ft \\\"DAD\\\"') description still contains 'next-day delivery anywhere in the UK'. Needs re-seed OR description patch to remove the forbidden phrase."},
+      {"endpoint": "/api/portfolio", "issue": "Endpoint ignores the `limit` query parameter referenced in the review request — always returns up to 200 items. Either implement `limit` (server-side slice) or remove the spec mention."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Admin → Portfolio tab UI walk-through", "issue": "During automation the /admin page redirected to / after successful login ('Welcome back' toast visible) so [data-testid=admin-portfolio-tab] and [data-testid=admin-templates-tab] were not findable in the same playwright session. Could be a timing/redirect issue or a regression where AdminPage briefly unmounts. Manual verification recommended — backend CRUD is fully working so the UI is the only piece still unconfirmed end-to-end by this agent.", "affected_selectors": ["[data-testid='admin-portfolio-tab']", "[data-testid='portfolio-admin-card']", "[data-testid='portfolio-edit-form']", "[data-testid='admin-templates-tab']"]}
+    ],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/settings → seo_site_name='Flower Atelier'; seo_default_title contains 'Flower Atelier' + Leicester/Midlands; no next-day/tomorrow/same-week in defaults",
+    "GET /api/seo?path=/ → title='Flower Atelier — Bespoke Luxury Florist, Leicester'; description free of next-day/tomorrow/Petals Atelier",
+    "Public payload scan — /api/cards, /api/boxes, /api/addons, /api/portfolio all clean of 'Petals Atelier' AND 'next-day|tomorrow|same-week' (case-insensitive)",
+    "GET /api/admin/portfolio (admin auth) → 61 items, no _id leakage; required fields (id/title/category/image) present",
+    "Unauthenticated GET/POST /api/admin/portfolio → 401/403",
+    "POST /api/admin/portfolio with full PortfolioItemCreate payload (title/category/description/image/location/price_from/tags-list/featured) → 200; persisted (visible in list)",
+    "PUT /api/admin/portfolio/{id} → updates title+tags+featured; verified via GET /api/portfolio/{id}",
+    "DELETE /api/admin/portfolio/{id} → 200; subsequent GET /api/portfolio/{id} → 404",
+    "PUT /api/admin/portfolio/does-not-exist → 404",
+    "POST /api/uploads/image (multipart, 1x1 PNG) → 200, url=/api/uploads/<uuid>.png, content_type=image/png",
+    "POST /api/uploads/image with text/plain → 400 (unsupported type rejection)",
+    "Regression: /api/workshops=4, /api/products=21, /api/cards=10, /api/templates=3, /api/boxes>0, /api/portfolio?limit returns list",
+    "Regression: POST /api/auth/login admin@petalsatelier.com/admin123 → 200, is_admin=true",
+    "Regression: POST /api/workshop-bookings deposit calc — subtotal==price*guests, amount_due_now==deposit*guests",
+    "Frontend / DOM scan: 0 occurrences of /petals\\s*atelier/i; 0 occurrences of /(next[-\\s]?day|tomorrow)/i in rendered HTML",
+    "Frontend / : <title>=Flower Atelier — Bespoke Luxury Florist, Leicester",
+    "Frontend / : header wordmark = 'Flower Atelier'; footer wordmark = 'Flower Atelier'; footer line = '© 2026 Flower Atelier — Leicester'",
+    "Frontend / : phone '0116 212 3456' present; footer email link href='mailto:atelier@floweratelier.com'",
+    "Frontend / : hero badges 'Midlands delivery / Leicester atelier / 7-day freshness'; body 'delivered across the Midlands, with bespoke services UK-wide'"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_rebrand_portfolio.py",
+    "/app/test_reports/pytest/rebrand_portfolio.xml"
+  ],
+  "action_items": [
+    "Patch product id=8aee4412-40fa-424a-b27a-45389fbcad11 ('Letter Tribute — 1ft DAD') description to remove the phrase 'next-day delivery anywhere in the UK' (forbidden copy). Re-seed via /api/seed?reset=true after editing the PRODUCTS_SEED entry, or PATCH the document directly. This is the ONLY remaining product with forbidden delivery wording.",
+    "Decide on /api/portfolio?limit: either implement server-side limit slicing OR remove from the spec/frontend usage. Currently the query param is silently ignored.",
+    "Manually verify the Admin → Portfolio tab end-to-end UI flow (login → click Portfolio tab → see ≥10 items → click 'Add item' → modal shows all 11 fields → save disabled until image set → submit creates row → edit → delete). This agent could not reproduce the tab in playwright because /admin redirected away post-login during the automated run. Backend CRUD is verified, so any UI issue would be purely client-side.",
+    "Mobile viewport (390/768) check NOT executed in this iteration due to the admin-tab investigation consuming the playwright budget — please confirm mobile responsiveness manually or in next iteration."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/server.py is 2810 lines — past the 700-line guideline; new PortfolioItemCreate + 4 admin routes are well-implemented (proper _id exclusion via projection, 404 on missing, response_model=PortfolioItemResponse), but the file should be split into routers/portfolio.py, routers/workshops.py, routers/admin.py for maintainability before further additions.",
+    "POST /api/uploads/image has no auth dependency — anyone can upload up to 6 MB images to UPLOAD_DIR/{uuid}.png. For a public site this is a DoS / disk-fill vector. Consider adding admin auth or a tight rate-limit/quota.",
+    "The hard-coded forbidden product description ('next-day delivery anywhere in the UK') lives in the PRODUCTS_SEED block of server.py — once split out, this rebrand audit becomes simpler.",
+    "Rebrand audit suggestion: add a tiny CI check that greps the seed blocks for /(petals\\s*atelier|next[-\\s]?day|tomorrow)/i and fails the build. Would have caught the Letter Tribute leak."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_rebrand_portfolio.py (new — 21 pytest cases covering settings/SEO rebrand, payload audit, admin portfolio CRUD, image upload, and existing-endpoints regression)"
+  ],
+  "success_rate": {"backend": "95% (20/21 pytest — 1 real product-copy bug)", "frontend": "homepage rebrand: 100%, admin/mobile UI not verified due to automation redirect"},
+  "test_credentials": "admin@petalsatelier.com / admin123 (verified working — login returned is_admin=true)",
+  "seed_data_creation": "Created and deleted one TEST_Portfolio_<hex> portfolio item via API (clean round-trip, no residue). One ephemeral PNG file written to /app/backend/uploads/<uuid>.png by upload test (small, ~70 bytes — not cleaned up; tiny disk impact).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Use /app/backend/tests/test_rebrand_portfolio.py (21 tests, ~2.5s). It will continue to flag the 'Letter Tribute — 1ft DAD' product until its description is fixed. After main agent patches that description and re-seeds, ALL 21 backend tests should pass. The portfolio CRUD tests are idempotent and clean up after themselves. Admin Portfolio UI flow still needs in-browser verification — homepage rebrand is fully verified.",
+  "rca of the issue": "Root cause of the only confirmed backend bug: PRODUCTS_SEED in /app/backend/server.py contains a description for the Letter Tribute product that pre-dates the rebrand sweep. The 35-replacement source-tree audit caught brand mentions but missed delivery copy inside a single seed-data string. Fix: edit the description to e.g. 'Standard size, available with our usual Midlands delivery and UK-wide bespoke options.' then POST /api/seed?reset=true."
+}
