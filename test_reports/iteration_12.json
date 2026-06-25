@@ -1,0 +1,48 @@
+{
+  "summary": "Pre-deployment regression sweep (iteration 12). Backend 24/24 pytest PASS — all listed public endpoints return 200 with valid payloads (/api/products, /api/portfolio, /api/categories, /api/page-content/weddings, /api/settings, /api/cards, /api/addons, /api/boxes, /api/workshops, /api/templates), all 10 service slugs reachable via /api/page-content/{slug}, admin login + wrong-password rejection work, /api/admin/portfolio gated, and PUT /api/admin/page-content/weddings round-trips 200. Frontend: all 16 public routes load 200 with header+footer rendered, no console errors on simple page loads, no 'London' / 'next-day' / 'tomorrow' copy anywhere; rebrand to 'Flower Atelier' + 'Leicester, Midlands' is consistent across home, footer, /privacy, /collection. Admin /admin: login OK, all 12 expected tabs present (orders, inquiries, products, cards, boxes, templates, addons, workshops, portfolio, pages, seo, settings) and clickable, all tab content renders (body_len 1192–3315), Service Pages tab shows 10 page-content-edit-* cards with 10 'Live' labels, Workshops has Programmes/Sessions/Bookings sub-tabs. CRITICAL bug found: opening the Send-this-bouquet modal on Product Detail Page (/product/{id}) triggers an infinite 'Maximum update depth exceeded' React error (fired ~200+ times in one render burst) — modal still renders but the loop kills perf and floods the console; root cause is almost certainly SendFlow.js:80-93 useEffect with [open, product] deps where the `product` object reference from ProductDetailPage changes every render OR a child effect in step rendering setting state without a stable dep.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SendFlow modal (Product Detail Page)", "issue": "Infinite render loop — 'Maximum update depth exceeded' fires continuously while the Send-this-bouquet modal is open. Visible immediately after clicking [data-testid='send-flow-trigger'] on /product/{id}. Modal still appears but console floods with React error and the page becomes laggy.", "selector": "[data-testid='send-flow-modal']", "priority": "CRITICAL"}
+    ],
+    "integration_issues": [
+      {"flow": "Admin login redirect", "issue": "After successful admin login from /login, user is redirected to / (homepage) instead of /admin. Admin must manually navigate to /admin to access the dashboard. Not blocking (tabs all work once on /admin) but is poor UX for admin role.", "affected_selectors": ["/login submit", "/admin"]}
+    ],
+    "design_issues": [
+      {"screen": "Admin /admin Tabs component", "issues": ["Hydration warning: 'In HTML, <span> cannot be a child of <option>.' Triggered inside a Tabs/Select inside one of the admin tabs. Non-blocking but should be cleaned up before deploy to avoid SSR/CSR mismatch warnings in production."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration_12.py",
+    "/app/test_reports/pytest/iteration_12.xml"
+  ],
+  "action_items": [
+    "CRITICAL — Fix infinite render loop in /app/frontend/src/components/SendFlow.js. Suspect: useEffect at line 80-93 has deps [open, product]; if ProductDetailPage passes a freshly-constructed object on every render the effect re-runs, calls setStep(0)/setChosen* (which are no-ops once stable) BUT the actual loop is more likely from a child component setting state during render. Recommend: (a) memoize the product prop in ProductDetailPage with useMemo, (b) split the effect into two — one keyed on `open` only for reset, another keyed on `open && product?.id` for the trackEvent fire-once, and (c) audit the per-step subcomponents (DesignerOpen, addons grid, dates list) for setState-in-render patterns.",
+    "Admin login redirect: AuthContext or LoginPage onSubmit should detect admin role and push('/admin') instead of push('/').",
+    "Clean up <span> inside <option> hydration warning in one of the admin Tabs/Select components.",
+    "(Carry-over from iteration_11, still unfixed) TravellerFuneralsPage.js:49 hero subtitle fallback still renders hardcoded ' of the life.' when CMS hero_title_line2='' — explicit null check or seed line2 with text."
+  ],
+  "critical_code_review_comments": [
+    "SendFlow.js infinite loop is the single deployment blocker. Until fixed, every user who opens the 'Send this bouquet' modal will silently hit a runaway React error — even though the modal renders, the perf hit on slower devices may freeze the page.",
+    "ProductDetailPage no longer surfaces an 'Add to cart' button on the PDP (only 'Send this bouquet' + WhatsApp + ENQUIRE). Home page and CollectionPage still show 'ADD TO BASKET' cards. Confirm with product owner this is intended.",
+    "Login redirect logic ignores admin role — admins land on homepage, not /admin. Worth fixing for production.",
+    "server.py still ~3121 lines — recurring recommendation to split into routers. Not blocking.",
+    "Hydration warning <span> in <option>: search for `<option>...<span>...</span></option>` inside an admin component and replace with a plain text label."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration_12.py (new — 24 tests covering backend health, all 10 service-page slugs, admin auth, admin portfolio, weddings PUT round-trip)"
+  ],
+  "success_rate": {
+    "backend": "100% (24/24)",
+    "frontend": "94% — 15/16 public smoke checks pass; PDP send-flow modal fails on infinite-loop bug. Admin 12/12 tabs + 10/10 Live service-page cards + 3/3 workshop sub-tabs OK."
+  },
+  "test_credentials": "admin@petalsatelier.com / admin123 (per /app/memory/test_credentials.md)",
+  "seed_data_creation": "None — only read-only GETs and one idempotent PUT of /api/admin/page-content/weddings (re-saves current value unchanged).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After SendFlow.js fix lands, retest by opening /product/{id} → click [data-testid='send-flow-trigger'] → confirm zero 'Maximum update depth exceeded' errors in console and that all 6 steps (card/message/date/box/addons/review) can be advanced through. Also retest admin login redirect → confirm post-login URL is /admin. Backend regression suite /app/backend/tests/test_iteration_12.py runs in ~2s and should remain at 24/24. Note: admin Service Pages modals do NOT use role='dialog' — use the data-testid editors (faith-traditions-editor, tf-letters-editor) to detect them instead.",
+  "rca of the issue": "SendFlow infinite loop RCA: file /app/frontend/src/components/SendFlow.js line 80-93. The useEffect has dependency array [open, product]. When `open===true` it calls trackEvent(...). If ProductDetailPage re-renders for any reason (cart context update, image preload, etc.) and passes a new product *object reference* (i.e. `<SendFlow product={product} ... />` where `product` was reconstructed), React sees a new dep and re-runs the effect. trackEvent itself doesn't cause a state change, but the per-step render inside the modal body may set state during render (e.g. the dates list `setDelivery(dR.data)` interactions, or addons useMemo recomputation chained with a child setState). The loop fires ~50+ times per second. Reproduction: 1) load /collection 2) click any product card 3) click 'SEND THIS BOUQUET' 4) DevTools console shows 'Maximum update depth exceeded' spamming. Mitigation: useMemo the product prop in ProductDetailPage; split the reset effect (deps: [open]) from the analytics effect (deps: [open, product?.id]); audit step subcomponents for setState-in-render."
+}
