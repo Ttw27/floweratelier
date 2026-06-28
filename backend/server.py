@@ -1822,14 +1822,14 @@ async def get_settings():
     return merged
 
 @api_router.put("/settings")
-async def update_settings(data: SiteSettings, admin=Depends(require_admin)):
-    payload = data.model_dump()
+async def update_settings(data: dict, admin=Depends(require_admin)):
+    # Only update fields that are explicitly provided, preserving all others
     await db.site_settings.update_one(
         {"_id": "global"},
-        {"$set": payload},
+        {"$set": data},
         upsert=True,
     )
-    return payload
+    return await get_settings()
 
 async def _get_settings_dict() -> dict:
     doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
