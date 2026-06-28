@@ -20,7 +20,7 @@ const FILTERS = [
   { id: "shop_front", name: "Shop Fronts" },
   { id: "in_shop_display", name: "In-Shop" },
   { id: "film_tv", name: "Film & TV" },
-  { id: "shop", name: "Window" },
+  { id: "workshop", name: "Workshops" },
 ];
 
 export default function BespokePortfolioPage() {

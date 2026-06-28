@@ -113,7 +113,7 @@ export default function RestaurantsPage() {
 
       {/* Portfolio */}
       <MiniPortfolio
-        category="corporate"
+        category="restaurants"
         title={<>Selected <em>restaurant</em> projects.</>}
       />
 

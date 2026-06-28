@@ -95,7 +95,7 @@ export default function HotelsHospitalityPage() {
 
       {/* Portfolio */}
       <MiniPortfolio
-        category="corporate"
+        category="hotels"
         title={<>Selected <em>hospitality</em> projects.</>}
       />
 
