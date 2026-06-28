@@ -1812,14 +1812,23 @@ DEFAULT_SETTINGS = SiteSettings(
 async def get_settings():
     doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
     if not doc:
+        # First ever run — seed with defaults
         await db.site_settings.update_one(
             {"_id": "global"},
             {"$set": DEFAULT_SETTINGS},
             upsert=True,
         )
         return DEFAULT_SETTINGS
-    merged = {**DEFAULT_SETTINGS, **doc}
-    return merged
+    # Only fill in keys that are genuinely missing from the database
+    # NEVER overwrite existing values with defaults
+    missing = {k: v for k, v in DEFAULT_SETTINGS.items() if k not in doc}
+    if missing:
+        await db.site_settings.update_one(
+            {"_id": "global"},
+            {"$set": missing},
+        )
+        doc.update(missing)
+    return doc
 
 @api_router.put("/settings")
 async def update_settings(data: dict, admin=Depends(require_admin)):
@@ -1833,7 +1842,10 @@ async def update_settings(data: dict, admin=Depends(require_admin)):
 
 async def _get_settings_dict() -> dict:
     doc = await db.site_settings.find_one({"_id": "global"}, {"_id": 0})
-    return {**DEFAULT_SETTINGS, **(doc or {})}
+    if not doc:
+        return dict(DEFAULT_SETTINGS)
+    # Fill in any missing keys without overwriting existing ones
+    return {**DEFAULT_SETTINGS, **doc}
 
 # ==================== UPLOADS ====================
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
