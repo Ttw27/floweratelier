@@ -87,7 +87,7 @@ export default function PageContentAdmin() {
     setUploading((s) => ({ ...s, [key]: true }));
     const fd = new FormData(); fd.append("file", file);
     try {
-      const r = await axios.post(`${API_URL}/api/uploads/image`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const r = await axios.post(`${API_URL}/api/uploads/image?folder=services`, fd, { headers: { "Content-Type": "multipart/form-data" } });
       const url = r.data.url || r.data.image_url || r.data.image;
       if (!url) throw new Error("No URL returned");
       setEditing((e) => {
@@ -263,7 +263,7 @@ export default function PageContentAdmin() {
                   setUploading((s) => ({ ...s, [`tradition-${idx}`]: true }));
                   const fd = new FormData(); fd.append("file", file);
                   try {
-                    const r = await axios.post(`${API_URL}/api/uploads/image`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+                    const r = await axios.post(`${API_URL}/api/uploads/image?folder=services`, fd, { headers: { "Content-Type": "multipart/form-data" } });
                     const url = r.data.url || r.data.image_url || r.data.image;
                     if (!url) throw new Error("No URL returned");
                     setEditing((e) => {

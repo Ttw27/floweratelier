@@ -84,7 +84,7 @@ export default function PortfolioAdmin() {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const r = await axios.post(`${API_URL}/api/uploads/image`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const r = await axios.post(`${API_URL}/api/uploads/image?folder=portfolio`, fd, { headers: { "Content-Type": "multipart/form-data" } });
       const url = r.data.url || r.data.image_url || r.data.image;
       if (!url) throw new Error("Upload returned no URL");
       setEditing((e) => ({ ...e, image: url }));
