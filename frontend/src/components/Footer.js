@@ -24,13 +24,13 @@ export default function Footer() {
               tributes, corporate programmes and private residence installations.
             </p>
             <div className="space-y-3">
-              <a href="tel:+441162123456" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
+              <a href={`tel:${(settings?.phone_number || "0116 212 3456").replace(/\s/g, "")}`} className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
                 <Phone size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">0116 212 3456</span>
+                <span className="font-body text-sm">{settings?.phone_number || "0116 212 3456"}</span>
               </a>
-              <a href="mailto:atelier@floweratelier.com" className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
+              <a href={`mailto:${settings?.contact_email || "info@floweratelier.co.uk"}`} className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
                 <Mail size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">atelier@floweratelier.com</span>
+                <span className="font-body text-sm">{settings?.contact_email || "info@floweratelier.co.uk"}</span>
               </a>
               {waHref && settings?.whatsapp_enabled !== false && (
                 <a
