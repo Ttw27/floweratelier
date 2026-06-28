@@ -1004,16 +1004,16 @@ async def admin_delete_portfolio(item_id: str, admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v7-leicester-r5"
+    current_version = "v7-leicester-r6"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
         return {"message": "Data already seeded", "version": current_version}
 
-    # Wipe catalog/portfolio data for a clean reseed
+    # Wipe catalog data for a clean reseed, but preserve manually-added portfolio items
     await db.categories.delete_many({})
     await db.products.delete_many({})
-    await db.portfolio.delete_many({})
+    await db.portfolio.delete_many({"seeded": True})  # Only delete seeded items
 
     # Premium luxury categories (light aesthetic)
     categories = [
@@ -1721,6 +1721,7 @@ async def seed_data(reset: bool = False):
     ]
     for item in portfolio_items:
         item["created_at"] = datetime.now(timezone.utc).isoformat()
+        item["seeded"] = True  # Mark as seeded so manual items are never deleted
     await db.portfolio.insert_many(portfolio_items)
 
     # Ensure admin user exists (idempotent)
