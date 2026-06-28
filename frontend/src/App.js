@@ -33,7 +33,8 @@ import AccountPage from "./pages/AccountPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import AdminPage from "./pages/AdminPage";
 import ThemePreviewPage from "./pages/ThemePreviewPage";
-import PrivacyPage from "./pages/PrivacyPage";
+import HotelsHospitalityPage from "./pages/HotelsHospitalityPage";
+import RestaurantsPage from "./pages/RestaurantsPage";
 
 // Layout
 import Header from "./components/Header";
@@ -85,6 +86,8 @@ function App() {
                 <Route path="/consultation" element={<ConsultationPage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/themes" element={<ThemePreviewPage />} />
+                <Route path="/hotels-hospitality" element={<HotelsHospitalityPage />} />
+                <Route path="/restaurants" element={<RestaurantsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
               </Routes>
             </main>
