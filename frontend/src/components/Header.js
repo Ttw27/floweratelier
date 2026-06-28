@@ -22,6 +22,8 @@ const OCCASIONS = [
 
 const SERVICES = [
   { name: "Corporate Events", path: "/corporate" },
+  { name: "Hotels & Hospitality", path: "/hotels-hospitality" },
+  { name: "Restaurants & Members' Clubs", path: "/restaurants" },
   { name: "House Installs", path: "/house-installs" },
   { name: "Shop Front Installs", path: "/shop-front-installs" },
   { name: "In-Shop Bespoke Displays", path: "/in-shop-displays" },
