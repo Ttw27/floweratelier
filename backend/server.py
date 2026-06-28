@@ -1783,6 +1783,8 @@ class SiteSettings(BaseModel):
     seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in Leicester and across the Midlands. Editorial design, dignified service, delivered nationwide."
     seo_default_og_image: str = ""
     seo_site_name: str = "Flower Atelier"
+    # Branding
+    favicon_url: str = ""
     # Homepage images
     homepage_hero_image: str = "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png"
     homepage_category1_image: str = "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png"
@@ -1834,25 +1836,44 @@ async def _get_settings_dict() -> dict:
     return {**DEFAULT_SETTINGS, **(doc or {})}
 
 # ==================== UPLOADS ====================
-UPLOAD_DIR = ROOT_DIR / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-MAX_UPLOAD_SIZE = 6 * 1024 * 1024  # 6 MB
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+def _get_r2_client():
+    import boto3
+    return boto3.client(
+        "s3",
+        endpoint_url=os.environ.get("R2_ENDPOINT", ""),
+        aws_access_key_id=os.environ.get("R2_ACCESS_KEY", ""),
+        aws_secret_access_key=os.environ.get("R2_SECRET_KEY", ""),
+        region_name="auto",
+    )
 
 @api_router.post("/uploads/image")
-async def upload_image(file: UploadFile = File(...)):
-    """Upload an image (max 6MB, jpg/png/webp/gif). Returns a public URL."""
+async def upload_image(file: UploadFile = File(...), folder: str = "misc"):
+    """Upload an image to Cloudflare R2. Returns a public URL."""
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(400, f"Unsupported type: {file.content_type}")
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE:
-        raise HTTPException(413, "File too large (max 6 MB)")
+        raise HTTPException(413, "File too large (max 10 MB)")
     ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif"}[file.content_type]
-    name = f"{uuid.uuid4().hex}{ext}"
-    path = UPLOAD_DIR / name
-    with open(path, "wb") as f:
-        f.write(contents)
-    return {"url": f"/api/uploads/{name}", "size": len(contents), "content_type": file.content_type}
+    name = f"{folder}/{uuid.uuid4().hex}{ext}"
+    bucket = os.environ.get("R2_BUCKET", "")
+    public_url = os.environ.get("R2_PUBLIC_URL", "").rstrip("/")
+    try:
+        s3 = _get_r2_client()
+        s3.put_object(
+            Bucket=bucket,
+            Key=name,
+            Body=contents,
+            ContentType=file.content_type,
+        )
+        url = f"{public_url}/{name}"
+    except Exception as e:
+        logger.error(f"R2 upload error: {e}")
+        raise HTTPException(500, "Image upload failed — check R2 configuration")
+    return {"url": url, "size": len(contents), "content_type": file.content_type}
 
 
 # ==================== CARDS & ADD-ONS ====================
@@ -3128,8 +3149,7 @@ async def root():
 
 # Include the router in the main app
 app.include_router(api_router)
-# Serve uploaded images under /api/uploads so the kubernetes ingress routes to the backend
-app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+# End of application
 
 app.add_middleware(
     CORSMiddleware,
