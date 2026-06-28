@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useSettings } from "../context/SettingsContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Calendar, Clock, Phone, Mail, CheckCircle } from "lucide-react";
@@ -16,6 +17,10 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function ConsultationPage() {
   const [searchParams] = useSearchParams();
+  const { settings } = useSettings();
+  const phone = settings?.phone_number || "0116 212 3456";
+  const phoneE164 = `+44${phone.replace(/^0/, "").replace(/\s/g, "")}`;
+  const email = settings?.contact_email || "info@floweratelier.co.uk";
   const defaultService = searchParams.get("service") || "";
   const portfolioItemId = searchParams.get("portfolio_item_id") || null;
   const portfolioTitle = searchParams.get("ref_title") || null;
@@ -65,7 +70,7 @@ export default function ConsultationPage() {
             and respond within 24 hours to arrange a conversation.
           </p>
           <div className="space-y-2 font-body text-sm text-[#7A7A7A]">
-            <p className="flex items-center justify-center gap-2"><Phone size={14} strokeWidth={1.3} />0116 212 3456</p>
+            <p className="flex items-center justify-center gap-2"><Phone size={14} strokeWidth={1.3} />{phone}</p>
             <p className="flex items-center justify-center gap-2"><Mail size={14} strokeWidth={1.3} />atelier@floweratelier.com</p>
           </div>
         </div>
@@ -212,7 +217,7 @@ export default function ConsultationPage() {
             <div className="bg-white border border-[#E5E5E5] p-8">
               <p className="accent-label mb-5 text-[#1A1A1A]">Direct</p>
               <div className="space-y-3">
-                <a href="tel:+441162123456" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />0116 212 3456</a>
+                <a href={`tel:${phoneE164}`} className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />{phone}</a>
                 <a href="mailto:atelier@floweratelier.com" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Mail size={14} strokeWidth={1.3} />atelier@floweratelier.com</a>
               </div>
             </div>

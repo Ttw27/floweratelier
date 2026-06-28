@@ -55,11 +55,6 @@ export default function TravellerFuneralsPage() {
               Proud, generous, dignified — and built to be seen.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <a href="tel:+441162123456" data-testid="traveller-funerals-call">
-                <Button className="btn-dark rounded-none inline-flex items-center gap-3">
-                  <Phone size={14} /> 0116 212 3456
-                </Button>
-              </a>
               <Link to={content?.hero_cta_url || "/consultation?service=traveller_funeral"} data-testid="traveller-funerals-consultation">
                 <Button className="btn-outline-dark rounded-none inline-flex items-center gap-3">
                   {content?.hero_cta_label || "Request a callback"} <ArrowRight size={14} />
@@ -166,11 +161,11 @@ export default function TravellerFuneralsPage() {
             We deliver across the UK and Ireland. Urgent and same-day commissions accommodated
             wherever possible — please call directly to discuss.
           </p>
-          <a href="tel:+441162123456">
+          <Link to="/consultation?service=traveller_funeral">
             <Button className="bg-[#FAFAF7] text-[#1A1A1A] hover:bg-[#B3A89B] px-8 py-4 rounded-none inline-flex items-center gap-3 font-body text-xs uppercase tracking-[0.22em]" data-testid="traveller-funeral-call-banner">
-              <Phone size={14} /> 0116 212 3456 · 24/7
+              Send an enquiry <ArrowRight size={14} />
             </Button>
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -204,8 +199,8 @@ export default function TravellerFuneralsPage() {
             With you,<br /><span className="italic">at every step.</span>
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="tel:+441162123456"><Button className="btn-dark rounded-none inline-flex items-center gap-3"><Phone size={14} />0116 212 3456</Button></a>
-            <Link to="/consultation?service=traveller_funeral"><Button className="btn-outline-dark rounded-none inline-flex items-center gap-3">Send an enquiry <ArrowRight size={14} /></Button></Link>
+            <Link to="/consultation?service=traveller_funeral"><Button className="btn-dark rounded-none inline-flex items-center gap-3">Send an enquiry <ArrowRight size={14} /></Button></Link>
+            <Link to="/consultation?service=traveller_funeral"><Button className="btn-outline-dark rounded-none inline-flex items-center gap-3">Request a callback <ArrowRight size={14} /></Button></Link>
           </div>
         </div>
       </section>

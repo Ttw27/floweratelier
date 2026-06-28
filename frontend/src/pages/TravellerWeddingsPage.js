@@ -42,11 +42,6 @@ export default function TravellerWeddingsPage() {
                     Book a consultation <ArrowRight size={14} />
                   </Button>
                 </Link>
-                <a href="tel:+441162123456">
-                  <Button className="btn-outline-dark rounded-none inline-flex items-center gap-3" data-testid="traveller-wedding-call">
-                    <Phone size={14} /> 0116 212 3456
-                  </Button>
-                </a>
               </div>
             </div>
           </div>
