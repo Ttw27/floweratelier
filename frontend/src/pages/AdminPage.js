@@ -54,6 +54,7 @@ export default function AdminPage() {
         whatsapp_default_message: settings.whatsapp_default_message || "",
         phone_number: settings.phone_number || "0116 212 3456",
         contact_email: settings.contact_email || "info@floweratelier.co.uk",
+        favicon_url: settings.favicon_url || "",
         meta_pixel_id: settings.meta_pixel_id || "",
         ga4_id: settings.ga4_id || "",
         gtm_id: settings.gtm_id || "",
@@ -338,7 +339,25 @@ export default function AdminPage() {
 
                   <div>
                     <Label className="accent-label text-[#1A1A1A]">Image URLs (comma separated) *</Label>
-                    <Input value={productForm.images} onChange={(e) => setProductForm({ ...productForm, images: e.target.value })} className="mt-2 light-input rounded-none" required data-testid="product-images-input" />
+                    <div className="flex gap-2 mt-2">
+                      <Input value={productForm.images} onChange={(e) => setProductForm({ ...productForm, images: e.target.value })} className="light-input rounded-none flex-1" required data-testid="product-images-input" />
+                      <label className="cursor-pointer bg-[#1A1A1A] text-white px-3 py-2 text-[11px] uppercase tracking-[0.18em] flex items-center gap-1.5 whitespace-nowrap hover:bg-[#333] transition-colors">
+                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          try {
+                            const r = await (await import("axios")).default.post(`${API_URL}/api/uploads/image?folder=products`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+                            const url = r.data.url;
+                            setProductForm((prev) => ({ ...prev, images: prev.images ? `${prev.images}, ${url}` : url }));
+                            toast.success("Image uploaded");
+                          } catch { toast.error("Upload failed"); }
+                        }} />
+                        ↑ Upload
+                      </label>
+                    </div>
+                    <p className="font-body text-[11px] text-[#7A7A7A] mt-1">Upload or paste URLs separated by commas. First image is the main product image.</p>
                   </div>
 
                   <div>
@@ -528,6 +547,41 @@ export default function AdminPage() {
                         <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for mailto: links.</p>
                       </div>
                     </div>
+                  </section>
+
+                  {/* === Branding === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-branding">
+                    <p className="accent-label mb-4"><span className="thin-rule" />Branding</p>
+                    <Label className="text-[#1A1A1A] text-sm">Favicon</Label>
+                    <div className="flex items-center gap-4 mt-2">
+                      {settingsForm.favicon_url && (
+                        <img src={settingsForm.favicon_url} alt="Favicon preview" className="w-10 h-10 border border-[#E5E5E5] object-contain bg-white" />
+                      )}
+                      <div className="flex-1 flex gap-2">
+                        <Input
+                          value={settingsForm.favicon_url}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, favicon_url: e.target.value })}
+                          placeholder="https://… (paste URL or upload)"
+                          className="light-input rounded-none"
+                          data-testid="settings-favicon-url"
+                        />
+                        <label className="cursor-pointer bg-[#1A1A1A] text-white px-3 py-2 text-[11px] uppercase tracking-[0.18em] flex items-center gap-1.5 whitespace-nowrap hover:bg-[#333] transition-colors">
+                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            try {
+                              const r = await (await import("axios")).default.post(`${API_URL}/api/uploads/image?folder=misc`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+                              setSettingsForm((prev) => ({ ...prev, favicon_url: r.data.url }));
+                              toast.success("Favicon uploaded");
+                            } catch { toast.error("Upload failed"); }
+                          }} />
+                          ↑ Upload
+                        </label>
+                      </div>
+                    </div>
+                    <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Recommended: 32×32px or 64×64px PNG or ICO file.</p>
                   </section>
 
                   {/* === Tracking pixels === */}
