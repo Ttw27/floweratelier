@@ -20,6 +20,7 @@ import TemplatesAdmin from "../components/admin/TemplatesAdmin";
 import WorkshopsAdmin from "../components/admin/WorkshopsAdmin";
 import PortfolioAdmin from "../components/admin/PortfolioAdmin";
 import PageContentAdmin from "../components/admin/PageContentAdmin";
+import HomepageAdmin from "../components/admin/HomepageAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -51,6 +52,8 @@ export default function AdminPage() {
         whatsapp_number: settings.whatsapp_number || "",
         whatsapp_enabled: settings.whatsapp_enabled !== false,
         whatsapp_default_message: settings.whatsapp_default_message || "",
+        phone_number: settings.phone_number || "0116 212 3456",
+        contact_email: settings.contact_email || "info@floweratelier.co.uk",
         meta_pixel_id: settings.meta_pixel_id || "",
         ga4_id: settings.ga4_id || "",
         gtm_id: settings.gtm_id || "",
@@ -188,6 +191,7 @@ export default function AdminPage() {
 
         <Tabs defaultValue="orders" className="space-y-6">
           <TabsList className="bg-transparent border-b border-[#E5E5E5] rounded-none p-0 h-auto w-full justify-start gap-y-1 flex flex-wrap">
+            <TabsTrigger value="homepage" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5">Homepage</TabsTrigger>
             <TabsTrigger value="orders" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-orders-tab">Orders</TabsTrigger>
             <TabsTrigger value="inquiries" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-inquiries-tab">Inquiries</TabsTrigger>
             <TabsTrigger value="products" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-products-tab">Products</TabsTrigger>
@@ -201,6 +205,10 @@ export default function AdminPage() {
             <TabsTrigger value="seo" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-seo-tab">SEO</TabsTrigger>
             <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="homepage">
+            <HomepageAdmin settings={settings} onSaved={refreshSettings} />
+          </TabsContent>
 
           <TabsContent value="orders" data-testid="admin-orders-content">
             <div className="bg-white border border-[#E5E5E5] overflow-hidden">
@@ -490,6 +498,35 @@ export default function AdminPage() {
                         rows={3}
                         data-testid="settings-whatsapp-message"
                       />
+                    </div>
+                  </section>
+
+                  {/* === Contact details === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-contact">
+                    <p className="accent-label mb-4"><span className="thin-rule" />Contact details</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Phone number</Label>
+                        <Input
+                          value={settingsForm.phone_number}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, phone_number: e.target.value })}
+                          placeholder="e.g. 0116 212 3456"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-phone-number"
+                        />
+                        <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for tel: links.</p>
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Contact email</Label>
+                        <Input
+                          value={settingsForm.contact_email}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, contact_email: e.target.value })}
+                          placeholder="e.g. info@floweratelier.co.uk"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-contact-email"
+                        />
+                        <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for mailto: links.</p>
+                      </div>
                     </div>
                   </section>
 

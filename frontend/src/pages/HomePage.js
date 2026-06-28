@@ -4,10 +4,11 @@ import axios from "axios";
 import { toast } from "sonner";
 import { ArrowRight, Truck, Award, Leaf, Gift, Calendar, Mail, Star } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const IMG = {
+const DEFAULT_IMG = {
   hero: "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png",
   category1: "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png",
   category2: "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1200",
@@ -16,6 +17,12 @@ const IMG = {
   subscription: "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=1400",
   bespoke: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1400",
 };
+
+const DEFAULT_TESTIMONIALS = [
+  { quote: "They understood, without being told, the exact quiet I wanted my wedding to feel.", author: "Eloise & Felix", location: "Stoneygate · June 2025" },
+  { quote: "The bouquet arrived more beautiful than I could have imagined. My mother wept.", author: "Mrs. C. Hartley", location: "Stoneygate · 2025" },
+  { quote: "Our weekly installs have completely lifted the energy of the entire club. Impeccable.", author: "Private Members' Club", location: "Leicester" },
+];
 
 const OCCASIONS = [
   { name: "Birthday", slug: "birthday" },
@@ -29,12 +36,6 @@ const OCCASIONS = [
 ];
 
 const PRESS = ["Vogue", "Tatler", "House & Garden", "Condé Nast Traveller", "Country Living", "FT — How To Spend It"];
-
-const TESTIMONIALS = [
-  { quote: "They understood, without being told, the exact quiet I wanted my wedding to feel.", author: "Eloise & Felix", location: "Stoneygate · June 2025" },
-  { quote: "The bouquet arrived more beautiful than I could have imagined. My mother wept.", author: "Mrs. C. Hartley", location: "Stoneygate · 2025" },
-  { quote: "Our weekly installs have completely lifted the energy of the entire club. Impeccable.", author: "Private Members' Club", location: "Leicester" },
-];
 
 function ProductCardLuxe({ product, onAdd }) {
   return (
@@ -71,7 +72,22 @@ function ProductCardLuxe({ product, onAdd }) {
 
 export default function HomePage() {
   const { addToCart } = useCart();
+  const { settings } = useSettings();
   const [products, setProducts] = useState([]);
+
+  const IMG = {
+    hero: settings?.homepage_hero_image || DEFAULT_IMG.hero,
+    category1: settings?.homepage_category1_image || DEFAULT_IMG.category1,
+    category2: settings?.homepage_category2_image || DEFAULT_IMG.category2,
+    category3: settings?.homepage_category3_image || DEFAULT_IMG.category3,
+    category4: settings?.homepage_category4_image || DEFAULT_IMG.category4,
+    subscription: settings?.homepage_subscription_image || DEFAULT_IMG.subscription,
+    bespoke: settings?.homepage_bespoke_image || DEFAULT_IMG.bespoke,
+  };
+
+  const TESTIMONIALS = (settings?.testimonials?.length > 0)
+    ? settings.testimonials
+    : DEFAULT_TESTIMONIALS;
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
 
