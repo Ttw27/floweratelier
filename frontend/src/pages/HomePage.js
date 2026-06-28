@@ -72,20 +72,20 @@ function ProductCardLuxe({ product, onAdd }) {
 
 export default function HomePage() {
   const { addToCart } = useCart();
-  const { settings } = useSettings();
+  const { settings, loaded } = useSettings();
   const [products, setProducts] = useState([]);
 
   const IMG = {
-    hero: settings?.homepage_hero_image || DEFAULT_IMG.hero,
-    category1: settings?.homepage_category1_image || DEFAULT_IMG.category1,
-    category2: settings?.homepage_category2_image || DEFAULT_IMG.category2,
-    category3: settings?.homepage_category3_image || DEFAULT_IMG.category3,
-    category4: settings?.homepage_category4_image || DEFAULT_IMG.category4,
-    subscription: settings?.homepage_subscription_image || DEFAULT_IMG.subscription,
-    bespoke: settings?.homepage_bespoke_image || DEFAULT_IMG.bespoke,
+    hero: loaded ? (settings?.homepage_hero_image || DEFAULT_IMG.hero) : null,
+    category1: loaded ? (settings?.homepage_category1_image || DEFAULT_IMG.category1) : null,
+    category2: loaded ? (settings?.homepage_category2_image || DEFAULT_IMG.category2) : null,
+    category3: loaded ? (settings?.homepage_category3_image || DEFAULT_IMG.category3) : null,
+    category4: loaded ? (settings?.homepage_category4_image || DEFAULT_IMG.category4) : null,
+    subscription: loaded ? (settings?.homepage_subscription_image || DEFAULT_IMG.subscription) : null,
+    bespoke: loaded ? (settings?.homepage_bespoke_image || DEFAULT_IMG.bespoke) : null,
   };
 
-  const TESTIMONIALS = (settings?.testimonials?.length > 0)
+  const TESTIMONIALS = loaded && settings?.testimonials?.length > 0
     ? settings.testimonials
     : DEFAULT_TESTIMONIALS;
   const [loading, setLoading] = useState(true);
@@ -156,7 +156,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="relative order-1 lg:order-2 h-[320px] sm:h-[380px] lg:h-auto overflow-hidden">
-            <img src={IMG.hero} alt="Signature bouquet" className="w-full h-full object-cover" />
+            {IMG.hero && <img src={IMG.hero} alt="Signature bouquet" className="w-full h-full object-cover" />}
           </div>
         </div>
       </section>
