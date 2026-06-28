@@ -41,7 +41,7 @@ export default function InShopDisplaysPage() {
             </div>
           </div>
           <div className="lg:col-span-7 order-1 lg:order-2 h-[50vh] lg:h-auto">
-            <img src={content?.hero_image || HERO} alt="In-shop bespoke display" className="w-full h-full object-cover" />
+            {(content?.hero_image || !loading) && <img src={content?.hero_image || HERO} alt="In-shop bespoke display" className="w-full h-full object-cover" />}
           </div>
         </div>
       </section>

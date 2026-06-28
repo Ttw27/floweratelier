@@ -38,7 +38,8 @@ export default function SympathyPage() {
             </div>
           </div>
           <div className="lg:col-span-6">
-            <img src="https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1400" alt="Sympathy floristry" className="w-full aspect-[4/5] object-cover" />
+            {content?.hero_image && <img src={content.hero_image} alt="Sympathy floristry" className="w-full aspect-[4/5] object-cover" />}
+            {!content?.hero_image && <img src="https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1400" alt="Sympathy floristry" className="w-full aspect-[4/5] object-cover" />}
           </div>
         </div>
       </section>

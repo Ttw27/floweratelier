@@ -63,7 +63,7 @@ export default function TravellerFuneralsPage() {
             </div>
           </div>
           <div className="lg:col-span-6">
-            <img src={content?.hero_image || HERO} alt="Traveller funeral tribute" className="w-full aspect-[4/5] object-cover" />
+            {(content?.hero_image || !loading) && <img src={content?.hero_image || HERO} alt="Traveller funeral tribute" className="w-full aspect-[4/5] object-cover" />}
           </div>
         </div>
       </section>

@@ -29,7 +29,7 @@ export default function FaithWeddingsPage() {
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[60vh] lg:min-h-[70vh]">
           <div className="lg:col-span-7 order-1 h-[55vh] lg:h-auto">
-            <img src={content?.hero_image || HERO} alt="Faith and cultural weddings" className="w-full h-full object-cover" />
+            {(content?.hero_image || !loading) && <img src={content?.hero_image || HERO} alt="Faith and cultural weddings" className="w-full h-full object-cover" />}
           </div>
           <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 bg-[#FAFAF7]">
             <div className="max-w-md">
