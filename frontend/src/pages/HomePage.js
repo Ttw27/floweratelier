@@ -157,9 +157,6 @@ export default function HomePage() {
           </div>
           <div className="relative order-1 lg:order-2 h-[320px] sm:h-[380px] lg:h-auto overflow-hidden">
             <img src={IMG.hero} alt="Signature bouquet" className="w-full h-full object-cover" />
-            <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 hidden md:block">
-              <p className="accent-label text-[#1A1A1A]">The Stoneygate · from £185</p>
-            </div>
           </div>
         </div>
       </section>
