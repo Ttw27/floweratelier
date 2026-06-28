@@ -51,7 +51,7 @@ export default function TravellerWeddingsPage() {
             </div>
           </div>
           <div className="lg:col-span-6 xl:col-span-7 order-1 lg:order-2 h-[55vh] lg:h-auto">
-            <img src={HERO} alt="Traveller wedding floristry" className="w-full h-full object-cover" />
+            <img src={content?.hero_image || HERO} alt="Traveller wedding floristry" className="w-full h-full object-cover" />
           </div>
         </div>
       </section>
