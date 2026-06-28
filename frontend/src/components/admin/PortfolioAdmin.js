@@ -16,6 +16,8 @@ const CATEGORIES = [
   { value: "sympathy",           label: "Sympathy" },
   { value: "traveller-funeral",  label: "Traveller Funerals" },
   { value: "corporate",          label: "Corporate" },
+  { value: "hotels",             label: "Hotels & Hospitality" },
+  { value: "restaurants",        label: "Restaurants & Members' Clubs" },
   { value: "house",              label: "House Installs" },
   { value: "shop",               label: "Shop Front Installs" },
   { value: "in-shop",            label: "In-Shop Displays" },
