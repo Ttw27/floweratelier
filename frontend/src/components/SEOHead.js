@@ -51,6 +51,7 @@ export default function SEOHead() {
       {meta.keywords ? <meta name="keywords" content={meta.keywords} /> : null}
       <meta name="robots" content={meta.robots || "index,follow"} />
       <link rel="canonical" href={canonical} />
+      {settings?.favicon_url && <link rel="icon" href={settings.favicon_url} />}
       {/* Open Graph */}
       <meta property="og:title" content={meta.title} />
       <meta property="og:description" content={meta.description || ""} />
