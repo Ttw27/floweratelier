@@ -1754,12 +1754,20 @@ async def seed_data(reset: bool = False):
 
 # ==================== SITE SETTINGS ====================
 
+class TestimonialItem(BaseModel):
+    quote: str = ""
+    author: str = ""
+    location: str = ""
+
 class SiteSettings(BaseModel):
     utility_bar_text: str = ""
     utility_bar_enabled: bool = True
     whatsapp_number: str = ""  # E.164 digits-only, e.g. "447123456789"
     whatsapp_enabled: bool = True
     whatsapp_default_message: str = "Hello Flower Atelier — I'd like to enquire about your floristry."
+    # Contact
+    phone_number: str = "0116 212 3456"
+    contact_email: str = "info@floweratelier.co.uk"
     # Tracking pixels
     meta_pixel_id: str = ""
     ga4_id: str = ""           # e.g. G-XXXXXXX
@@ -1775,11 +1783,27 @@ class SiteSettings(BaseModel):
     seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in Leicester and across the Midlands. Editorial design, dignified service, delivered nationwide."
     seo_default_og_image: str = ""
     seo_site_name: str = "Flower Atelier"
+    # Homepage images
+    homepage_hero_image: str = "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png"
+    homepage_category1_image: str = "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png"
+    homepage_category2_image: str = "https://images.unsplash.com/photo-1631377058001-185f5f811bf2?w=1200"
+    homepage_category3_image: str = "https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1200"
+    homepage_category4_image: str = "https://images.unsplash.com/photo-1768508949823-26255327c264?w=1200"
+    homepage_subscription_image: str = "https://images.unsplash.com/photo-1587271636175-4f7c5e5d9cfa?w=1400"
+    homepage_bespoke_image: str = "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1400"
+    # Testimonials
+    testimonials: List[TestimonialItem] = [
+        TestimonialItem(quote="They understood, without being told, the exact quiet I wanted my wedding to feel.", author="Eloise & Felix", location="Stoneygate · June 2025"),
+        TestimonialItem(quote="The bouquet arrived more beautiful than I could have imagined. My mother wept.", author="Mrs. C. Hartley", location="Stoneygate · 2025"),
+        TestimonialItem(quote="Our weekly installs have completely lifted the energy of the entire club. Impeccable.", author="Private Members' Club", location="Leicester"),
+    ]
 
 DEFAULT_SETTINGS = SiteSettings(
     utility_bar_text="",
     whatsapp_number="447123456789",
     whatsapp_default_message="Hello Flower Atelier — I'd like to enquire about your floristry.",
+    phone_number="0116 212 3456",
+    contact_email="info@floweratelier.co.uk",
 ).model_dump()
 
 @api_router.get("/settings")
