@@ -14,6 +14,8 @@ const FILTERS = [
   { id: "sympathy", name: "Sympathy" },
   { id: "traveller_funeral", name: "Traveller Funerals" },
   { id: "corporate", name: "Corporate" },
+  { id: "hotels", name: "Hotels & Hospitality" },
+  { id: "restaurants", name: "Restaurants & Clubs" },
   { id: "house", name: "House" },
   { id: "shop_front", name: "Shop Fronts" },
   { id: "in_shop_display", name: "In-Shop" },
@@ -173,7 +175,7 @@ export default function BespokePortfolioPage() {
                 </div>
               )}
               <Link
-                to={`/consultation?service=${selected.category === "house" ? "house" : selected.category === "corporate" ? "corporate" : selected.category === "wedding" ? "wedding" : selected.category === "sympathy" ? "sympathy" : "bespoke"}&portfolio_item_id=${selected.id}&ref_title=${encodeURIComponent(selected.title)}`}
+                to={`/consultation?service=${selected.category === "house" ? "house" : selected.category === "corporate" ? "corporate" : selected.category === "hotels" ? "hotels-hospitality" : selected.category === "restaurants" ? "restaurants" : selected.category === "wedding" ? "wedding" : selected.category === "sympathy" ? "sympathy" : "bespoke"}&portfolio_item_id=${selected.id}&ref_title=${encodeURIComponent(selected.title)}`}
                 data-testid="portfolio-inquire"
               >
                 <Button className="btn-dark w-full rounded-none py-6 inline-flex items-center justify-center gap-3">
