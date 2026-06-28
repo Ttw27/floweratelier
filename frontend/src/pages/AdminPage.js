@@ -338,10 +338,25 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <Label className="accent-label text-[#1A1A1A]">Image URLs (comma separated) *</Label>
-                    <div className="flex gap-2 mt-2">
-                      <Input value={productForm.images} onChange={(e) => setProductForm({ ...productForm, images: e.target.value })} className="light-input rounded-none flex-1" required data-testid="product-images-input" />
-                      <label className="cursor-pointer bg-[#1A1A1A] text-white px-3 py-2 text-[11px] uppercase tracking-[0.18em] flex items-center gap-1.5 whitespace-nowrap hover:bg-[#333] transition-colors">
+                    <Label className="accent-label text-[#1A1A1A]">Product images *</Label>
+                    <p className="font-body text-[11px] text-[#7A7A7A] mt-1 mb-3">First image is the main product image. Drag to reorder coming soon.</p>
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      {productForm.images.split(",").map(s => s.trim()).filter(Boolean).map((url, idx) => (
+                        <div key={idx} className="relative group aspect-square border border-[#E5E5E5] bg-[#F2EFEB]">
+                          <img src={url} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" />
+                          {idx === 0 && <span className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[9px] uppercase tracking-wider px-1.5 py-0.5">Main</span>}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const urls = productForm.images.split(",").map(s => s.trim()).filter(Boolean);
+                              urls.splice(idx, 1);
+                              setProductForm({ ...productForm, images: urls.join(", ") });
+                            }}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                          >×</button>
+                        </div>
+                      ))}
+                      <label className="aspect-square border-2 border-dashed border-[#E5E5E5] flex flex-col items-center justify-center cursor-pointer hover:border-[#1A1A1A] transition-colors bg-white">
                         <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
@@ -354,10 +369,17 @@ export default function AdminPage() {
                             toast.success("Image uploaded");
                           } catch { toast.error("Upload failed"); }
                         }} />
-                        ↑ Upload
+                        <span className="text-2xl text-[#B3A89B]">+</span>
+                        <span className="font-body text-[10px] uppercase tracking-wider text-[#7A7A7A] mt-1">Add image</span>
                       </label>
                     </div>
-                    <p className="font-body text-[11px] text-[#7A7A7A] mt-1">Upload or paste URLs separated by commas. First image is the main product image.</p>
+                    <Input
+                      value={productForm.images}
+                      onChange={(e) => setProductForm({ ...productForm, images: e.target.value })}
+                      className="light-input rounded-none text-xs text-[#7A7A7A]"
+                      placeholder="Or paste image URLs separated by commas"
+                      data-testid="product-images-input"
+                    />
                   </div>
 
                   <div>
