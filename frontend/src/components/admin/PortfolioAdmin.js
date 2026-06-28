@@ -11,17 +11,17 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const CATEGORIES = [
   { value: "wedding",            label: "Weddings" },
-  { value: "traveller-wedding",  label: "Traveller Weddings" },
-  { value: "faith-wedding",      label: "Faith Weddings" },
+  { value: "traveller_wedding",  label: "Traveller Weddings" },
+  { value: "faith_wedding",      label: "Faith Weddings" },
   { value: "sympathy",           label: "Sympathy" },
-  { value: "traveller-funeral",  label: "Traveller Funerals" },
+  { value: "traveller_funeral",  label: "Traveller Funerals" },
   { value: "corporate",          label: "Corporate" },
   { value: "hotels",             label: "Hotels & Hospitality" },
   { value: "restaurants",        label: "Restaurants & Members' Clubs" },
   { value: "house",              label: "House Installs" },
-  { value: "shop",               label: "Shop Front Installs" },
-  { value: "in-shop",            label: "In-Shop Displays" },
-  { value: "film-tv",            label: "Film / TV / Photoshoot" },
+  { value: "shop_front",         label: "Shop Front Installs" },
+  { value: "in_shop_display",   label: "In-Shop Displays" },
+  { value: "film_tv",            label: "Film / TV / Photoshoot" },
   { value: "workshop",           label: "Workshops" },
 ];
 
