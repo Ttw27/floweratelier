@@ -106,7 +106,7 @@ export default function Footer() {
             © 2026 Flower Atelier — Leicester. All rights reserved.
           </p>
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide italic">
-            Floral couture, by hand.
+            Website by <a href="https://www.weavixstudio.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#1A1A1A] transition-colors">Weavix Studio</a>
           </p>
         </div>
       </div>
