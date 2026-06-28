@@ -35,6 +35,7 @@ import AdminPage from "./pages/AdminPage";
 import ThemePreviewPage from "./pages/ThemePreviewPage";
 import HotelsHospitalityPage from "./pages/HotelsHospitalityPage";
 import RestaurantsPage from "./pages/RestaurantsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 // Layout
 import Header from "./components/Header";
