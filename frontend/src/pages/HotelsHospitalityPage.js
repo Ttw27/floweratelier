@@ -8,7 +8,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1800";
 
 export default function HotelsHospitalityPage() {
-  const { content } = usePageContent("hotels-hospitality");
+  const { content, loading } = usePageContent("hotels-hospitality");
 
   const defaultTiers = [
     {

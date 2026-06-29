@@ -8,7 +8,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1800";
 
 export default function RestaurantsPage() {
-  const { content } = usePageContent("restaurants");
+  const { content, loading } = usePageContent("restaurants");
 
   const defaultTiers = [
     {
