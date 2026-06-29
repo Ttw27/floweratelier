@@ -23,11 +23,12 @@ const DEFAULT_TIERS = [
 ];
 
 export default function WeddingsPage() {
-  const { content } = usePageContent("weddings");
+  const { content, loading } = usePageContent("weddings");
+  const heroDefaults = loading ? { ...DEFAULT_HERO, hero_image: "" } : DEFAULT_HERO;
 
   return (
     <div className="pt-28" data-testid="weddings-page">
-      <ServiceHero content={content} defaults={DEFAULT_HERO} testId="weddings-hero" titleTestId="weddings-title" />
+      <ServiceHero content={content} defaults={heroDefaults} testId="weddings-hero" titleTestId="weddings-title" />
 
       {/* Process — kept static */}
       <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">
