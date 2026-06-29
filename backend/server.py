@@ -2294,10 +2294,11 @@ class PageContentCreate(BaseModel):
     hero_title_line2: str = ""               # optional second line
     hero_subheading: str = ""
     hero_image: str = ""
+    secondary_image: str = ""               # optional second image used in content sections
     hero_cta_label: str = ""
     hero_cta_url: str = ""
     tiers: List[PageTier] = []
-    extra: Dict[str, Any] = Field(default_factory=dict)  # bespoke per-page schema (traditions, letter sizes, …)
+    extra: Dict[str, Any] = Field(default_factory=dict)  # bespoke per-page schema
     active: bool = True
 
 class PageContentResponse(PageContentCreate):
