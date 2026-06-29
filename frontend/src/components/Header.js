@@ -15,16 +15,9 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-const OCCASIONS = [
-  { name: "Weddings", path: "/weddings" },
-  { name: "Traveller Weddings", path: "/traveller-weddings" },
-  { name: "Faith & Cultural Weddings", path: "/faith-weddings" },
-  { name: "Sympathy & Funerals", path: "/sympathy" },
-  { name: "Traveller Funerals", path: "/traveller-funerals" },
-];
-
 // Slug to path mapping for service pages
 const SLUG_TO_PATH = {
+  // Services
   "corporate": "/corporate",
   "hotels-hospitality": "/hotels-hospitality",
   "restaurants": "/restaurants",
@@ -33,7 +26,24 @@ const SLUG_TO_PATH = {
   "in-shop-displays": "/in-shop-displays",
   "film-tv-photoshoot": "/film-tv-photoshoot",
   "workshops": "/workshops",
+  // Occasions
+  "weddings": "/weddings",
+  "traveller-weddings": "/traveller-weddings",
+  "faith-weddings": "/faith-weddings",
+  "sympathy": "/sympathy",
+  "traveller-funerals": "/traveller-funerals",
 };
+
+const OCCASION_SLUGS = new Set(["weddings", "traveller-weddings", "faith-weddings", "sympathy", "traveller-funerals"]);
+const SERVICE_SLUGS = new Set(["corporate", "hotels-hospitality", "restaurants", "house-installs", "shop-front-installs", "in-shop-displays", "film-tv-photoshoot", "workshops"]);
+
+const DEFAULT_OCCASIONS = [
+  { name: "Weddings", path: "/weddings" },
+  { name: "Traveller Weddings", path: "/traveller-weddings" },
+  { name: "Faith & Cultural Weddings", path: "/faith-weddings" },
+  { name: "Sympathy & Funerals", path: "/sympathy" },
+  { name: "Traveller Funerals", path: "/traveller-funerals" },
+];
 
 const DEFAULT_SERVICES = [
   { name: "Corporate Events", path: "/corporate" },
@@ -49,6 +59,7 @@ const DEFAULT_SERVICES = [
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [services, setServices] = useState(DEFAULT_SERVICES);
+  const [occasions, setOccasions] = useState(DEFAULT_OCCASIONS);
   const [mobileSubOpen, setMobileSubOpen] = useState({ occasions: false, services: false });
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
@@ -58,10 +69,15 @@ export default function Header() {
 
   useEffect(() => {
     axios.get(`${API_URL}/api/page-content/list`).then((r) => {
-      const active = r.data
-        .filter((p) => p.active !== false && SLUG_TO_PATH[p.slug])
+      const activeServices = r.data
+        .filter((p) => p.active !== false && SERVICE_SLUGS.has(p.slug))
         .map((p) => ({ name: p.label || p.slug, path: SLUG_TO_PATH[p.slug] }));
-      if (active.length > 0) setServices(active);
+      if (activeServices.length > 0) setServices(activeServices);
+
+      const activeOccasions = r.data
+        .filter((p) => p.active !== false && OCCASION_SLUGS.has(p.slug))
+        .map((p) => ({ name: p.label || p.slug, path: SLUG_TO_PATH[p.slug] }));
+      if (activeOccasions.length > 0) setOccasions(activeOccasions);
     }).catch(() => {}); // keep defaults on error
   }, []);
 
@@ -124,11 +140,11 @@ export default function Header() {
 
               {/* Occasions dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger className={`${linkClass(isAnyActive(OCCASIONS.map(o => o.path)))} flex items-center gap-1 outline-none`} data-testid="nav-occasions">
+                <DropdownMenuTrigger className={`${linkClass(isAnyActive(occasions.map(o => o.path)))} flex items-center gap-1 outline-none`} data-testid="nav-occasions">
                   Occasions <ChevronDown size={11} strokeWidth={1.4} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-64 bg-white border border-[#E5E5E5] rounded-none text-[#1A1A1A] mt-2">
-                  {OCCASIONS.map((occ) => (
+                  {occasions.map((occ) => (
                     <DropdownMenuItem key={occ.path} asChild className={dropdownItemClass}>
                       <Link to={occ.path} data-testid={`nav-occasion-${occ.path.replace("/", "")}`}>{occ.name}</Link>
                     </DropdownMenuItem>
@@ -231,7 +247,7 @@ export default function Header() {
               </button>
               {mobileSubOpen.occasions && (
                 <div className="mt-4 pl-4 border-l border-[#E5E5E5] space-y-3">
-                  {OCCASIONS.map((o) => (
+                  {occasions.map((o) => (
                     <Link key={o.path} to={o.path} className="block font-body text-xs uppercase tracking-[0.22em] text-[#7A7A7A]" onClick={() => setMobileMenuOpen(false)}>
                       {o.name}
                     </Link>
