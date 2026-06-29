@@ -42,8 +42,8 @@ export default function ServiceHero({ content, defaults, testId = "service-hero"
             </Link>
           </div>
         </div>
-        <div className={`lg:col-span-7 h-[45vh] lg:h-auto ${imgRight ? "order-1 lg:order-2" : "order-1"}`}>
-          {image && <img src={image} alt={eyebrow} className="w-full h-full object-cover" />}
+        <div className={`lg:col-span-7 h-[45vh] lg:h-auto ${imgRight ? "order-1 lg:order-2" : "order-1"} bg-[#F2EFEB]`}>
+          {image && <img src={image} alt={eyebrow} className="w-full h-full object-cover" onLoad={(e) => e.target.style.opacity = 1} style={{opacity: 0, transition: "opacity 0.3s ease"}} ref={el => { if (el) { el.onload = () => el.style.opacity = 1; if (el.complete) el.style.opacity = 1; }}} />}
         </div>
       </div>
     </section>
