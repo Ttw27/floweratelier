@@ -8,7 +8,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
 
 export default function InShopDisplaysPage() {
-  const { content } = usePageContent("in-shop-displays");
+  const { content, loading } = usePageContent("in-shop-displays");
   const defaultTiers = [
     { title: "Counter & POS Florals", description: "Beauty counter florals, checkout displays and product-launch styling — colour-coded to your brand palette.", price_label: "from £450 / visit", image_url: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200" },
     { title: "Showroom & Plinth Florals", description: "Sculptural arrangements on display plinths for jewellery, watch and luxury showrooms.", price_label: "from £680 / visit", image_url: "https://images.unsplash.com/photo-1574180566232-aaad1b5b8450?w=1200" },

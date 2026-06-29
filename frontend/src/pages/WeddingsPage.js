@@ -28,7 +28,7 @@ export default function WeddingsPage() {
 
   return (
     <div className="pt-28" data-testid="weddings-page">
-      <ServiceHero content={content} defaults={heroDefaults} testId="weddings-hero" titleTestId="weddings-title" />
+      <ServiceHero content={content} defaults={heroDefaults} loading={loading} testId="weddings-hero" titleTestId="weddings-title" />
 
       {/* Process — kept static */}
       <section className="py-24 md:py-32 px-6 md:px-12 border-t border-[#E5E5E5]">

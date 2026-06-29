@@ -18,7 +18,7 @@ const DEFAULT_TRADITIONS = [
 ];
 
 export default function FaithWeddingsPage() {
-  const { content } = usePageContent("faith-weddings");
+  const { content, loading } = usePageContent("faith-weddings");
   const TRADITIONS = (content?.extra?.traditions && content.extra.traditions.length > 0) ? content.extra.traditions : DEFAULT_TRADITIONS;
   const [active, setActive] = useState(TRADITIONS[0]?.id || "sikh");
   const current = TRADITIONS.find((t) => t.id === active) || TRADITIONS[0];

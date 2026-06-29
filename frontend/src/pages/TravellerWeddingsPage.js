@@ -10,7 +10,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1800";
 
 export default function TravellerWeddingsPage() {
-  const { content } = usePageContent("traveller-weddings");
+  const { content, loading } = usePageContent("traveller-weddings");
   const defaultTiers = [
     { title: "Floral Light-Up Letters", description: "4ft custom-built letters spelling family names — hand-finished with roses, hydrangea and trailing greenery.", price_label: "from £3,200", image_url: "https://images.unsplash.com/photo-1525772764200-be829a350797?w=1200" },
     { title: "Castle & Carriage Backdrops", description: "Fairytale-castle ceremony backdrops, Cinderella carriages and statement entrance arches.", price_label: "from £8,500", image_url: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200" },

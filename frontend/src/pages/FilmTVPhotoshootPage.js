@@ -8,7 +8,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800";
 
 export default function FilmTVPhotoshootPage() {
-  const { content } = usePageContent("film-tv-photoshoot");
+  const { content, loading } = usePageContent("film-tv-photoshoot");
   const defaultTiers = [
     { title: "Editorial & Beauty Shoots", description: "Set florals for magazine editorials, beauty campaigns and skincare hero shots — colour-graded to the creative brief.", price_label: "from £1,450 / day", image_url: "https://images.unsplash.com/photo-1531058020387-3be344556be6?w=1200" },
     { title: "Fashion Lookbooks", description: "Wild, garden or sculptural florals styled into lookbook and e-commerce shoots.", price_label: "from £1,850 / day", image_url: "https://images.unsplash.com/photo-1583336663277-620dc1996580?w=1200" },

@@ -8,7 +8,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1575081838238-d06e716afa28?w=1800";
 
 export default function ShopFrontInstallsPage() {
-  const { content } = usePageContent("shop-front-installs");
+  const { content, loading } = usePageContent("shop-front-installs");
   const defaultTiers = [
     { title: "Seasonal Quarterly", description: "A fresh full-window install at the turn of each season — Spring, Summer, Autumn and the all-important Christmas edit.", price_label: "from £2,200 / install", image_url: "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200" },
     { title: "Monthly Refresh", description: "Higher footfall storefronts kept evergreen with monthly redesigns — perfect for fashion, beauty and jewellery flagships.", price_label: "from £1,650 / install", image_url: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1200" },

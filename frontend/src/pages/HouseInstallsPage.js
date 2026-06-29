@@ -8,7 +8,7 @@ import { usePageContent } from "../hooks/usePageContent";
 const HERO = "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=1800";
 
 export default function HouseInstallsPage() {
-  const { content } = usePageContent("house-installs");
+  const { content, loading } = usePageContent("house-installs");
   const defaultTiers = [
     { title: "Weekly Programme", description: "Ever-changing seasonal floral programme across principal rooms — arranged in your own vessels or ours.", price_label: "from £450 / week", image_url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200" },
     { title: "Fortnightly", description: "A refreshed edit across entrance, kitchen and dining rooms.", price_label: "from £295 / visit", image_url: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200" },

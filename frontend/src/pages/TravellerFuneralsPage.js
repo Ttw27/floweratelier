@@ -33,7 +33,7 @@ const DEFAULT_CLASSIC_TRIBUTES = [
 ];
 
 export default function TravellerFuneralsPage() {
-  const { content } = usePageContent("traveller-funerals");
+  const { content, loading } = usePageContent("traveller-funerals");
   const letterTributes  = (content?.extra?.letter_tributes  && content.extra.letter_tributes.length  > 0) ? content.extra.letter_tributes  : DEFAULT_LETTER_TRIBUTES;
   const bespokeBuilds   = (content?.extra?.bespoke_builds   && content.extra.bespoke_builds.length   > 0) ? content.extra.bespoke_builds   : DEFAULT_BESPOKE_BUILDS;
   const classicTributes = (content?.extra?.classic_tributes && content.extra.classic_tributes.length > 0) ? content.extra.classic_tributes : DEFAULT_CLASSIC_TRIBUTES;
