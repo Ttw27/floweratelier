@@ -94,27 +94,28 @@ export default function WorkshopsPage() {
         <div className="max-w-[1400px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-end mb-14">
             <div className="lg:col-span-7">
-              <p className="accent-label mb-4"><span className="thin-rule" />Host at your venue</p>
+              <p className="accent-label mb-4"><span className="thin-rule" />{content?.extra?.host_eyebrow || "Host at your venue"}</p>
               <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-light text-[#1A1A1A] tracking-tight leading-[1.05]">
-                Fill a quiet midweek night &mdash; we&rsquo;ll bring the room to life.
+                {content?.extra?.host_heading || "Fill a quiet midweek night — we'll bring the room to life."}
               </h2>
             </div>
             <div className="lg:col-span-5">
               <p className="font-body text-base text-[#5A5A5A] leading-relaxed">
-                A turnkey workshop night for pubs, members&rsquo; clubs, community halls, hotels,
-                care homes &amp; hospices. We arrive with everything &mdash; flowers, tools, dust sheets
-                and a senior florist. Your guests pay us per head, and you keep every penny on the
-                bar, food and door. We promote the night on our socials and tag your venue.
+                {content?.extra?.host_body || "A turnkey workshop night for pubs, members' clubs, community halls, hotels, care homes & hospices. We arrive with everything — flowers, tools, dust sheets and a senior florist. Your guests pay us per head, and you keep every penny on the bar, food and door. We promote the night on our socials and tag your venue."}
               </p>
             </div>
           </div>
 
           {/* Why-host strip */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-14">
-            <Why icon={Users}      title="Per head, all-in"    body="Guests pay us directly — typically £45 a head. No hire fee for the venue." />
-            <Why icon={Beer}       title="You keep the bar"    body="Every penny of bar, food and door spend stays with the venue. Avg. +£15–£25 per guest." />
-            <Why icon={TrendingUp} title="Midweek footfall"     body="Tues–Thurs is our sweet spot — fills the room when you need it most." />
-            <Why icon={Camera}     title="Free promotion"      body="We share the night on our socials and tag the venue — 14–20 new tags per workshop." />
+            {(content?.extra?.why_cards || [
+              { title: "Per head, all-in", body: "Guests pay us directly — typically £45 a head. No hire fee for the venue." },
+              { title: "You keep the bar", body: "Every penny of bar, food and door spend stays with the venue. Avg. +£15–£25 per guest." },
+              { title: "Midweek footfall", body: "Tues–Thurs is our sweet spot — fills the room when you need it most." },
+              { title: "Free promotion", body: "We share the night on our socials and tag the venue — 14–20 new tags per workshop." },
+            ]).map((card, i) => (
+              <Why key={i} icon={[Users, Beer, TrendingUp, Camera][i] || Users} title={card.title} body={card.body} />
+            ))}
           </div>
 
           {/* Enquire workshop cards */}
@@ -128,7 +129,7 @@ export default function WorkshopsPage() {
           <div className="bg-white border border-[#E5E5E5] p-6 md:p-8">
             <p className="accent-label mb-3"><span className="thin-rule" />We come to</p>
             <div className="flex flex-wrap gap-x-6 gap-y-2 font-body text-sm text-[#1A1A1A]">
-              {["Pubs & gastropubs", "Members' clubs", "Community halls", "Hotels", "Care homes", "Hospices", "Retirement villages", "PTAs & schools", "Hen-do venues", "Corporate offices"].map((v) => (
+              {(content?.extra?.venue_list || ["Pubs & gastropubs", "Members' clubs", "Community halls", "Hotels", "Care homes", "Hospices", "Retirement villages", "PTAs & schools", "Hen-do venues", "Corporate offices"]).map((v) => (
                 <span key={v} className="inline-flex items-center gap-2"><Building2 size={11} strokeWidth={1.3} className="text-[#B3A89B]" /> {v}</span>
               ))}
             </div>
@@ -141,9 +142,9 @@ export default function WorkshopsPage() {
       {/* Final CTA */}
       <section className="py-20 md:py-28 px-6 md:px-12 bg-[#1A1A1A] text-white">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="accent-label text-white/70 mb-6"><span className="thin-rule bg-white/40" />Hosting one this season?</p>
+          <p className="accent-label text-white/70 mb-6"><span className="thin-rule bg-white/40" />{content?.extra?.cta_eyebrow || "Hosting one this season?"}</p>
           <h2 className="font-heading text-4xl md:text-5xl font-light tracking-tight leading-[1.05] mb-8">
-            Tell us your date &mdash; we&rsquo;ll build the bench around it.
+            {content?.extra?.cta_heading || "Tell us your date — we'll build the bench around it."}
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a href={waHref} target="_blank" rel="noopener noreferrer">
