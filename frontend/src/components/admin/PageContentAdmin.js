@@ -39,15 +39,6 @@ export default function PageContentAdmin() {
   };
   useEffect(() => { load(); }, []);
 
-  // Auto-populate any missing service pages — runs silently on every load
-  useEffect(() => {
-    if (!loading) {
-      axios.post(`${API_URL}/api/seed/page-content`)
-        .then(() => load())
-        .catch(() => {});
-    }
-  }, [loading]);
-
   const toggleActive = async (p) => {
     try {
       await axios.put(`${API_URL}/api/admin/page-content/${p.slug}`, { ...p, active: !p.active });
