@@ -2304,6 +2304,12 @@ class PageContentCreate(BaseModel):
 class PageContentResponse(PageContentCreate):
     id: str
 
+@api_router.get("/page-content/list")
+async def list_page_content():
+    """Public endpoint — returns all active page content entries (slug, label, active only)."""
+    docs = await db.page_content.find({}, {"_id": 0, "slug": 1, "label": 1, "active": 1}).to_list(100)
+    return docs
+
 @api_router.get("/page-content/{slug}", response_model=PageContentResponse)
 async def get_page_content(slug: str):
     doc = await db.page_content.find_one({"slug": slug, "active": True}, {"_id": 0})
