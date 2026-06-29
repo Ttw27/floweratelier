@@ -280,6 +280,60 @@ export default function PageContentAdmin() {
               </div>
             </fieldset>
 
+            {/* BESPOKE — Restaurants: process steps */}
+            {editing.slug === "restaurants" && (
+              <fieldset className="border border-[#E5E5E5] p-5 mb-6">
+                <legend className="accent-label px-2">How it works section</legend>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Eyebrow label</Label>
+                    <Input value={editing.extra?.process_eyebrow || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), process_eyebrow: e.target.value } })} placeholder="How it works" className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Heading (use &lt;br /&gt; for line breaks, &lt;em&gt; for italic)</Label>
+                    <Input value={editing.extra?.process_heading || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), process_heading: e.target.value } })} placeholder="Simple, reliable,<br /><em>beautiful.</em>" className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Steps</Label>
+                    {(editing.extra?.process_steps || [
+                      { n: "01", t: "Consultation", b: "We visit your space..." },
+                      { n: "02", t: "Ongoing delivery", b: "Your florals arrive..." },
+                      { n: "03", t: "Seasonal evolution", b: "We evolve the designs..." },
+                    ]).map((step, idx) => (
+                      <div key={idx} className="border border-[#E5E5E5] p-3 mt-2 space-y-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label className="text-[10px] text-[#7A7A7A]">Number</Label>
+                            <Input value={step.n} onChange={(e) => {
+                              const steps = [...(editing.extra?.process_steps || [{ n: "01", t: "", b: "" }, { n: "02", t: "", b: "" }, { n: "03", t: "", b: "" }])];
+                              steps[idx] = { ...steps[idx], n: e.target.value };
+                              setEditing({ ...editing, extra: { ...(editing.extra || {}), process_steps: steps } });
+                            }} className="light-input rounded-none mt-1" />
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-[10px] text-[#7A7A7A]">Title</Label>
+                            <Input value={step.t} onChange={(e) => {
+                              const steps = [...(editing.extra?.process_steps || [{ n: "01", t: "", b: "" }, { n: "02", t: "", b: "" }, { n: "03", t: "", b: "" }])];
+                              steps[idx] = { ...steps[idx], t: e.target.value };
+                              setEditing({ ...editing, extra: { ...(editing.extra || {}), process_steps: steps } });
+                            }} className="light-input rounded-none mt-1" />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-[#7A7A7A]">Description</Label>
+                          <Textarea value={step.b} rows={2} onChange={(e) => {
+                            const steps = [...(editing.extra?.process_steps || [{ n: "01", t: "", b: "" }, { n: "02", t: "", b: "" }, { n: "03", t: "", b: "" }])];
+                            steps[idx] = { ...steps[idx], b: e.target.value };
+                            setEditing({ ...editing, extra: { ...(editing.extra || {}), process_steps: steps } });
+                          }} className="light-input rounded-none mt-1" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
             {/* BESPOKE — Faith Weddings: traditions with palettes */}
             {editing.slug === "faith-weddings" && (
               <FaithTraditionsEditor
