@@ -24,7 +24,7 @@ const DEFAULT_TIERS = [
 
 export default function WeddingsPage() {
   const { content, loading } = usePageContent("weddings");
-  const heroDefaults = loading ? { ...DEFAULT_HERO, hero_image: "" } : DEFAULT_HERO;
+  const heroDefaults = DEFAULT_HERO;
 
   return (
     <div className="pt-28" data-testid="weddings-page">

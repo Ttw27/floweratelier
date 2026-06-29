@@ -7,6 +7,7 @@ import MiniPortfolio from "../components/MiniPortfolio";
 import WorkshopBookingModal from "../components/WorkshopBookingModal";
 import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
 import { useSettings } from "../context/SettingsContext";
+import { usePageContent } from "../hooks/usePageContent";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 const HERO = "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1800&q=80";
@@ -15,6 +16,7 @@ const TAG_ICONS = { Christmas: Sparkles, Halloween: Leaf, "Care Homes": Heart, "
 
 export default function WorkshopsPage() {
   const { settings } = useSettings();
+  const { content, loading } = usePageContent("workshops");
   const [workshops, setWorkshops] = useState([]);
   const [bookingFor, setBookingFor] = useState(null);
   const [enquireFor, setEnquireFor] = useState(null);
@@ -37,7 +39,7 @@ export default function WorkshopsPage() {
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[60vh] lg:min-h-[70vh]">
           <div className="lg:col-span-7 order-1 h-[50vh] lg:h-auto">
-            <img src={HERO} alt="Florist workshop in progress" className="w-full h-full object-cover" />
+            {(content?.hero_image || !loading) && <img src={content?.hero_image || HERO} alt="Florist workshop in progress" className="w-full h-full object-cover" />}
           </div>
           <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 bg-[#FAFAF7]">
             <div className="max-w-md">

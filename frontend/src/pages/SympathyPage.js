@@ -8,7 +8,7 @@ import ServiceTiers from "../components/ServiceTiers";
 import { usePageContent } from "../hooks/usePageContent";
 
 export default function SympathyPage() {
-  const { content } = usePageContent("sympathy");
+  const { content, loading } = usePageContent("sympathy");
   const defaultTiers = [
     { title: "Casket & Coffin Tributes", description: "Hand-tied sprays for the service.", price_label: "from £180", image_url: "https://images.unsplash.com/photo-1593019776922-e6ad79c69947?w=1200" },
     { title: "Standing Arrangements", description: "Elegant pedestal and easel tributes.", price_label: "from £220", image_url: "https://images.unsplash.com/photo-1486818203489-37b06f23a3a8?w=1200" },
@@ -38,8 +38,7 @@ export default function SympathyPage() {
             </div>
           </div>
           <div className="lg:col-span-6">
-            {content?.hero_image && <img src={content.hero_image} alt="Sympathy floristry" className="w-full aspect-[4/5] object-cover" />}
-            {!content?.hero_image && <img src="https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1400" alt="Sympathy floristry" className="w-full aspect-[4/5] object-cover" />}
+            {(content?.hero_image || !loading) && <img src={content?.hero_image || "https://images.unsplash.com/photo-1602285415607-faa4007a0bca?w=1400"} alt="Sympathy floristry" className="w-full aspect-[4/5] object-cover" />}
           </div>
         </div>
       </section>

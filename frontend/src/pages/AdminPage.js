@@ -76,6 +76,7 @@ export default function AdminPage() {
     setSavingSettings(true);
     try {
       await axios.put(`${API_URL}/api/settings`, settingsForm);
+      try { sessionStorage.removeItem("site_settings"); } catch {}
       await refreshSettings();
       toast.success("Settings saved");
     } catch (err) {
