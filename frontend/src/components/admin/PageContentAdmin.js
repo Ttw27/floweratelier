@@ -119,14 +119,13 @@ export default function PageContentAdmin() {
           <h3 className="font-heading text-2xl font-light text-[#1A1A1A]">Service Pages</h3>
           <p className="font-body text-sm text-[#7A7A7A] mt-1">Edit hero copy, hero image and tier pricing for each service page.</p>
         </div>
-        <Button onClick={seedNow} variant="outline" className="rounded-none" data-testid="page-content-seed-btn">Seed starter</Button>
       </div>
 
       {loading ? (
         <p className="text-sm text-[#7A7A7A]">Loading…</p>
       ) : pages.length === 0 ? (
         <div className="text-center py-12">
-          <p className="font-body text-sm text-[#1A1A1A] mb-4">No pages yet — click &ldquo;Seed starter&rdquo; to populate the 10 service pages with editable copy.</p>
+          <p className="font-body text-sm text-[#1A1A1A] mb-4">No service pages found. Please contact support.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

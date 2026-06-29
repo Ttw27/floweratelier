@@ -154,7 +154,7 @@ export default function WorkshopsAdmin() {
           <h3 className="font-heading text-2xl font-light text-[#1A1A1A]">Workshops</h3>
           <p className="font-body text-sm text-[#7A7A7A] mt-1">Workshop programmes, dated sessions and bookings.</p>
         </div>
-        <Button onClick={seedWorkshops} variant="outline" className="rounded-none" data-testid="workshops-seed-btn">Seed starter</Button>
+        <Button onClick={seedWorkshops} variant="outline" className="rounded-none" data-testid="workshops-seed-btn">Add example workshops</Button>
       </div>
 
       {/* Sub-tabs */}
