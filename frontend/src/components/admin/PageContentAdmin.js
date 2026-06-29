@@ -61,6 +61,7 @@ export default function PageContentAdmin() {
         hero_title_line2: p.hero_title_line2 || "",
         hero_subheading: p.hero_subheading || "",
         hero_image: p.hero_image || "",
+        secondary_image: p.secondary_image || "",
         hero_cta_label: p.hero_cta_label || "",
         hero_cta_url: p.hero_cta_url || "",
         tiers: (p.tiers || []).map((t, i) => ({
@@ -200,6 +201,33 @@ export default function PageContentAdmin() {
                         <input type="file" accept="image/*" ref={heroFileRef} className="hidden" onChange={(e) => uploadFor("hero", e.target.files?.[0])} data-testid="page-content-form-hero-file" />
                         <button type="button" onClick={() => heroFileRef.current?.click()} disabled={uploading.hero} className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline" data-testid="page-content-form-hero-upload">
                           <Upload size={12} /> {uploading.hero ? "Uploading…" : "Upload image"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <Label className="accent-label text-[#1A1A1A]">Secondary image <span className="font-body text-[11px] text-[#7A7A7A] normal-case tracking-normal">(used on some pages alongside content sections)</span></Label>
+                  <div className="flex gap-4 mt-3 items-start">
+                    <div className="w-24 h-24 border border-[#E5E5E5] bg-[#F2EFEB] flex-shrink-0 overflow-hidden">
+                      {editing.secondary_image && <img src={editing.secondary_image} alt="" className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="flex-1">
+                      <Input value={editing.secondary_image || ""} onChange={(e) => setEditing({ ...editing, secondary_image: e.target.value })} placeholder="https://… or upload" className="light-input rounded-none" />
+                      <div className="mt-2 flex items-center gap-2">
+                        <input type="file" accept="image/*" className="hidden" id="secondary-img-upload" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const fd = new FormData();
+                          fd.append("file", file);
+                          try {
+                            const r = await axios.post(`${API_URL}/api/uploads/image?folder=services`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+                            setEditing((ed) => ({ ...ed, secondary_image: r.data.url }));
+                            toast.success("Image uploaded");
+                          } catch { toast.error("Upload failed"); }
+                        }} />
+                        <button type="button" onClick={() => document.getElementById("secondary-img-upload").click()} className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline">
+                          <Upload size={12} /> Upload image
                         </button>
                       </div>
                     </div>
