@@ -16,6 +16,7 @@ const LIVE_SLUGS = new Set([
   "shop-front-installs", "house-installs", "film-tv-photoshoot",
   "traveller-weddings", "in-shop-displays",
   "faith-weddings", "traveller-funerals",
+  "hotels-hospitality", "restaurants", "workshops",
 ]);
 
 const BESPOKE_SLUGS = new Set(["faith-weddings", "traveller-funerals"]);
@@ -46,6 +47,15 @@ export default function PageContentAdmin() {
         .catch(() => {});
     }
   }, [loading, pages.length]);
+
+  const toggleActive = async (p) => {
+    try {
+      await axios.put(`${API_URL}/api/admin/page-content/${p.slug}`, { ...p, active: !p.active });
+      clearPageCache(p.slug);
+      await load();
+      toast.success(p.active ? "Page hidden from nav" : "Page shown in nav");
+    } catch { toast.error("Failed to update"); }
+  };
 
   const save = async (e) => {
     e.preventDefault();
@@ -144,13 +154,21 @@ export default function PageContentAdmin() {
                 )}
               </div>
               <p className="font-body text-xs text-[#7A7A7A] line-clamp-2 min-h-[2.5rem]">{p.hero_subheading}</p>
-              <button
-                onClick={() => setEditing(JSON.parse(JSON.stringify(p)))}
-                className="mt-3 inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#1A1A1A] underline"
-                data-testid={`page-content-edit-${p.slug}`}
-              >
-                <Pencil size={12} /> Edit
-              </button>
+              <div className="mt-3 flex items-center gap-4">
+                <button
+                  onClick={() => setEditing(JSON.parse(JSON.stringify(p)))}
+                  className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#1A1A1A] underline"
+                  data-testid={`page-content-edit-${p.slug}`}
+                >
+                  <Pencil size={12} /> Edit
+                </button>
+                <button
+                  onClick={() => toggleActive(p)}
+                  className={`inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline ${p.active !== false ? "text-[#7A7A7A]" : "text-[#B3A89B]"}`}
+                >
+                  {p.active !== false ? "Hide from nav" : "Show in nav"}
+                </button>
+              </div>
             </div>
           ))}
         </div>
