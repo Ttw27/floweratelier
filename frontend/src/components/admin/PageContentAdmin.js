@@ -39,14 +39,14 @@ export default function PageContentAdmin() {
   };
   useEffect(() => { load(); }, []);
 
-  // Auto-populate service pages if none exist — should always be there
+  // Auto-populate any missing service pages — runs silently on every load
   useEffect(() => {
-    if (!loading && pages.length === 0) {
+    if (!loading) {
       axios.post(`${API_URL}/api/seed/page-content`)
         .then(() => load())
         .catch(() => {});
     }
-  }, [loading, pages.length]);
+  }, [loading]);
 
   const toggleActive = async (p) => {
     try {
@@ -297,6 +297,72 @@ export default function PageContentAdmin() {
                 </Button>
               </div>
             </fieldset>
+
+            {/* BESPOKE — Workshops: host section */}
+            {editing.slug === "workshops" && (
+              <fieldset className="border border-[#E5E5E5] p-5 mb-6">
+                <legend className="accent-label px-2">Host at your venue section</legend>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Eyebrow</Label>
+                    <Input value={editing.extra?.host_eyebrow || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), host_eyebrow: e.target.value } })} placeholder="Host at your venue" className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Heading</Label>
+                    <Input value={editing.extra?.host_heading || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), host_heading: e.target.value } })} placeholder="Fill a quiet midweek night..." className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Body text</Label>
+                    <Textarea rows={3} value={editing.extra?.host_body || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), host_body: e.target.value } })} placeholder="A turnkey workshop night for pubs..." className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Why cards (4 cards)</Label>
+                    {(editing.extra?.why_cards || [
+                      { title: "Per head, all-in", body: "Guests pay us directly — typically £45 a head. No hire fee for the venue." },
+                      { title: "You keep the bar", body: "Every penny of bar, food and door spend stays with the venue. Avg. +£15–£25 per guest." },
+                      { title: "Midweek footfall", body: "Tues–Thurs is our sweet spot — fills the room when you need it most." },
+                      { title: "Free promotion", body: "We share the night on our socials and tag the venue — 14–20 new tags per workshop." },
+                    ]).map((card, idx) => (
+                      <div key={idx} className="border border-[#E5E5E5] p-3 mt-2 space-y-2">
+                        <div>
+                          <Label className="text-[10px] text-[#7A7A7A]">Title</Label>
+                          <Input value={card.title} onChange={(e) => {
+                            const cards = [...(editing.extra?.why_cards || [{title:"",body:""},{title:"",body:""},{title:"",body:""},{title:"",body:""}])];
+                            cards[idx] = { ...cards[idx], title: e.target.value };
+                            setEditing({ ...editing, extra: { ...(editing.extra || {}), why_cards: cards } });
+                          }} className="light-input rounded-none mt-1" />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] text-[#7A7A7A]">Body</Label>
+                          <Textarea rows={2} value={card.body} onChange={(e) => {
+                            const cards = [...(editing.extra?.why_cards || [{title:"",body:""},{title:"",body:""},{title:"",body:""},{title:"",body:""}])];
+                            cards[idx] = { ...cards[idx], body: e.target.value };
+                            setEditing({ ...editing, extra: { ...(editing.extra || {}), why_cards: cards } });
+                          }} className="light-input rounded-none mt-1" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Venue list (comma separated)</Label>
+                    <Input
+                      value={(editing.extra?.venue_list || ["Pubs & gastropubs","Members' clubs","Community halls","Hotels","Care homes","Hospices","Retirement villages","PTAs & schools","Hen-do venues","Corporate offices"]).join(", ")}
+                      onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), venue_list: e.target.value.split(",").map(v => v.trim()).filter(Boolean) } })}
+                      placeholder="Pubs & gastropubs, Members' clubs, Care homes..."
+                      className="light-input rounded-none mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Final CTA eyebrow</Label>
+                    <Input value={editing.extra?.cta_eyebrow || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_eyebrow: e.target.value } })} placeholder="Hosting one this season?" className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Final CTA heading</Label>
+                    <Input value={editing.extra?.cta_heading || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_heading: e.target.value } })} placeholder="Tell us your date..." className="light-input rounded-none mt-1" />
+                  </div>
+                </div>
+              </fieldset>
+            )}
 
             {/* BESPOKE — Restaurants: process steps */}
             {editing.slug === "restaurants" && (
