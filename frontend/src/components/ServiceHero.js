@@ -11,7 +11,7 @@ import { ArrowRight } from "lucide-react";
  * `defaults` is the same shape — pages pass their original copy as defaults so they
  * still render when the CMS row is missing or the API is down.
  */
-export default function ServiceHero({ content, defaults, testId = "service-hero", titleTestId, layout = "split-right" }) {
+export default function ServiceHero({ content, defaults, loading = false, testId = "service-hero", titleTestId, layout = "split-right" }) {
   const c = content || {};
   const d = defaults || {};
   const eyebrow   = c.hero_eyebrow   || d.hero_eyebrow   || "";
@@ -19,7 +19,8 @@ export default function ServiceHero({ content, defaults, testId = "service-hero"
   const italic    = c.hero_title_italic  || d.hero_title_italic  || "";
   const line2     = c.hero_title_line2   || d.hero_title_line2   || "";
   const sub       = c.hero_subheading || d.hero_subheading || "";
-  const image     = c.hero_image     || d.hero_image     || "";
+  // Only use default image once loading is complete — prevents stock image flash
+  const image     = c.hero_image || (!loading ? d.hero_image : "") || "";
   const ctaLabel  = c.hero_cta_label || d.hero_cta_label || "Begin a consultation";
   const ctaUrl    = c.hero_cta_url   || d.hero_cta_url   || "/consultation";
 
