@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ShoppingBag, User, Menu, X, ChevronDown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useSettings } from "../context/SettingsContext";
+import axios from "axios";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const OCCASIONS = [
   { name: "Weddings", path: "/weddings" },
@@ -20,7 +23,19 @@ const OCCASIONS = [
   { name: "Traveller Funerals", path: "/traveller-funerals" },
 ];
 
-const SERVICES = [
+// Slug to path mapping for service pages
+const SLUG_TO_PATH = {
+  "corporate": "/corporate",
+  "hotels-hospitality": "/hotels-hospitality",
+  "restaurants": "/restaurants",
+  "house-installs": "/house-installs",
+  "shop-front-installs": "/shop-front-installs",
+  "in-shop-displays": "/in-shop-displays",
+  "film-tv-photoshoot": "/film-tv-photoshoot",
+  "workshops": "/workshops",
+};
+
+const DEFAULT_SERVICES = [
   { name: "Corporate Events", path: "/corporate" },
   { name: "Hotels & Hospitality", path: "/hotels-hospitality" },
   { name: "Restaurants & Members' Clubs", path: "/restaurants" },
@@ -33,12 +48,22 @@ const SERVICES = [
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [services, setServices] = useState(DEFAULT_SERVICES);
   const [mobileSubOpen, setMobileSubOpen] = useState({ occasions: false, services: false });
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/page-content/list`).then((r) => {
+      const active = r.data
+        .filter((p) => p.active !== false && SLUG_TO_PATH[p.slug])
+        .map((p) => ({ name: p.label || p.slug, path: SLUG_TO_PATH[p.slug] }));
+      if (active.length > 0) setServices(active);
+    }).catch(() => {}); // keep defaults on error
+  }, []);
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
   const isAnyActive = (paths) => paths.some((p) => isActive(p));
@@ -113,11 +138,11 @@ export default function Header() {
 
               {/* Services dropdown */}
               <DropdownMenu>
-                <DropdownMenuTrigger className={`${linkClass(isAnyActive(SERVICES.map(s => s.path)))} flex items-center gap-1 outline-none`} data-testid="nav-services">
+                <DropdownMenuTrigger className={`${linkClass(isAnyActive(services.map(s => s.path)))} flex items-center gap-1 outline-none`} data-testid="nav-services">
                   Services <ChevronDown size={11} strokeWidth={1.4} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56 bg-white border border-[#E5E5E5] rounded-none text-[#1A1A1A] mt-2">
-                  {SERVICES.map((s) => (
+                  {services.map((s) => (
                     <DropdownMenuItem key={s.path} asChild className={dropdownItemClass}>
                       <Link to={s.path} data-testid={`nav-service-${s.path.replace("/", "")}`}>{s.name}</Link>
                     </DropdownMenuItem>
@@ -227,7 +252,7 @@ export default function Header() {
               </button>
               {mobileSubOpen.services && (
                 <div className="mt-4 pl-4 border-l border-[#E5E5E5] space-y-3">
-                  {SERVICES.map((s) => (
+                  {services.map((s) => (
                     <Link key={s.path} to={s.path} className="block font-body text-xs uppercase tracking-[0.22em] text-[#7A7A7A]" onClick={() => setMobileMenuOpen(false)}>
                       {s.name}
                     </Link>
