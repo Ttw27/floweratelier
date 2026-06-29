@@ -2346,6 +2346,15 @@ async def admin_delete_page_content(slug: str, admin=Depends(require_admin)):
 
 PAGE_CONTENT_SEED = [
     {
+        "slug": "workshops", "label": "Workshops",
+        "hero_eyebrow": "Workshops",
+        "hero_title_line1": "Learn to", "hero_title_italic": "arrange.", "hero_title_line2": "",
+        "hero_subheading": "Hands-on floristry workshops in our Leicester atelier. From beginners to corporate teams — seasonal, intimate and expertly led.",
+        "hero_image": "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=1800&q=80",
+        "hero_cta_label": "Book a workshop", "hero_cta_url": "/workshops",
+        "tiers": [],
+    },
+    {
         "slug": "weddings", "label": "Weddings",
         "hero_eyebrow": "Weddings",
         "hero_title_line1": "Your day,", "hero_title_italic": "bloom.", "hero_title_line2": "in",
