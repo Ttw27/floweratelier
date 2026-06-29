@@ -43,7 +43,7 @@ export default function RestaurantsPage() {
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[70vh]">
           <div className="lg:col-span-7 order-1 h-[55vh] lg:h-auto">
-            {(content?.hero_image || !loading) && <img src={content?.hero_image || HERO} alt="Restaurant floristry" className="w-full h-full object-cover" />
+            {(content?.hero_image || !loading) && <img src={content?.hero_image || HERO} alt="Restaurant floristry" className="w-full h-full object-cover" />}
           </div>
           <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-16 lg:py-0 order-2 bg-[#FAFAF7]">
             <div className="max-w-md">
