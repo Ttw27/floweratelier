@@ -3,22 +3,31 @@ import axios from "axios";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-/**
- * Fetches admin-editable page content for a service page.
- * Returns { content, loading }. `content` is null until loaded; pages should
- * keep their hardcoded default JSX as a fallback when content is null.
- */
+export function getCacheKey(slug) { return `page_content_${slug}`; }
+export function clearPageCache(slug) { try { sessionStorage.removeItem(getCacheKey(slug)); } catch {} }
+export function clearAllPageCache() { 
+  try { 
+    Object.keys(sessionStorage).filter(k => k.startsWith("page_content_")).forEach(k => sessionStorage.removeItem(k)); 
+  } catch {} 
+}
+
 export function usePageContent(slug) {
-  const [content, setContent] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = getCacheKey(slug);
+  const cached = (() => { try { return JSON.parse(sessionStorage.getItem(cacheKey)); } catch { return null; } })();
+
+  const [content, setContent] = useState(cached);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     if (!slug) return;
     let alive = true;
-    setLoading(true);
     axios
       .get(`${API_URL}/api/page-content/${slug}`)
-      .then((r) => { if (alive) setContent(r.data); })
+      .then((r) => {
+        if (!alive) return;
+        setContent(r.data);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(r.data)); } catch {}
+      })
       .catch(() => { if (alive) setContent(null); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
