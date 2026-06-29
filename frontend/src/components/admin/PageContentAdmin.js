@@ -37,14 +37,14 @@ export default function PageContentAdmin() {
   };
   useEffect(() => { load(); }, []);
 
-  const seedNow = async () => {
-    if (!window.confirm("Seed initial content for the 10 service pages? (skips any already present)")) return;
-    try {
-      const r = await axios.post(`${API_URL}/api/seed/page-content`);
-      toast.success(`Pages: ${r.data.total} · newly inserted: ${r.data.inserted}`);
-      await load();
-    } catch (err) { toast.error(err.response?.data?.detail || "Seed failed"); }
-  };
+  // Auto-populate service pages if none exist — should always be there
+  useEffect(() => {
+    if (!loading && pages.length === 0) {
+      axios.post(`${API_URL}/api/seed/page-content`)
+        .then(() => load())
+        .catch(() => {});
+    }
+  }, [loading, pages.length]);
 
   const save = async (e) => {
     e.preventDefault();
@@ -125,9 +125,7 @@ export default function PageContentAdmin() {
       {loading ? (
         <p className="text-sm text-[#7A7A7A]">Loading…</p>
       ) : pages.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="font-body text-sm text-[#1A1A1A] mb-4">No service pages found. Please contact support.</p>
-        </div>
+        <p className="text-sm text-[#7A7A7A]">Setting up service pages…</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pages.map((p) => (
