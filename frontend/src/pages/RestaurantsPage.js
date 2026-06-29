@@ -81,16 +81,16 @@ export default function RestaurantsPage() {
       <section className="py-20 md:py-28 px-6 md:px-12 bg-[#F2EFEB]">
         <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-16 items-center">
           <div>
-            <p className="accent-label mb-6"><span className="thin-rule" />How it works</p>
-            <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] leading-[1.05] mb-8">
-              Simple, reliable,<br /><span className="italic">beautiful.</span>
-            </h2>
+            <p className="accent-label mb-6"><span className="thin-rule" />{content?.extra?.process_eyebrow || "How it works"}</p>
+            <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] leading-[1.05] mb-8"
+              dangerouslySetInnerHTML={{ __html: content?.extra?.process_heading || "Simple, reliable,<br /><em>beautiful.</em>" }}
+            />
             <div className="space-y-6">
-              {[
+              {(content?.extra?.process_steps || [
                 { n: "01", t: "Consultation", b: "We visit your space, understand your aesthetic and design a programme tailored to your interior." },
                 { n: "02", t: "Ongoing delivery", b: "Your florals arrive before service — fresh, arranged, ready. The same reliable team every visit." },
                 { n: "03", t: "Seasonal evolution", b: "We evolve the designs quarterly to reflect the season and any menu or interior changes." },
-              ].map((s) => (
+              ]).map((s) => (
                 <div key={s.n} className="flex gap-6">
                   <span className="font-body text-xs text-[#B3A89B] tracking-widest mt-1">{s.n}</span>
                   <div>
