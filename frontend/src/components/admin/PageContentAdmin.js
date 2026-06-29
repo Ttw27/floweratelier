@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import axios from "axios";
+import { clearPageCache } from "../../hooks/usePageContent";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,7 @@ export default function PageContentAdmin() {
         active: p.active !== false,
       };
       await axios.put(`${API_URL}/api/admin/page-content/${p.slug}`, payload);
+      clearPageCache(p.slug);  // Clear cache so admin sees new image immediately
       toast.success("Saved");
       setEditing(null);
       await load();

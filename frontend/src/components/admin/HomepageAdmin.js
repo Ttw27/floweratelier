@@ -33,6 +33,7 @@ export default function HomepageAdmin({ settings, onSaved }) {
     setSaving(true);
     try {
       await axios.put(`${API_URL}/api/settings`, { ...settings, ...form });
+      try { sessionStorage.removeItem("site_settings"); } catch {}  // Clear cache so new images show immediately
       toast.success("Homepage updated");
       if (onSaved) onSaved();
     } catch (err) {
