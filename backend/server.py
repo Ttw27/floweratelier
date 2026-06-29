@@ -1004,16 +1004,16 @@ async def admin_delete_portfolio(item_id: str, admin = Depends(require_admin)):
 async def seed_data(reset: bool = False):
     # Always reseed if reset=true or if versioning changes
     existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
-    current_version = "v7-leicester-r6"
+    current_version = "v7-leicester-r7"
     already_current = existing_version and existing_version.get("value") == current_version
 
     if already_current and not reset:
         return {"message": "Data already seeded", "version": current_version}
 
-    # Wipe catalog data for a clean reseed, but preserve manually-added portfolio items
-    await db.categories.delete_many({})
-    await db.products.delete_many({})
-    await db.portfolio.delete_many({"seeded": True})  # Only delete seeded items
+    # Wipe catalog data for a clean reseed, but preserve manually-added items
+    await db.categories.delete_many({"seeded": True})   # Only delete seeded categories
+    await db.products.delete_many({"seeded": True})      # Only delete seeded products
+    await db.portfolio.delete_many({"seeded": True})     # Only delete seeded portfolio items
 
     # Premium luxury categories (light aesthetic)
     categories = [
@@ -1027,6 +1027,7 @@ async def seed_data(reset: bool = False):
     ]
     for cat in categories:
         cat["created_at"] = datetime.now(timezone.utc).isoformat()
+        cat["seeded"] = True
     await db.categories.insert_many(categories)
 
     # Premium products £80+ — light-luxury imagery
@@ -1205,6 +1206,7 @@ async def seed_data(reset: bool = False):
     ]
     for prod in products:
         prod["created_at"] = datetime.now(timezone.utc).isoformat()
+        prod["seeded"] = True  # Mark as seeded so manually-added products are never deleted
     await db.products.insert_many(products)
 
     # Bespoke portfolio items (past works) — 6 per category for a fuller mini-grid
@@ -2119,8 +2121,8 @@ async def delete_template(tid: str, admin=Depends(require_admin)):
 @api_router.post("/seed/templates")
 async def seed_templates(reset: bool = False, admin=Depends(require_admin)):
     if reset:
-        await db.template_categories.delete_many({})
-        await db.design_templates.delete_many({})
+        await db.template_categories.delete_many({"seeded": True})
+        await db.design_templates.delete_many({"seeded": True})
 
     if await db.template_categories.count_documents({}) == 0:
         for c in [
@@ -2128,7 +2130,7 @@ async def seed_templates(reset: bool = False, admin=Depends(require_admin)):
             {"name": "Birthday",    "slug": "birthday",    "sort_order": 20},
             {"name": "In Loving Memory", "slug": "memory", "sort_order": 30},
         ]:
-            await db.template_categories.insert_one({**c, "id": str(uuid.uuid4()), "active": True})
+            await db.template_categories.insert_one({**c, "id": str(uuid.uuid4()), "active": True, "seeded": True})
 
     cats = {c["slug"]: c async for c in db.template_categories.find({})}
 
@@ -2169,7 +2171,7 @@ async def seed_templates(reset: bool = False, admin=Depends(require_admin)):
                 "sort_order": 10,
             })
         for s in seeds:
-            await db.design_templates.insert_one({**s, "id": str(uuid.uuid4()), "thumbnail_url": "", "active": True})
+            await db.design_templates.insert_one({**s, "id": str(uuid.uuid4()), "thumbnail_url": "", "active": True, "seeded": True})
 
     return {
         "categories": await db.template_categories.count_documents({}),
@@ -2188,10 +2190,10 @@ BOX_SEED = [
 @api_router.post("/seed/boxes")
 async def seed_boxes(reset: bool = False, admin=Depends(require_admin)):
     if reset:
-        await db.boxes.delete_many({})
+        await db.boxes.delete_many({"seeded": True})
     if await db.boxes.count_documents({}) == 0:
         for b in BOX_SEED:
-            await db.boxes.insert_one({**b, "id": str(uuid.uuid4()), "active": True})
+            await db.boxes.insert_one({**b, "id": str(uuid.uuid4()), "active": True, "seeded": True})
     return {"boxes": await db.boxes.count_documents({})}
 
 
@@ -2253,17 +2255,17 @@ ADDON_SEED = [
 @api_router.post("/seed/cards-addons")
 async def seed_cards_addons(reset: bool = False, admin=Depends(require_admin)):
     if reset:
-        await db.cards.delete_many({})
-        await db.addons.delete_many({})
+        await db.cards.delete_many({"seeded": True})
+        await db.addons.delete_many({"seeded": True})
     cards_count = await db.cards.count_documents({})
     if cards_count == 0:
         for c in CARD_SEED:
-            doc = {**c, "id": str(uuid.uuid4()), "active": True, "price": c.get("price", 0.0)}
+            doc = {**c, "id": str(uuid.uuid4()), "active": True, "price": c.get("price", 0.0), "seeded": True}
             await db.cards.insert_one(doc)
     addons_count = await db.addons.count_documents({})
     if addons_count == 0:
         for a in ADDON_SEED:
-            doc = {**a, "id": str(uuid.uuid4()), "active": True}
+            doc = {**a, "id": str(uuid.uuid4()), "active": True, "seeded": True}
             await db.addons.insert_one(doc)
     return {
         "cards": await db.cards.count_documents({}),
@@ -2592,13 +2594,13 @@ PAGE_CONTENT_SEED = [
 @api_router.post("/seed/page-content")
 async def seed_page_content(reset: bool = False, admin=Depends(require_admin)):
     if reset:
-        await db.page_content.delete_many({})
+        await db.page_content.delete_many({"seeded": True})
     existing_slugs = set([d["slug"] for d in await db.page_content.find({}, {"slug": 1}).to_list(200)])
     inserted = 0
     for p in PAGE_CONTENT_SEED:
         if p["slug"] in existing_slugs:
             continue
-        await db.page_content.insert_one({**p, "id": str(uuid.uuid4()), "active": True})
+        await db.page_content.insert_one({**p, "id": str(uuid.uuid4()), "active": True, "seeded": True})
         inserted += 1
     return {"total": await db.page_content.count_documents({}), "inserted": inserted}
 
@@ -3079,8 +3081,8 @@ WORKSHOP_SEED = [
 @api_router.post("/seed/workshops")
 async def seed_workshops(reset: bool = False, admin=Depends(require_admin)):
     if reset:
-        await db.workshops.delete_many({})
-        await db.workshop_sessions.delete_many({})
+        await db.workshops.delete_many({"seeded": True})
+        await db.workshop_sessions.delete_many({"seeded": True})
     if await db.workshops.count_documents({}) == 0:
         for w in WORKSHOP_SEED:
             doc = {
