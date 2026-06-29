@@ -102,11 +102,11 @@ export default function RestaurantsPage() {
             </div>
           </div>
           <div className="h-[500px]">
-            <img
-              src="https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=1200"
+            {(content?.secondary_image || !loading) && <img
+              src={content?.secondary_image || "https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=1200"}
               alt="Restaurant table setting"
               className="w-full h-full object-cover"
-            />
+            />}
           </div>
         </div>
       </section>
