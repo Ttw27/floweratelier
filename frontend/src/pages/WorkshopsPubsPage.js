@@ -81,10 +81,10 @@ export default function WorkshopsPubsPage() {
       {/* Stats */}
       <section className="py-16 px-6 md:px-12 bg-[#1A1A1A]">
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          <Stat value="£0" label="Cost to your venue — zero hire fee, ever" />
-          <Stat value="£45" label="Per head, paid directly to us by guests" />
-          <Stat value="+£20" label="Average extra bar spend per guest" />
-          <Stat value="~20" label="Social tags per night — free promotion" />
+          <Stat value={content?.extra?.stat1_value || "£0"} label={content?.extra?.stat1_label || "Cost to your venue — zero hire fee, ever"} />
+          <Stat value={content?.extra?.stat2_value || "£45"} label={content?.extra?.stat2_label || "Per head, paid directly to us by guests"} />
+          <Stat value={content?.extra?.stat3_value || "+£20"} label={content?.extra?.stat3_label || "Average extra bar spend per guest"} />
+          <Stat value={content?.extra?.stat4_value || "~20"} label={content?.extra?.stat4_label || "Social tags per night — free promotion"} />
         </div>
       </section>
 
@@ -113,7 +113,7 @@ export default function WorkshopsPubsPage() {
               Truly<br /><span className="italic">turnkey.</span>
             </h2>
             <div className="space-y-3">
-              {[
+              {(content?.extra?.included_list || [
                 "Seasonal flowers & foliage for every guest",
                 "All tools — snips, wire, tape, twine",
                 "Dust sheets & table covers",
@@ -122,7 +122,7 @@ export default function WorkshopsPubsPage() {
                 "Social media content shot on the night",
                 "Promotion to our mailing list & socials",
                 "Handling of all bookings & payments",
-              ].map((item) => (
+              ]).map((item) => (
                 <div key={item} className="flex items-start gap-3">
                   <CheckCircle size={16} strokeWidth={1.3} className="text-[#B3A89B] mt-0.5 flex-shrink-0" />
                   <p className="font-body text-sm text-[#1A1A1A]">{item}</p>
@@ -133,7 +133,7 @@ export default function WorkshopsPubsPage() {
           <div>
             <p className="accent-label mb-6"><span className="thin-rule" />Best for</p>
             <div className="space-y-3">
-              {[
+              {(content?.extra?.best_for_list || [
                 "Pubs & gastropubs",
                 "Members' clubs",
                 "Hotels & boutique stays",
@@ -141,7 +141,7 @@ export default function WorkshopsPubsPage() {
                 "Hen-do venues",
                 "Wedding venues (off-peak nights)",
                 "Corporate entertainment spaces",
-              ].map((item) => (
+              ]).map((item) => (
                 <div key={item} className="flex items-center gap-3 border-b border-[#E5E5E5] pb-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#B3A89B] flex-shrink-0" />
                   <p className="font-body text-sm text-[#1A1A1A]">{item}</p>

@@ -96,7 +96,7 @@ export default function WorkshopsCareHomesPage() {
               Everything.<br /><span className="italic">You provide the smiles.</span>
             </h2>
             <div className="space-y-3">
-              {[
+              {(content?.extra?.included_list || [
                 "Fresh seasonal flowers for every resident",
                 "All tools — snips, wire, oasis — pre-cut for safety",
                 "Protective table coverings & dust sheets",
@@ -105,7 +105,7 @@ export default function WorkshopsCareHomesPage() {
                 "Each resident takes their arrangement home",
                 "Photo documentation for care plans & families",
                 "Flexible session length — typically 60–90 mins",
-              ].map((item) => (
+              ]).map((item) => (
                 <div key={item} className="flex items-start gap-3">
                   <CheckCircle size={16} strokeWidth={1.3} className="text-[#B3A89B] mt-0.5 flex-shrink-0" />
                   <p className="font-body text-sm text-[#1A1A1A]">{item}</p>
@@ -116,7 +116,7 @@ export default function WorkshopsCareHomesPage() {
           <div>
             <p className="accent-label mb-6"><span className="thin-rule" />We work with</p>
             <div className="space-y-3">
-              {[
+              {(content?.extra?.work_with_list || [
                 "Residential care homes",
                 "Dementia & memory care units",
                 "Hospices",
@@ -124,7 +124,7 @@ export default function WorkshopsCareHomesPage() {
                 "Sheltered housing communities",
                 "Day centres",
                 "NHS rehabilitation wards",
-              ].map((item) => (
+              ]).map((item) => (
                 <div key={item} className="flex items-center gap-3 border-b border-[#E5E5E5] pb-3">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#B3A89B] flex-shrink-0" />
                   <p className="font-body text-sm text-[#1A1A1A]">{item}</p>
@@ -133,7 +133,7 @@ export default function WorkshopsCareHomesPage() {
             </div>
             <div className="mt-8 bg-white border border-[#E5E5E5] p-6">
               <p className="font-heading text-lg font-light text-[#1A1A1A] mb-2">Pricing</p>
-              <p className="font-body text-sm text-[#7A7A7A] leading-relaxed">Sessions are priced per resident with a minimum group size. We offer a <strong className="text-[#1A1A1A] font-medium">free trial session</strong> for new care home partners so you can see the impact before committing.</p>
+              <p className="font-body text-sm text-[#7A7A7A] leading-relaxed">{content?.extra?.pricing_note || (<>Sessions are priced per resident with a minimum group size. We offer a <strong className="text-[#1A1A1A] font-medium">free trial session</strong> for new care home partners so you can see the impact before committing.</>)}</p>
               <Link to="/consultation?service=workshops-care-homes" className="inline-flex items-center gap-2 font-body text-xs uppercase tracking-[0.18em] text-[#1A1A1A] underline mt-4">
                 Get a quote <ArrowRight size={12} />
               </Link>
