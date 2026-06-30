@@ -35,7 +35,6 @@ const OCCASIONS = [
   { name: "Wedding", slug: "wedding" },
 ];
 
-const PRESS = ["Vogue", "Tatler", "House & Garden", "Condé Nast Traveller", "Country Living", "FT — How To Spend It"];
 
 function ProductCardLuxe({ product, onAdd }) {
   return (
@@ -357,20 +356,6 @@ export default function HomePage() {
                 <p className="font-body text-sm text-[#1A1A1A]">{t.author}</p>
                 <p className="accent-label mt-1">{t.location}</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── PRESS LOGOS ── */}
-      <section className="py-12 md:py-16 px-6 md:px-12 bg-white border-t border-[#E5E5E5]" data-testid="press-section">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label text-center mb-8">As featured in</p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 md:gap-x-16 gap-y-5">
-            {PRESS.map((name) => (
-              <span key={name} className="font-heading text-xl md:text-2xl font-light italic text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors cursor-default">
-                {name}
-              </span>
             ))}
           </div>
         </div>
