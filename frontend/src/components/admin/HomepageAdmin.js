@@ -17,6 +17,11 @@ export default function HomepageAdmin({ settings, onSaved }) {
   useEffect(() => {
     if (settings) {
       setForm({
+        homepage_hero_eyebrow: settings.homepage_hero_eyebrow || "",
+        homepage_hero_title: settings.homepage_hero_title || "Flowers,",
+        homepage_hero_italic: settings.homepage_hero_italic || "artfully",
+        homepage_hero_title2: settings.homepage_hero_title2 || " composed.",
+        homepage_hero_subheading: settings.homepage_hero_subheading || "Editorial bouquets hand-tied in our Leicester atelier — delivered across the Midlands, with bespoke services UK-wide.",
         homepage_hero_image: settings.homepage_hero_image || "",
         homepage_category1_image: settings.homepage_category1_image || "",
         homepage_category2_image: settings.homepage_category2_image || "",
@@ -69,6 +74,30 @@ export default function HomepageAdmin({ settings, onSaved }) {
         {/* Hero */}
         <section>
           <p className="accent-label mb-4"><span className="thin-rule" />Hero section</p>
+          <div className="space-y-4 mb-6">
+            <div>
+              <Label className="text-[#1A1A1A] text-sm">Eyebrow label <span className="text-[#7A7A7A] font-normal">(small text above heading — leave blank to hide)</span></Label>
+              <Input value={form.homepage_hero_eyebrow} onChange={(e) => setForm({ ...form, homepage_hero_eyebrow: e.target.value })} placeholder="e.g. New · Summer Collection 2026" className="light-input rounded-none mt-2" />
+            </div>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-[#1A1A1A] text-sm">Heading line 1</Label>
+                <Input value={form.homepage_hero_title} onChange={(e) => setForm({ ...form, homepage_hero_title: e.target.value })} placeholder="Flowers," className="light-input rounded-none mt-2" />
+              </div>
+              <div>
+                <Label className="text-[#1A1A1A] text-sm">Italic word</Label>
+                <Input value={form.homepage_hero_italic} onChange={(e) => setForm({ ...form, homepage_hero_italic: e.target.value })} placeholder="artfully" className="light-input rounded-none mt-2" />
+              </div>
+              <div>
+                <Label className="text-[#1A1A1A] text-sm">After italic</Label>
+                <Input value={form.homepage_hero_title2} onChange={(e) => setForm({ ...form, homepage_hero_title2: e.target.value })} placeholder=" composed." className="light-input rounded-none mt-2" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[#1A1A1A] text-sm">Subheading</Label>
+              <Textarea value={form.homepage_hero_subheading} onChange={(e) => setForm({ ...form, homepage_hero_subheading: e.target.value })} rows={2} placeholder="Editorial bouquets hand-tied..." className="light-input rounded-none mt-2" />
+            </div>
+          </div>
           <ImageUpload
             value={form.homepage_hero_image}
             onChange={(url) => setForm({ ...form, homepage_hero_image: url })}

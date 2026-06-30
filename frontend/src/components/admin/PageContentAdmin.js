@@ -106,6 +106,39 @@ export default function PageContentAdmin() {
     finally { setUploading((s) => ({ ...s, [key]: false })); }
   };
 
+  const [adding, setAdding] = useState(false);
+  const [newSlug, setNewSlug] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+
+  const createPage = async () => {
+    if (!newSlug.trim()) { toast.error("Slug is required"); return; }
+    try {
+      await axios.post(`${API_URL}/api/admin/page-content`, {
+        slug: newSlug.trim().toLowerCase().replace(/\s+/g, "-"),
+        label: newLabel.trim() || newSlug.trim(),
+        hero_eyebrow: "", hero_title_line1: "", hero_title_italic: "",
+        hero_title_line2: "", hero_subheading: "", hero_image: "",
+        secondary_image: "", hero_cta_label: "", hero_cta_url: "",
+        tiers: [], extra: {}, active: true,
+      });
+      toast.success("Page created");
+      setAdding(false);
+      setNewSlug("");
+      setNewLabel("");
+      await load();
+    } catch (err) { toast.error(err.response?.data?.detail || "Failed to create page"); }
+  };
+
+  const deletePage = async (p) => {
+    if (!window.confirm(`Delete "${p.label || p.slug}"? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API_URL}/api/admin/page-content/${p.slug}`);
+      clearPageCache(p.slug);
+      toast.success("Page deleted");
+      await load();
+    } catch { toast.error("Failed to delete"); }
+  };
+
   const addTier = () => setEditing((e) => ({ ...e, tiers: [...(e.tiers || []), { title: "", description: "", price_label: "", image_url: "", sort_order: (e.tiers?.length || 0) * 10 }] }));
   const removeTier = (i) => setEditing((e) => ({ ...e, tiers: e.tiers.filter((_, idx) => idx !== i) }));
   const moveTier = (i, dir) => setEditing((e) => {
@@ -123,7 +156,30 @@ export default function PageContentAdmin() {
           <h3 className="font-heading text-2xl font-light text-[#1A1A1A]">Service Pages</h3>
           <p className="font-body text-sm text-[#7A7A7A] mt-1">Edit hero copy, hero image and tier pricing for each service page.</p>
         </div>
+        <Button onClick={() => setAdding(true)} className="bg-[#1A1A1A] text-white rounded-none font-body text-xs uppercase tracking-[0.22em] px-6 py-2 h-auto hover:bg-[#333]">
+          + Add page
+        </Button>
       </div>
+
+      {adding && (
+        <div className="border border-[#E5E5E5] p-6 mb-6 bg-[#FAFAF7]">
+          <h4 className="font-heading text-lg font-light text-[#1A1A1A] mb-4">New service page</h4>
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Label className="text-[#1A1A1A] text-sm">Slug <span className="text-[#7A7A7A] font-normal">(URL path, e.g. hotels-hospitality)</span></Label>
+              <Input value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="e.g. workshops-schools" className="light-input rounded-none mt-1" />
+            </div>
+            <div>
+              <Label className="text-[#1A1A1A] text-sm">Label <span className="text-[#7A7A7A] font-normal">(shown in admin & nav)</span></Label>
+              <Input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="e.g. Workshops — Schools" className="light-input rounded-none mt-1" />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={createPage} className="bg-[#1A1A1A] text-white rounded-none font-body text-xs uppercase tracking-[0.22em] px-6 py-2 h-auto hover:bg-[#333]">Create</Button>
+            <Button onClick={() => { setAdding(false); setNewSlug(""); setNewLabel(""); }} variant="outline" className="rounded-none font-body text-xs uppercase tracking-[0.22em] px-6 py-2 h-auto">Cancel</Button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-[#7A7A7A]">Loading…</p>
@@ -179,6 +235,12 @@ export default function PageContentAdmin() {
                   className={`inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline ${p.active !== false ? "text-[#7A7A7A]" : "text-[#B3A89B]"}`}
                 >
                   {p.active !== false ? "Hide from nav" : "Show in nav"}
+                </button>
+                <button
+                  onClick={() => deletePage(p)}
+                  className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline text-red-400 hover:text-red-600"
+                >
+                  Delete
                 </button>
               </div>
             </div>
