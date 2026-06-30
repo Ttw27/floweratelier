@@ -127,14 +127,13 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 lg:min-h-[520px]">
           <div className="flex items-center px-6 md:px-12 lg:px-16 py-10 lg:py-12 order-2 lg:order-1">
             <div className="max-w-lg animate-fade-in-up">
-              <p className="accent-label mb-4"><span className="thin-rule" />New · Spring Collection 2026</p>
+              <p className="accent-label mb-4"><span className="thin-rule" />{settings?.homepage_hero_eyebrow || ""}</p>
               <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-light leading-[0.98] text-[#1A1A1A] mb-5 tracking-tight" data-testid="hero-title">
-                Flowers,<br />
-                <em className="text-[#B3A89B]">artfully</em> composed.
+                {settings?.homepage_hero_title || "Flowers,"}<br />
+                <em className="text-[#B3A89B]">{settings?.homepage_hero_italic || "artfully"}</em>{settings?.homepage_hero_title2 || " composed."}
               </h1>
               <p className="font-body text-sm md:text-base text-[#7A7A7A] leading-relaxed mb-6 max-w-md">
-                Editorial bouquets hand-tied in our Leicester atelier &mdash; delivered across the Midlands,
-                with bespoke services UK-wide.
+                {settings?.homepage_hero_subheading || "Editorial bouquets hand-tied in our Leicester atelier — delivered across the Midlands, with bespoke services UK-wide."}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 mb-7">
                 <Link to="/collection" data-testid="hero-shop-btn">
