@@ -133,6 +133,14 @@ export default function WorkshopsPage() {
                 <span key={v} className="inline-flex items-center gap-2"><Building2 size={11} strokeWidth={1.3} className="text-[#B3A89B]" /> {v}</span>
               ))}
             </div>
+            <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-6 border-t border-[#E5E5E5]">
+              <Link to="/workshops/pubs-venues" className="inline-flex items-center gap-2 font-body text-xs uppercase tracking-[0.18em] text-[#1A1A1A] underline">
+                Pubs &amp; venues — learn more <ArrowRight size={12} />
+              </Link>
+              <Link to="/workshops/care-homes" className="inline-flex items-center gap-2 font-body text-xs uppercase tracking-[0.18em] text-[#1A1A1A] underline">
+                Care homes &amp; hospices — learn more <ArrowRight size={12} />
+              </Link>
+            </div>
           </div>
         </div>
       </section>
