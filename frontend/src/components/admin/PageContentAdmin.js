@@ -129,16 +129,6 @@ export default function PageContentAdmin() {
     } catch (err) { toast.error(err.response?.data?.detail || "Failed to create page"); }
   };
 
-  const deletePage = async (p) => {
-    if (!window.confirm(`Delete "${p.label || p.slug}"? This cannot be undone.`)) return;
-    try {
-      await axios.delete(`${API_URL}/api/admin/page-content/${p.slug}`);
-      clearPageCache(p.slug);
-      toast.success("Page deleted");
-      await load();
-    } catch { toast.error("Failed to delete"); }
-  };
-
   const addTier = () => setEditing((e) => ({ ...e, tiers: [...(e.tiers || []), { title: "", description: "", price_label: "", image_url: "", sort_order: (e.tiers?.length || 0) * 10 }] }));
   const removeTier = (i) => setEditing((e) => ({ ...e, tiers: e.tiers.filter((_, idx) => idx !== i) }));
   const moveTier = (i, dir) => setEditing((e) => {
@@ -235,12 +225,6 @@ export default function PageContentAdmin() {
                   className={`inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline ${p.active !== false ? "text-[#7A7A7A]" : "text-[#B3A89B]"}`}
                 >
                   {p.active !== false ? "Hide from nav" : "Show in nav"}
-                </button>
-                <button
-                  onClick={() => deletePage(p)}
-                  className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] underline text-red-400 hover:text-red-600"
-                >
-                  Delete
                 </button>
               </div>
             </div>
