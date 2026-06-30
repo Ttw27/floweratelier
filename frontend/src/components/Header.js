@@ -26,6 +26,8 @@ const SLUG_TO_PATH = {
   "in-shop-displays": "/in-shop-displays",
   "film-tv-photoshoot": "/film-tv-photoshoot",
   "workshops": "/workshops",
+  "workshops-pubs": "/workshops/pubs-venues",
+  "workshops-care-homes": "/workshops/care-homes",
   // Occasions
   "weddings": "/weddings",
   "traveller-weddings": "/traveller-weddings",
@@ -35,7 +37,7 @@ const SLUG_TO_PATH = {
 };
 
 const OCCASION_SLUGS = new Set(["weddings", "traveller-weddings", "faith-weddings", "sympathy", "traveller-funerals"]);
-const SERVICE_SLUGS = new Set(["corporate", "hotels-hospitality", "restaurants", "house-installs", "shop-front-installs", "in-shop-displays", "film-tv-photoshoot", "workshops"]);
+const SERVICE_SLUGS = new Set(["corporate", "hotels-hospitality", "restaurants", "house-installs", "shop-front-installs", "in-shop-displays", "film-tv-photoshoot", "workshops", "workshops-pubs", "workshops-care-homes"]);
 
 const DEFAULT_OCCASIONS = [
   { name: "Weddings", path: "/weddings" },
@@ -54,6 +56,8 @@ const DEFAULT_SERVICES = [
   { name: "In-Shop Bespoke Displays", path: "/in-shop-displays" },
   { name: "Film, TV & Photoshoot", path: "/film-tv-photoshoot" },
   { name: "Workshops", path: "/workshops" },
+  { name: "Workshops — Pubs & Venues", path: "/workshops/pubs-venues" },
+  { name: "Workshops — Care Homes", path: "/workshops/care-homes" },
 ];
 
 export default function Header() {
