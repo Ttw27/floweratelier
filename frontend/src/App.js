@@ -35,6 +35,8 @@ import AdminPage from "./pages/AdminPage";
 import ThemePreviewPage from "./pages/ThemePreviewPage";
 import HotelsHospitalityPage from "./pages/HotelsHospitalityPage";
 import RestaurantsPage from "./pages/RestaurantsPage";
+import WorkshopsPubsPage from "./pages/WorkshopsPubsPage";
+import WorkshopsCareHomesPage from "./pages/WorkshopsCareHomesPage";
 import PrivacyPage from "./pages/PrivacyPage";
 
 // Layout
@@ -89,6 +91,8 @@ function App() {
                 <Route path="/themes" element={<ThemePreviewPage />} />
                 <Route path="/hotels-hospitality" element={<HotelsHospitalityPage />} />
                 <Route path="/restaurants" element={<RestaurantsPage />} />
+                <Route path="/workshops/pubs-venues" element={<WorkshopsPubsPage />} />
+                <Route path="/workshops/care-homes" element={<WorkshopsCareHomesPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
               </Routes>
             </main>
