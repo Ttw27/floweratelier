@@ -2353,6 +2353,24 @@ async def admin_delete_page_content(slug: str, admin=Depends(require_admin)):
 
 PAGE_CONTENT_SEED = [
     {
+        "slug": "workshops-pubs", "label": "Workshops — Pubs & Venues",
+        "hero_eyebrow": "Pubs & Venues",
+        "hero_title_line1": "A night your", "hero_title_italic": "regulars will talk about.", "hero_title_line2": "",
+        "hero_subheading": "A zero-cost, zero-risk workshop night for pubs, gastropubs, members' clubs and hotels. Your guests pay us, you keep every penny on the bar.",
+        "hero_image": "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=1800",
+        "hero_cta_label": "WhatsApp us a date", "hero_cta_url": "/consultation?service=workshops-pubs",
+        "tiers": [],
+    },
+    {
+        "slug": "workshops-care-homes", "label": "Workshops — Care Homes",
+        "hero_eyebrow": "Care Homes & Hospices",
+        "hero_title_line1": "Flowers bring", "hero_title_italic": "everyone home.", "hero_title_line2": "",
+        "hero_subheading": "Dementia-friendly floristry sessions designed around your residents. We bring everything — flowers, tools and a gentle, experienced florist. No mess, no pressure, just joy.",
+        "hero_image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1800",
+        "hero_cta_label": "Book a trial session", "hero_cta_url": "/consultation?service=workshops-care-homes",
+        "tiers": [],
+    },
+    {
         "slug": "workshops", "label": "Workshops",
         "hero_eyebrow": "Workshops",
         "hero_title_line1": "Learn to", "hero_title_italic": "arrange.", "hero_title_line2": "",
