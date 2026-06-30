@@ -1788,6 +1788,12 @@ class SiteSettings(BaseModel):
     seo_site_name: str = "Flower Atelier"
     # Branding
     favicon_url: str = ""
+    # Homepage hero text
+    homepage_hero_eyebrow: str = ""
+    homepage_hero_title: str = "Flowers,"
+    homepage_hero_italic: str = "artfully"
+    homepage_hero_title2: str = " composed."
+    homepage_hero_subheading: str = "Editorial bouquets hand-tied in our Leicester atelier — delivered across the Midlands, with bespoke services UK-wide."
     # Homepage images
     homepage_hero_image: str = "https://images.pexels.com/photos/33886745/pexels-photo-33886745.png"
     homepage_category1_image: str = "https://images.pexels.com/photos/33886749/pexels-photo-33886749.png"
