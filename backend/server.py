@@ -3242,6 +3242,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def ensure_page_content():
+    """Ensure all page content records exist in the database on startup."""
+    for page in PAGE_CONTENT_SEED:
+        existing = await db.page_content.find_one({"slug": page["slug"]})
+        if not existing:
+            await db.page_content.insert_one({
+                **page,
+                "id": str(__import__("uuid").uuid4()),
+                "active": True,
+                "seeded": True,
+            })
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
