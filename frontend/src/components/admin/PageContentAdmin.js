@@ -147,7 +147,28 @@ export default function PageContentAdmin() {
               <p className="font-body text-xs text-[#7A7A7A] line-clamp-2 min-h-[2.5rem]">{p.hero_subheading}</p>
               <div className="mt-3 flex items-center gap-4">
                 <button
-                  onClick={() => setEditing(JSON.parse(JSON.stringify(p)))}
+                  onClick={() => {
+                    const p2 = JSON.parse(JSON.stringify(p));
+                    p2.extra = p2.extra || {};
+                    // Pre-fill defaults into real state so inputs never lose identity on first keystroke
+                    if (p2.slug === "workshops") {
+                      if (!p2.extra.why_cards) p2.extra.why_cards = [
+                        { title: "Per head, all-in", body: "Guests pay us directly — typically £45 a head. No hire fee for the venue." },
+                        { title: "You keep the bar", body: "Every penny of bar, food and door spend stays with the venue. Avg. +£15–£25 per guest." },
+                        { title: "Midweek footfall", body: "Tues–Thurs is our sweet spot — fills the room when you need it most." },
+                        { title: "Free promotion", body: "We share the night on our socials and tag the venue — 14–20 new tags per workshop." },
+                      ];
+                      if (!p2.extra.venue_list) p2.extra.venue_list = ["Pubs & gastropubs","Members' clubs","Community halls","Hotels","Care homes","Hospices","Retirement villages","PTAs & schools","Hen-do venues","Corporate offices"];
+                    }
+                    if (p2.slug === "restaurants") {
+                      if (!p2.extra.process_steps) p2.extra.process_steps = [
+                        { n: "01", t: "Consultation", b: "We visit your space, understand your aesthetic and design a programme tailored to your interior." },
+                        { n: "02", t: "Ongoing delivery", b: "Your florals arrive before service — fresh, arranged, ready. The same reliable team every visit." },
+                        { n: "03", t: "Seasonal evolution", b: "We evolve the designs quarterly to reflect the season and any menu or interior changes." },
+                      ];
+                    }
+                    setEditing(p2);
+                  }}
                   className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#1A1A1A] underline"
                   data-testid={`page-content-edit-${p.slug}`}
                 >
@@ -308,17 +329,12 @@ export default function PageContentAdmin() {
                   </div>
                   <div>
                     <Label className="text-[#1A1A1A] text-sm">Why cards (4 cards)</Label>
-                    {(editing.extra?.why_cards || [
-                      { title: "Per head, all-in", body: "Guests pay us directly — typically £45 a head. No hire fee for the venue." },
-                      { title: "You keep the bar", body: "Every penny of bar, food and door spend stays with the venue. Avg. +£15–£25 per guest." },
-                      { title: "Midweek footfall", body: "Tues–Thurs is our sweet spot — fills the room when you need it most." },
-                      { title: "Free promotion", body: "We share the night on our socials and tag the venue — 14–20 new tags per workshop." },
-                    ]).map((card, idx) => (
+                    {(editing.extra?.why_cards || []).map((card, idx) => (
                       <div key={idx} className="border border-[#E5E5E5] p-3 mt-2 space-y-2">
                         <div>
                           <Label className="text-[10px] text-[#7A7A7A]">Title</Label>
                           <Input value={card.title} onChange={(e) => {
-                            const cards = [...(editing.extra?.why_cards || [{title:"",body:""},{title:"",body:""},{title:"",body:""},{title:"",body:""}])];
+                            const cards = [...(editing.extra?.why_cards || [])];
                             cards[idx] = { ...cards[idx], title: e.target.value };
                             setEditing({ ...editing, extra: { ...(editing.extra || {}), why_cards: cards } });
                           }} className="light-input rounded-none mt-1" />
@@ -326,7 +342,7 @@ export default function PageContentAdmin() {
                         <div>
                           <Label className="text-[10px] text-[#7A7A7A]">Body</Label>
                           <Textarea rows={2} value={card.body} onChange={(e) => {
-                            const cards = [...(editing.extra?.why_cards || [{title:"",body:""},{title:"",body:""},{title:"",body:""},{title:"",body:""}])];
+                            const cards = [...(editing.extra?.why_cards || [])];
                             cards[idx] = { ...cards[idx], body: e.target.value };
                             setEditing({ ...editing, extra: { ...(editing.extra || {}), why_cards: cards } });
                           }} className="light-input rounded-none mt-1" />
@@ -337,7 +353,7 @@ export default function PageContentAdmin() {
                   <div>
                     <Label className="text-[#1A1A1A] text-sm">Venue list (comma separated)</Label>
                     <Input
-                      value={(editing.extra?.venue_list || ["Pubs & gastropubs","Members' clubs","Community halls","Hotels","Care homes","Hospices","Retirement villages","PTAs & schools","Hen-do venues","Corporate offices"]).join(", ")}
+                      value={(editing.extra?.venue_list || []).join(", ")}
                       onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), venue_list: e.target.value.split(",").map(v => v.trim()).filter(Boolean) } })}
                       placeholder="Pubs & gastropubs, Members' clubs, Care homes..."
                       className="light-input rounded-none mt-1"
@@ -350,6 +366,94 @@ export default function PageContentAdmin() {
                   <div>
                     <Label className="text-[#1A1A1A] text-sm">Final CTA heading</Label>
                     <Input value={editing.extra?.cta_heading || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_heading: e.target.value } })} placeholder="Tell us your date..." className="light-input rounded-none mt-1" />
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {/* BESPOKE — Workshops Pubs: stats, benefits, venue-fit list */}
+            {editing.slug === "workshops-pubs" && (
+              <fieldset className="border border-[#E5E5E5] p-5 mb-6">
+                <legend className="accent-label px-2">Page content</legend>
+                <div className="space-y-4 mt-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 1 value</Label>
+                      <Input value={editing.extra?.stat1_value || "£0"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat1_value: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 1 label</Label>
+                      <Input value={editing.extra?.stat1_label || "Cost to your venue — zero hire fee, ever"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat1_label: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 2 value</Label>
+                      <Input value={editing.extra?.stat2_value || "£45"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat2_value: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 2 label</Label>
+                      <Input value={editing.extra?.stat2_label || "Per head, paid directly to us by guests"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat2_label: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 3 value</Label>
+                      <Input value={editing.extra?.stat3_value || "+£20"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat3_value: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 3 label</Label>
+                      <Input value={editing.extra?.stat3_label || "Average extra bar spend per guest"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat3_label: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 4 value</Label>
+                      <Input value={editing.extra?.stat4_value || "~20"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat4_value: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                    <div>
+                      <Label className="text-[#1A1A1A] text-sm">Stat 4 label</Label>
+                      <Input value={editing.extra?.stat4_label || "Social tags per night — free promotion"} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), stat4_label: e.target.value } })} className="light-input rounded-none mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">What we bring (comma separated)</Label>
+                    <Textarea rows={3} value={(editing.extra?.included_list || ["Seasonal flowers & foliage for every guest","All tools — snips, wire, tape, twine","Dust sheets & table covers","Senior florist to lead the session","Step-by-step tuition for all abilities","Social media content shot on the night","Promotion to our mailing list & socials","Handling of all bookings & payments"]).join(", ")} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), included_list: e.target.value.split(",").map(v => v.trim()).filter(Boolean) } })} className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Best for (comma separated)</Label>
+                    <Textarea rows={2} value={(editing.extra?.best_for_list || ["Pubs & gastropubs","Members' clubs","Hotels & boutique stays","Community halls","Hen-do venues","Wedding venues (off-peak nights)","Corporate entertainment spaces"]).join(", ")} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), best_for_list: e.target.value.split(",").map(v => v.trim()).filter(Boolean) } })} className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Final CTA eyebrow</Label>
+                    <Input value={editing.extra?.cta_eyebrow || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_eyebrow: e.target.value } })} placeholder="Ready to book a night?" className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Final CTA heading</Label>
+                    <Input value={editing.extra?.cta_heading || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_heading: e.target.value } })} placeholder="Tell us your date..." className="light-input rounded-none mt-1" />
+                  </div>
+                </div>
+              </fieldset>
+            )}
+
+            {/* BESPOKE — Workshops Care Homes: benefits, included list, who-we-work-with */}
+            {editing.slug === "workshops-care-homes" && (
+              <fieldset className="border border-[#E5E5E5] p-5 mb-6">
+                <legend className="accent-label px-2">Page content</legend>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">What we provide (comma separated)</Label>
+                    <Textarea rows={3} value={(editing.extra?.included_list || ["Fresh seasonal flowers for every resident","All tools — snips, wire, oasis — pre-cut for safety","Protective table coverings & dust sheets","Experienced, DBS-checked florist","Adapted techniques for limited mobility","Each resident takes their arrangement home","Photo documentation for care plans & families","Flexible session length — typically 60–90 mins"]).join(", ")} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), included_list: e.target.value.split(",").map(v => v.trim()).filter(Boolean) } })} className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">We work with (comma separated)</Label>
+                    <Textarea rows={2} value={(editing.extra?.work_with_list || ["Residential care homes","Dementia & memory care units","Hospices","Retirement villages","Sheltered housing communities","Day centres","NHS rehabilitation wards"]).join(", ")} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), work_with_list: e.target.value.split(",").map(v => v.trim()).filter(Boolean) } })} className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Pricing note</Label>
+                    <Textarea rows={2} value={editing.extra?.pricing_note || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), pricing_note: e.target.value } })} placeholder="Sessions are priced per resident with a minimum group size. We offer a free trial session for new care home partners..." className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Final CTA eyebrow</Label>
+                    <Input value={editing.extra?.cta_eyebrow || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_eyebrow: e.target.value } })} placeholder="Begin with a free trial" className="light-input rounded-none mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-[#1A1A1A] text-sm">Final CTA heading</Label>
+                    <Input value={editing.extra?.cta_heading || ""} onChange={(e) => setEditing({ ...editing, extra: { ...(editing.extra || {}), cta_heading: e.target.value } })} placeholder="Let's arrange a trial session..." className="light-input rounded-none mt-1" />
                   </div>
                 </div>
               </fieldset>
@@ -370,17 +474,13 @@ export default function PageContentAdmin() {
                   </div>
                   <div>
                     <Label className="text-[#1A1A1A] text-sm">Steps</Label>
-                    {(editing.extra?.process_steps || [
-                      { n: "01", t: "Consultation", b: "We visit your space..." },
-                      { n: "02", t: "Ongoing delivery", b: "Your florals arrive..." },
-                      { n: "03", t: "Seasonal evolution", b: "We evolve the designs..." },
-                    ]).map((step, idx) => (
+                    {(editing.extra?.process_steps || []).map((step, idx) => (
                       <div key={idx} className="border border-[#E5E5E5] p-3 mt-2 space-y-2">
                         <div className="grid grid-cols-3 gap-2">
                           <div>
                             <Label className="text-[10px] text-[#7A7A7A]">Number</Label>
                             <Input value={step.n} onChange={(e) => {
-                              const steps = [...(editing.extra?.process_steps || [{ n: "01", t: "", b: "" }, { n: "02", t: "", b: "" }, { n: "03", t: "", b: "" }])];
+                              const steps = [...(editing.extra?.process_steps || [])];
                               steps[idx] = { ...steps[idx], n: e.target.value };
                               setEditing({ ...editing, extra: { ...(editing.extra || {}), process_steps: steps } });
                             }} className="light-input rounded-none mt-1" />
@@ -388,7 +488,7 @@ export default function PageContentAdmin() {
                           <div className="col-span-2">
                             <Label className="text-[10px] text-[#7A7A7A]">Title</Label>
                             <Input value={step.t} onChange={(e) => {
-                              const steps = [...(editing.extra?.process_steps || [{ n: "01", t: "", b: "" }, { n: "02", t: "", b: "" }, { n: "03", t: "", b: "" }])];
+                              const steps = [...(editing.extra?.process_steps || [])];
                               steps[idx] = { ...steps[idx], t: e.target.value };
                               setEditing({ ...editing, extra: { ...(editing.extra || {}), process_steps: steps } });
                             }} className="light-input rounded-none mt-1" />
@@ -397,7 +497,7 @@ export default function PageContentAdmin() {
                         <div>
                           <Label className="text-[10px] text-[#7A7A7A]">Description</Label>
                           <Textarea value={step.b} rows={2} onChange={(e) => {
-                            const steps = [...(editing.extra?.process_steps || [{ n: "01", t: "", b: "" }, { n: "02", t: "", b: "" }, { n: "03", t: "", b: "" }])];
+                            const steps = [...(editing.extra?.process_steps || [])];
                             steps[idx] = { ...steps[idx], b: e.target.value };
                             setEditing({ ...editing, extra: { ...(editing.extra || {}), process_steps: steps } });
                           }} className="light-input rounded-none mt-1" />
