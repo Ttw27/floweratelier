@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2 } from "lucide-react";
+import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2, Home, MessageSquare, Layers, Box, LayoutTemplate, Sparkles, Image, FileText, Search, Settings2, Calendar } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import SEOAdmin from "../components/admin/SEOAdmin";
 import CardsAdmin from "../components/admin/CardsAdmin";
@@ -23,6 +23,20 @@ import PageContentAdmin from "../components/admin/PageContentAdmin";
 import HomepageAdmin from "../components/admin/HomepageAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+function sidebarTrigger(value, Icon, label, testId) {
+  return (
+    <TabsTrigger
+      key={value}
+      value={value}
+      data-testid={testId}
+      className="w-full justify-start gap-2.5 text-left font-body text-[13px] tracking-wide rounded-none border-l-2 border-transparent px-3 py-2.5 text-[#5A5A5A] hover:text-[#1A1A1A] hover:bg-[#F2EFEB] data-[state=active]:border-[#1A1A1A] data-[state=active]:text-[#1A1A1A] data-[state=active]:bg-[#F2EFEB] data-[state=active]:shadow-none transition-colors"
+    >
+      <Icon size={15} strokeWidth={1.4} className="shrink-0" />
+      {label}
+    </TabsTrigger>
+  );
+}
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -165,52 +179,89 @@ export default function AdminPage() {
   if (!user || !user.is_admin) return null;
 
   return (
-    <div className="min-h-screen pt-28 py-12" data-testid="admin-page">
-      <div className="px-6 md:px-12 max-w-[1400px] mx-auto">
-        <p className="accent-label mb-4"><span className="thin-rule" />Administration</p>
-        <h1 className="font-heading text-5xl md:text-6xl font-light text-[#1A1A1A] mb-12 tracking-tight" data-testid="admin-title">Dashboard</h1>
-
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#E5E5E5] border border-[#E5E5E5] mb-12">
-            <div className="bg-white p-6" data-testid="stat-orders">
-              <Package className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
-              <p className="accent-label mb-2">Orders</p>
-              <p className="font-heading text-3xl font-light text-[#1A1A1A]">{stats.total_orders}</p>
-            </div>
-            <div className="bg-white p-6" data-testid="stat-products">
-              <ShoppingBag className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
-              <p className="accent-label mb-2">Products</p>
-              <p className="font-heading text-3xl font-light text-[#1A1A1A]">{stats.total_products}</p>
-            </div>
-            <div className="bg-white p-6" data-testid="stat-users">
-              <Users className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
-              <p className="accent-label mb-2">Clients</p>
-              <p className="font-heading text-3xl font-light text-[#1A1A1A]">{stats.total_users}</p>
-            </div>
-            <div className="bg-white p-6" data-testid="stat-revenue">
-              <DollarSign className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
-              <p className="accent-label mb-2">Revenue</p>
-              <p className="font-heading text-3xl font-light text-[#1A1A1A]">£{stats.total_revenue.toFixed(0)}</p>
-            </div>
+    <div className="min-h-screen pt-24 pb-12 bg-[#FAFAF7]" data-testid="admin-page">
+      <Tabs defaultValue="orders" className="flex items-start gap-8 px-4 md:px-8 max-w-[1500px] mx-auto">
+        {/* ===== Sidebar navigation ===== */}
+        <TabsList
+          className="hidden md:flex flex-col w-56 shrink-0 bg-transparent rounded-none p-0 h-auto items-stretch gap-0.5 sticky top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto"
+          data-testid="admin-sidebar"
+        >
+          <div className="px-3 pb-5 mb-2 border-b border-[#E5E5E5]">
+            <p className="accent-label mb-2"><span className="thin-rule" />Administration</p>
+            <h1 className="font-heading text-2xl font-light text-[#1A1A1A] tracking-tight" data-testid="admin-title">Dashboard</h1>
           </div>
-        )}
 
-        <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList className="bg-transparent border-b border-[#E5E5E5] rounded-none p-0 h-auto w-full justify-start gap-y-1 flex flex-wrap">
-            <TabsTrigger value="homepage" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5">Homepage</TabsTrigger>
-            <TabsTrigger value="orders" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-orders-tab">Orders</TabsTrigger>
-            <TabsTrigger value="inquiries" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-inquiries-tab">Inquiries</TabsTrigger>
-            <TabsTrigger value="products" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-products-tab">Products</TabsTrigger>
-            <TabsTrigger value="cards" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-cards-tab">Cards</TabsTrigger>
-            <TabsTrigger value="boxes" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-boxes-tab">Boxes</TabsTrigger>
-            <TabsTrigger value="templates" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-templates-tab">Templates</TabsTrigger>
-            <TabsTrigger value="addons" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-addons-tab">Add-ons</TabsTrigger>
-            <TabsTrigger value="workshops" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-workshops-tab">Workshops</TabsTrigger>
-            <TabsTrigger value="portfolio" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-portfolio-tab">Portfolio</TabsTrigger>
-            <TabsTrigger value="pages" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-pages-tab">Service Pages</TabsTrigger>
-            <TabsTrigger value="seo" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-seo-tab">SEO</TabsTrigger>
-            <TabsTrigger value="settings" className="font-body text-xs uppercase tracking-[0.22em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-5" data-testid="admin-settings-tab">Settings</TabsTrigger>
-          </TabsList>
+          {sidebarTrigger("homepage", Home, "Homepage")}
+
+          <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Sales</p>
+          {sidebarTrigger("orders", Package, "Orders", "admin-orders-tab")}
+          {sidebarTrigger("inquiries", MessageSquare, "Inquiries", "admin-inquiries-tab")}
+
+          <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Catalog</p>
+          {sidebarTrigger("products", ShoppingBag, "Products", "admin-products-tab")}
+          {sidebarTrigger("cards", Layers, "Cards", "admin-cards-tab")}
+          {sidebarTrigger("boxes", Box, "Boxes", "admin-boxes-tab")}
+          {sidebarTrigger("templates", LayoutTemplate, "Templates", "admin-templates-tab")}
+          {sidebarTrigger("addons", Sparkles, "Add-ons", "admin-addons-tab")}
+          {sidebarTrigger("workshops", Calendar, "Workshops", "admin-workshops-tab")}
+
+          <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Content</p>
+          {sidebarTrigger("portfolio", Image, "Portfolio", "admin-portfolio-tab")}
+          {sidebarTrigger("pages", FileText, "Service Pages", "admin-pages-tab")}
+          {sidebarTrigger("seo", Search, "SEO", "admin-seo-tab")}
+
+          <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Store</p>
+          {sidebarTrigger("settings", Settings2, "Settings", "admin-settings-tab")}
+        </TabsList>
+
+        {/* ===== Mobile tab bar (horizontal, scrollable) ===== */}
+        <TabsList className="flex md:hidden overflow-x-auto bg-transparent border-b border-[#E5E5E5] rounded-none p-0 h-auto w-full justify-start gap-1 whitespace-nowrap">
+          <TabsTrigger value="homepage" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Homepage</TabsTrigger>
+          <TabsTrigger value="orders" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Orders</TabsTrigger>
+          <TabsTrigger value="inquiries" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Inquiries</TabsTrigger>
+          <TabsTrigger value="products" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Products</TabsTrigger>
+          <TabsTrigger value="cards" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Cards</TabsTrigger>
+          <TabsTrigger value="boxes" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Boxes</TabsTrigger>
+          <TabsTrigger value="templates" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Templates</TabsTrigger>
+          <TabsTrigger value="addons" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Add-ons</TabsTrigger>
+          <TabsTrigger value="workshops" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Workshops</TabsTrigger>
+          <TabsTrigger value="portfolio" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Portfolio</TabsTrigger>
+          <TabsTrigger value="pages" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Service Pages</TabsTrigger>
+          <TabsTrigger value="seo" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">SEO</TabsTrigger>
+          <TabsTrigger value="settings" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Settings</TabsTrigger>
+        </TabsList>
+
+        {/* ===== Main content ===== */}
+        <div className="flex-1 min-w-0">
+          <div className="md:hidden mb-6">
+            <p className="accent-label mb-2"><span className="thin-rule" />Administration</p>
+            <h1 className="font-heading text-3xl font-light text-[#1A1A1A] tracking-tight" data-testid="admin-title-mobile">Dashboard</h1>
+          </div>
+
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[#E5E5E5] border border-[#E5E5E5] mb-8">
+              <div className="bg-white p-6" data-testid="stat-orders">
+                <Package className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
+                <p className="accent-label mb-2">Orders</p>
+                <p className="font-heading text-3xl font-light text-[#1A1A1A]">{stats.total_orders}</p>
+              </div>
+              <div className="bg-white p-6" data-testid="stat-products">
+                <ShoppingBag className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
+                <p className="accent-label mb-2">Products</p>
+                <p className="font-heading text-3xl font-light text-[#1A1A1A]">{stats.total_products}</p>
+              </div>
+              <div className="bg-white p-6" data-testid="stat-users">
+                <Users className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
+                <p className="accent-label mb-2">Clients</p>
+                <p className="font-heading text-3xl font-light text-[#1A1A1A]">{stats.total_users}</p>
+              </div>
+              <div className="bg-white p-6" data-testid="stat-revenue">
+                <DollarSign className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
+                <p className="accent-label mb-2">Revenue</p>
+                <p className="font-heading text-3xl font-light text-[#1A1A1A]">£{stats.total_revenue.toFixed(0)}</p>
+              </div>
+            </div>
+          )}
 
           <TabsContent value="homepage">
             <HomepageAdmin settings={settings} onSaved={refreshSettings} />
@@ -877,8 +928,8 @@ export default function AdminPage() {
               )}
             </div>
           </TabsContent>
-        </Tabs>
-      </div>
+        </div>
+      </Tabs>
     </div>
   );
 }
