@@ -6,6 +6,8 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import asyncio
+import json
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
@@ -772,36 +774,69 @@ async def cancel_subscription(sub_id: str, user = Depends(require_user)):
 
 # ==================== PAYMENT ENDPOINTS ====================
 
+async def _stripe_create_checkout_session(amount: float, currency: str, success_url: str, cancel_url: str, metadata: dict, description: str = "Flower Atelier"):
+    """Create a real Stripe Checkout Session (runs the sync Stripe SDK call in a thread)."""
+    api_key = os.environ.get('STRIPE_API_KEY')
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured on this server")
+    stripe_lib.api_key = api_key
+
+    def _create():
+        return stripe_lib.checkout.Session.create(
+            mode="payment",
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": currency,
+                    "product_data": {"name": description[:250]},
+                    "unit_amount": int(round(amount * 100)),
+                },
+                "quantity": 1,
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata=metadata,
+        )
+    return await asyncio.to_thread(_create)
+
+
+async def _stripe_get_checkout_session(session_id: str):
+    """Retrieve a Stripe Checkout Session by id."""
+    api_key = os.environ.get('STRIPE_API_KEY')
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured on this server")
+    stripe_lib.api_key = api_key
+
+    def _retrieve():
+        return stripe_lib.checkout.Session.retrieve(session_id)
+    return await asyncio.to_thread(_retrieve)
+
+
 @api_router.post("/checkout/session")
 async def create_checkout_session(request: Request, checkout_data: CheckoutRequest):
     order = await db.orders.find_one({"id": checkout_data.order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
-    api_key = os.environ.get('STRIPE_API_KEY')
-    webhook_url = f"{checkout_data.origin_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
-    
+
     success_url = f"{checkout_data.origin_url}/order-success?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{checkout_data.origin_url}/checkout"
-    
-    checkout_request = CheckoutSessionRequest(
+
+    session = await _stripe_create_checkout_session(
         amount=float(order["total"]),
         currency="gbp",
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={
             "order_id": checkout_data.order_id,
-            "user_id": order.get("user_id", "guest")
-        }
+            "user_id": order.get("user_id", "guest"),
+        },
+        description=f"Flower Atelier order {checkout_data.order_id[:8]}",
     )
-    
-    session = await stripe_checkout.create_checkout_session(checkout_request)
-    
+
     # Create payment transaction record
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
-        "session_id": session.session_id,
+        "session_id": session.id,
         "order_id": checkout_data.order_id,
         "user_id": order.get("user_id"),
         "amount": order["total"],
@@ -809,20 +844,17 @@ async def create_checkout_session(request: Request, checkout_data: CheckoutReque
         "payment_status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat()
     })
-    
-    return {"url": session.url, "session_id": session.session_id}
+
+    return {"url": session.url, "session_id": session.id}
 
 @api_router.get("/checkout/status/{session_id}")
 async def get_checkout_status(session_id: str):
-    api_key = os.environ.get('STRIPE_API_KEY')
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
-    
-    status = await stripe_checkout.get_checkout_status(session_id)
-    
+    session = await _stripe_get_checkout_session(session_id)
+
     # Update payment transaction
     transaction = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if transaction:
-        if status.payment_status == "paid" and transaction["payment_status"] != "paid":
+        if session.payment_status == "paid" and transaction["payment_status"] != "paid":
             await db.payment_transactions.update_one(
                 {"session_id": session_id},
                 {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}}
@@ -835,60 +867,73 @@ async def get_checkout_status(session_id: str):
             # Clear cart
             if transaction.get("user_id"):
                 await db.carts.delete_one({"user_id": transaction["user_id"]})
-    
+
     return {
-        "status": status.status,
-        "payment_status": status.payment_status,
-        "amount_total": status.amount_total,
-        "currency": status.currency
+        "status": session.status,
+        "payment_status": session.payment_status,
+        "amount_total": (session.amount_total or 0) / 100,
+        "currency": session.currency,
     }
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
     body = await request.body()
     signature = request.headers.get("Stripe-Signature")
-    
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
     api_key = os.environ.get('STRIPE_API_KEY')
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
-    
+    stripe_lib.api_key = api_key
+
     try:
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        
-        if webhook_response.payment_status == "paid":
-            order_id = webhook_response.metadata.get("order_id")
-            kind = webhook_response.metadata.get("kind")
-            if kind == "workshop_booking":
-                booking_id = webhook_response.metadata.get("booking_id")
-                if booking_id:
-                    booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
-                    if booking and booking.get("payment_status") != "paid":
-                        await db.workshop_bookings.update_one(
-                            {"id": booking_id},
-                            {"$set": {
-                                "payment_status": "paid",
-                                "status": "confirmed",
-                                "amount_paid": booking.get("amount_due_now", 0),
-                                "paid_at": datetime.now(timezone.utc).isoformat(),
-                            }},
-                        )
-                        await db.workshop_sessions.update_one(
-                            {"id": booking["session_id"]},
-                            {"$inc": {"spots_booked": booking.get("guests", 1)}},
-                        )
-                        await db.payment_transactions.update_one(
-                            {"booking_id": booking_id},
-                            {"$set": {"payment_status": "paid"}}
-                        )
-            elif order_id:
-                await db.orders.update_one(
-                    {"id": order_id},
-                    {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                )
-                await db.payment_transactions.update_one(
-                    {"order_id": order_id},
-                    {"$set": {"payment_status": "paid"}}
-                )
-        
+        if webhook_secret:
+            event = stripe_lib.Webhook.construct_event(body, signature, webhook_secret)
+        else:
+            # No webhook secret configured yet — fall back to unverified parsing.
+            # Payment confirmation still works via the /checkout/status polling on the success page,
+            # so this only affects the belt-and-braces webhook path.
+            event = json.loads(body)
+
+        event_type = event["type"] if isinstance(event, dict) else event.type
+        obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
+
+        if event_type == "checkout.session.completed":
+            metadata = dict(obj.get("metadata") or {})
+            payment_status = obj.get("payment_status")
+            order_id = metadata.get("order_id")
+            kind = metadata.get("kind")
+
+            if payment_status == "paid":
+                if kind == "workshop_booking":
+                    booking_id = metadata.get("booking_id")
+                    if booking_id:
+                        booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+                        if booking and booking.get("payment_status") != "paid":
+                            await db.workshop_bookings.update_one(
+                                {"id": booking_id},
+                                {"$set": {
+                                    "payment_status": "paid",
+                                    "status": "confirmed",
+                                    "amount_paid": booking.get("amount_due_now", 0),
+                                    "paid_at": datetime.now(timezone.utc).isoformat(),
+                                }},
+                            )
+                            await db.workshop_sessions.update_one(
+                                {"id": booking["session_id"]},
+                                {"$inc": {"spots_booked": booking.get("guests", 1)}},
+                            )
+                            await db.payment_transactions.update_one(
+                                {"booking_id": booking_id},
+                                {"$set": {"payment_status": "paid"}}
+                            )
+                elif order_id:
+                    await db.orders.update_one(
+                        {"id": order_id},
+                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
+                    )
+                    await db.payment_transactions.update_one(
+                        {"order_id": order_id},
+                        {"$set": {"payment_status": "paid"}}
+                    )
+
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Webhook error: {e}")
@@ -1788,6 +1833,11 @@ class SiteSettings(BaseModel):
     seo_site_name: str = "Flower Atelier"
     # Branding
     favicon_url: str = ""
+    # Bank transfer details (shown to customers who choose BACS/bank transfer payment)
+    bank_account_name: str = ""
+    bank_sort_code: str = ""
+    bank_account_number: str = ""
+    bank_name: str = ""
     # Homepage hero text
     homepage_hero_eyebrow: str = ""
     homepage_hero_title: str = "Flowers,"
@@ -2686,6 +2736,7 @@ class WorkshopSessionCreate(BaseModel):
     price_per_guest: Optional[float] = None    # override
     deposit_amount: Optional[float] = None     # override
     notes: str = ""
+    private: bool = False            # True = hidden from public /workshops/{slug}/sessions, bookable only via direct link
     active: bool = True
 
 class WorkshopSessionResponse(WorkshopSessionCreate):
@@ -2700,6 +2751,7 @@ class WorkshopBookingCreate(BaseModel):
     dietary_requirements: str = ""
     notes: str = ""
     payment_choice: str = "deposit"   # "deposit" | "full"
+    payment_method: str = "stripe"    # "stripe" | "bank_transfer"
 
 class WorkshopBookingResponse(BaseModel):
     id: str
@@ -2713,6 +2765,8 @@ class WorkshopBookingResponse(BaseModel):
     dietary_requirements: str
     notes: str
     payment_choice: str
+    payment_method: str = "stripe"
+    bank_reference: Optional[str] = None
     price_per_guest: float
     deposit_per_guest: float
     full_payment_discount_pct: float
@@ -2757,6 +2811,8 @@ def _ws_serialise_booking(b: dict, workshop_name: str = "") -> WorkshopBookingRe
         dietary_requirements=b.get("dietary_requirements", ""),
         notes=b.get("notes", ""),
         payment_choice=b.get("payment_choice", "deposit"),
+        payment_method=b.get("payment_method", "stripe"),
+        bank_reference=b.get("bank_reference"),
         price_per_guest=b.get("price_per_guest", 0.0),
         deposit_per_guest=b.get("deposit_per_guest", 0.0),
         full_payment_discount_pct=b.get("full_payment_discount_pct", 0.0),
@@ -2788,7 +2844,7 @@ async def get_workshop_by_slug(slug: str):
 
 @api_router.get("/workshops/{slug}/sessions", response_model=List[WorkshopSessionResponse])
 async def list_workshop_sessions_by_slug(slug: str):
-    """Public — upcoming, active, not sold out sessions for a workshop."""
+    """Public — upcoming, active, not sold out, non-private sessions for a workshop."""
     w = await db.workshops.find_one({"slug": slug, "active": True}, {"_id": 0})
     if not w:
         raise HTTPException(404, "Workshop not found")
@@ -2797,8 +2853,24 @@ async def list_workshop_sessions_by_slug(slug: str):
         "workshop_id": w["id"],
         "active": True,
         "date": {"$gte": today},
+        "private": {"$ne": True},
     }).sort("date", 1).to_list(length=200)
     return [WorkshopSessionResponse(**{**d, "id": d["id"]}) for d in docs]
+
+
+@api_router.get("/workshop-sessions/{session_id}")
+async def get_public_workshop_session(session_id: str):
+    """Public — fetch a single session (private or not) by id, for direct booking links sent to a specific customer."""
+    session = await db.workshop_sessions.find_one({"id": session_id, "active": True}, {"_id": 0})
+    if not session:
+        raise HTTPException(404, "Session not found")
+    workshop = await db.workshops.find_one({"id": session["workshop_id"], "active": True}, {"_id": 0})
+    if not workshop:
+        raise HTTPException(404, "Workshop not found")
+    return {
+        "session": WorkshopSessionResponse(**{**session, "id": session["id"]}).model_dump(),
+        "workshop": WorkshopResponse(**workshop).model_dump(),
+    }
 
 
 # ---- Admin: workshop CRUD ----
@@ -2882,6 +2954,8 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         raise HTTPException(404, "Workshop not found")
     if data.payment_choice not in ("deposit", "full"):
         raise HTTPException(400, "payment_choice must be 'deposit' or 'full'")
+    if data.payment_method not in ("stripe", "bank_transfer"):
+        raise HTTPException(400, "payment_method must be 'stripe' or 'bank_transfer'")
     if data.guests < 1:
         raise HTTPException(400, "At least 1 guest required")
     spots_remaining = max(0, session.get("capacity", 0) - session.get("spots_booked", 0))
@@ -2894,6 +2968,8 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
 
     booking_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    is_bank_transfer = data.payment_method == "bank_transfer"
+    bank_reference = f"FA-{booking_id[:8].upper()}" if is_bank_transfer else None
     doc = {
         "id": booking_id,
         "session_id": data.session_id,
@@ -2910,6 +2986,8 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         "dietary_requirements": data.dietary_requirements,
         "notes": data.notes,
         "payment_choice": data.payment_choice,
+        "payment_method": data.payment_method,
+        "bank_reference": bank_reference,
         "price_per_guest": price,
         "deposit_per_guest": deposit,
         "full_payment_discount_pct": discount_pct,
@@ -2918,8 +2996,8 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         "balance_due_on_day": balance_due,
         "amount_due_now": amount_due_now,
         "amount_paid": 0.0,
-        "status": "pending",
-        "payment_status": "pending",
+        "status": "awaiting_bank_transfer" if is_bank_transfer else "pending",
+        "payment_status": "awaiting_bank_transfer" if is_bank_transfer else "pending",
         "stripe_session_id": None,
         "created_at": now,
     }
@@ -2937,14 +3015,10 @@ async def create_workshop_checkout_session(request: Request, data: WorkshopCheck
     if booking.get("amount_due_now", 0) <= 0:
         raise HTTPException(400, "No amount due for this booking")
 
-    api_key = os.environ.get('STRIPE_API_KEY')
-    webhook_url = f"{data.origin_url}/api/webhook/stripe"
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
-
     success_url = f"{data.origin_url}/workshops/booking-success?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{data.origin_url}/workshops"
 
-    checkout_request = CheckoutSessionRequest(
+    session = await _stripe_create_checkout_session(
         amount=float(booking["amount_due_now"]),
         currency="gbp",
         success_url=success_url,
@@ -2956,16 +3030,16 @@ async def create_workshop_checkout_session(request: Request, data: WorkshopCheck
             "workshop_id": booking["workshop_id"],
             "guests": str(booking.get("guests", 1)),
         },
+        description=f"{booking.get('workshop_name', 'Workshop')} — {booking.get('guests', 1)} guest(s)",
     )
-    session = await stripe_checkout.create_checkout_session(checkout_request)
 
     await db.workshop_bookings.update_one(
         {"id": booking["id"]},
-        {"$set": {"stripe_session_id": session.session_id}}
+        {"$set": {"stripe_session_id": session.id}}
     )
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
-        "session_id": session.session_id,
+        "session_id": session.id,
         "kind": "workshop_booking",
         "booking_id": booking["id"],
         "amount": booking["amount_due_now"],
@@ -2973,7 +3047,7 @@ async def create_workshop_checkout_session(request: Request, data: WorkshopCheck
         "payment_status": "pending",
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    return {"url": session.url, "session_id": session.session_id, "amount": booking["amount_due_now"]}
+    return {"url": session.url, "session_id": session.id, "amount": booking["amount_due_now"]}
 
 
 @api_router.get("/workshop-checkout/status/{session_id}")
@@ -2982,11 +3056,9 @@ async def get_workshop_checkout_status(session_id: str):
     if not booking:
         raise HTTPException(404, "Booking not found for session")
 
-    api_key = os.environ.get('STRIPE_API_KEY')
-    stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
-    status = await stripe_checkout.get_checkout_status(session_id)
+    session = await _stripe_get_checkout_session(session_id)
 
-    if status.payment_status == "paid" and booking.get("payment_status") != "paid":
+    if session.payment_status == "paid" and booking.get("payment_status") != "paid":
         await db.workshop_bookings.update_one(
             {"id": booking["id"]},
             {"$set": {
@@ -3008,10 +3080,10 @@ async def get_workshop_checkout_status(session_id: str):
         booking = await db.workshop_bookings.find_one({"id": booking["id"]}, {"_id": 0})
 
     return {
-        "status": status.status,
-        "payment_status": status.payment_status,
-        "amount_total": status.amount_total,
-        "currency": status.currency,
+        "status": session.status,
+        "payment_status": session.payment_status,
+        "amount_total": (session.amount_total or 0) / 100,
+        "currency": session.currency,
         "booking": _ws_serialise_booking(booking, booking.get("workshop_name", "")).model_dump(),
     }
 
@@ -3020,6 +3092,31 @@ async def get_workshop_checkout_status(session_id: str):
 async def admin_list_bookings(admin=Depends(require_admin)):
     docs = await db.workshop_bookings.find({}).sort("created_at", -1).to_list(length=2000)
     return [_ws_serialise_booking(d, d.get("workshop_name", "")) for d in docs]
+
+
+@api_router.put("/admin/workshop-bookings/{booking_id}/mark-paid", response_model=WorkshopBookingResponse)
+async def admin_mark_booking_paid(booking_id: str, admin=Depends(require_admin)):
+    """Manually confirm a bank-transfer (BACS) booking once the payment has landed in the account."""
+    booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Booking not found")
+    if booking.get("payment_status") == "paid":
+        return _ws_serialise_booking(booking, booking.get("workshop_name", ""))
+    await db.workshop_bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "payment_status": "paid",
+            "status": "confirmed",
+            "amount_paid": booking.get("amount_due_now", 0),
+            "paid_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    await db.workshop_sessions.update_one(
+        {"id": booking["session_id"]},
+        {"$inc": {"spots_booked": booking.get("guests", 1)}},
+    )
+    updated = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+    return _ws_serialise_booking(updated, updated.get("workshop_name", ""))
 
 
 # ---- Seed initial workshops ----
