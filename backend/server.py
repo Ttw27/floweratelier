@@ -774,6 +774,12 @@ async def cancel_subscription(sub_id: str, user = Depends(require_user)):
 
 # ==================== PAYMENT ENDPOINTS ====================
 
+@api_router.get("/payment-methods")
+async def get_payment_methods():
+    """Public — tells the frontend whether card payments are currently usable (Stripe key configured)."""
+    return {"card_enabled": bool(os.environ.get("STRIPE_API_KEY"))}
+
+
 async def _stripe_create_checkout_session(amount: float, currency: str, success_url: str, cancel_url: str, metadata: dict, description: str = "Flower Atelier"):
     """Create a real Stripe Checkout Session (runs the sync Stripe SDK call in a thread)."""
     api_key = os.environ.get('STRIPE_API_KEY')
