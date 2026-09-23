@@ -26,7 +26,7 @@ const emptySession = (workshop_id) => ({
   workshop_id, date: "", start_time: "", end_time: "", location: "",
   capacity: 14, spots_booked: 0,
   price_per_guest: "", deposit_amount: "",
-  notes: "", active: true,
+  notes: "", private: false, active: true,
 });
 
 const fmtDate = (iso) => {
@@ -127,7 +127,7 @@ export default function WorkshopsAdmin() {
         spots_booked: parseInt(s.spots_booked) || 0,
         price_per_guest: s.price_per_guest === "" || s.price_per_guest === null ? null : parseFloat(s.price_per_guest),
         deposit_amount: s.deposit_amount === "" || s.deposit_amount === null ? null : parseFloat(s.deposit_amount),
-        notes: s.notes || "", active: !!s.active,
+        notes: s.notes || "", private: !!s.private, active: !!s.active,
       };
       if (s.id) await axios.put(`${API_URL}/api/admin/workshop-sessions/${s.id}`, payload);
       else await axios.post(`${API_URL}/api/admin/workshop-sessions`, payload);
@@ -142,6 +142,22 @@ export default function WorkshopsAdmin() {
     if (!window.confirm("Delete this session?")) return;
     try { await axios.delete(`${API_URL}/api/admin/workshop-sessions/${id}`); toast.success("Deleted"); await loadSessions(); }
     catch (err) { toast.error(err.response?.data?.detail || "Delete failed"); }
+  };
+
+  const copyLink = (sessionId) => {
+    const link = `${window.location.origin}/workshops/book/${sessionId}`;
+    navigator.clipboard.writeText(link)
+      .then(() => toast.success("Booking link copied"))
+      .catch(() => toast.error("Could not copy — select and copy manually"));
+  };
+
+  const markBookingPaid = async (bookingId) => {
+    if (!window.confirm("Mark this booking as paid? Only do this once you've confirmed the bank transfer has landed.")) return;
+    try {
+      await axios.put(`${API_URL}/api/admin/workshop-bookings/${bookingId}/mark-paid`);
+      toast.success("Booking marked as paid");
+      await loadBookings();
+    } catch (err) { toast.error(err.response?.data?.detail || "Failed to update"); }
   };
 
   const wMap = Object.fromEntries(workshops.map((w) => [w.id, w]));
@@ -226,13 +242,13 @@ export default function WorkshopsAdmin() {
             <table className="w-full">
               <thead className="bg-[#F2EFEB]">
                 <tr>
-                  {["Workshop", "Date", "Time", "Location", "Capacity", "Booked", "Price", "Active", ""].map((h) => (
+                  {["Workshop", "Date", "Time", "Location", "Capacity", "Booked", "Price", "Private", "Active", ""].map((h) => (
                     <th key={h} className="px-3 py-2 text-left accent-label">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filteredSessions.length === 0 && (<tr><td colSpan={9} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No sessions.</td></tr>)}
+                {filteredSessions.length === 0 && (<tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No sessions.</td></tr>)}
                 {filteredSessions.map((s) => {
                   const w = wMap[s.workshop_id];
                   return (
@@ -244,8 +260,10 @@ export default function WorkshopsAdmin() {
                       <td className="px-3 py-2 text-sm">{s.capacity}</td>
                       <td className="px-3 py-2 text-sm">{s.spots_booked}</td>
                       <td className="px-3 py-2 text-sm">£{Number(s.price_per_guest ?? w?.price_per_guest ?? 0).toFixed(0)}</td>
+                      <td className="px-3 py-2 text-sm">{s.private ? <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-[#F2EFEB] text-[#7A7A7A]">Private</span> : "—"}</td>
                       <td className="px-3 py-2 text-sm">{s.active ? "Yes" : "No"}</td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2 text-right whitespace-nowrap">
+                        <button onClick={() => copyLink(s.id)} title="Copy booking link" className="text-[#7A7A7A] hover:text-[#1A1A1A] mr-2 text-[11px] uppercase tracking-wider underline">Link</button>
                         <button onClick={() => setEditingSession({ ...s })} className="text-[#7A7A7A] hover:text-[#1A1A1A] mr-2" data-testid={`sessions-edit-${s.id}`}><Pencil size={14} /></button>
                         <button onClick={() => removeSession(s.id)} className="text-[#7A7A7A] hover:text-red-600" data-testid={`sessions-delete-${s.id}`}><Trash2 size={14} /></button>
                       </td>
@@ -264,13 +282,13 @@ export default function WorkshopsAdmin() {
           <table className="w-full">
             <thead className="bg-[#F2EFEB]">
               <tr>
-                {["Created", "Workshop", "Date", "Name", "Email", "Phone", "Guests", "Dietary", "Payment", "Paid", "Balance", "Status"].map((h) => (
+                {["Created", "Workshop", "Date", "Name", "Email", "Phone", "Guests", "Dietary", "Payment", "Method", "Paid", "Balance", "Status", ""].map((h) => (
                   <th key={h} className="px-3 py-2 text-left accent-label">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {bookings.length === 0 && (<tr><td colSpan={12} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No bookings yet.</td></tr>)}
+              {bookings.length === 0 && (<tr><td colSpan={14} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No bookings yet.</td></tr>)}
               {bookings.map((b) => (
                 <tr key={b.id} className="border-t border-[#E5E5E5]" data-testid={`bookings-row-${b.id}`}>
                   <td className="px-3 py-2 text-xs text-[#7A7A7A]">{b.created_at?.slice(0, 10)}</td>
@@ -282,10 +300,22 @@ export default function WorkshopsAdmin() {
                   <td className="px-3 py-2 text-sm">{b.guests}</td>
                   <td className="px-3 py-2 text-xs max-w-[180px] truncate" title={b.dietary_requirements}>{b.dietary_requirements || "—"}</td>
                   <td className="px-3 py-2 text-xs">{b.payment_choice}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {b.payment_method === "bank_transfer" ? (
+                      <span title={b.bank_reference ? `Ref: ${b.bank_reference}` : ""}>BACS{b.bank_reference ? ` · ${b.bank_reference}` : ""}</span>
+                    ) : "Card"}
+                  </td>
                   <td className="px-3 py-2 text-sm">£{Number(b.amount_paid).toFixed(2)}</td>
                   <td className="px-3 py-2 text-sm">£{Number(b.balance_due_on_day).toFixed(2)}</td>
                   <td className="px-3 py-2">
                     <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider ${b.payment_status === "paid" ? "bg-[#C4CFC0]" : "bg-[#F2EFEB] text-[#7A7A7A]"}`}>{b.payment_status}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    {b.payment_method === "bank_transfer" && b.payment_status !== "paid" && (
+                      <button onClick={() => markBookingPaid(b.id)} className="text-[11px] uppercase tracking-wider underline text-[#1A1A1A] hover:text-[#5C7A3F]" data-testid={`bookings-mark-paid-${b.id}`}>
+                        Mark paid
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -388,6 +418,22 @@ export default function WorkshopsAdmin() {
                 <Field label="Deposit override (£)"><Input type="number" step="0.01" value={editingSession.deposit_amount ?? ""} onChange={(e) => setEditingSession({ ...editingSession, deposit_amount: e.target.value })} placeholder="Blank = workshop default" className="light-input rounded-none" /></Field>
               </div>
               <Field label="Notes"><Textarea rows={2} value={editingSession.notes} onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })} className="light-input rounded-none" /></Field>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-1" checked={!!editingSession.private} onChange={(e) => setEditingSession({ ...editingSession, private: e.target.checked })} data-testid="sessions-form-private" />
+                <span>
+                  <span className="font-body text-xs text-[#1A1A1A] block">Private session</span>
+                  <span className="font-body text-[11px] text-[#7A7A7A]">Hidden from the public Workshops page. Only bookable via a direct link you send yourself — use "Copy booking link" once saved.</span>
+                </span>
+              </label>
+              {editingSession.id && (
+                <div className="bg-[#F2EFEB] border border-[#E5E5E5] p-3">
+                  <p className="font-body text-[11px] text-[#7A7A7A] mb-2">Direct booking link for this date:</p>
+                  <div className="flex gap-2">
+                    <Input readOnly value={`${window.location.origin}/workshops/book/${editingSession.id}`} className="light-input rounded-none text-xs flex-1" onClick={(e) => e.target.select()} />
+                    <Button type="button" variant="outline" className="rounded-none shrink-0" onClick={() => copyLink(editingSession.id)}>Copy</Button>
+                  </div>
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={editingSession.active} onChange={(e) => setEditingSession({ ...editingSession, active: e.target.checked })} />
                 <span className="font-body text-xs text-[#1A1A1A]">Active (visible to customers)</span>
