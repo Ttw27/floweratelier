@@ -26,6 +26,13 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
   const [form, setForm] = useState({ name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "" });
   const [paymentChoice, setPaymentChoice] = useState("deposit");
   const [submitting, setSubmitting] = useState(false);
+  const [cardEnabled, setCardEnabled] = useState(true);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/payment-methods`)
+      .then((r) => setCardEnabled(!!r.data.card_enabled))
+      .catch(() => setCardEnabled(true));
+  }, []);
 
   useEffect(() => {
     if (!open || !workshop) return;
@@ -258,10 +265,19 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                 </p>
               </div>
 
+              {!cardEnabled && (
+                <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3" data-testid="workshop-card-unavailable">
+                  <p className="text-[12px] text-[#6B4E00] leading-relaxed">
+                    Online card payment isn&rsquo;t available right now. To book this workshop, please call{" "}
+                    <a href={`tel:${(settings?.phone_number || "").replace(/\s/g, "")}`} className="underline text-[#1A1A1A]">{settings?.phone_number || "the studio"}</a>.
+                  </p>
+                </div>
+              )}
+
               <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-[#E5E5E5]">
                 <Button type="button" variant="outline" className="rounded-none" onClick={() => setStep(1)}>Back</Button>
-                <Button type="submit" disabled={submitting} className="btn-dark rounded-none" data-testid="workshop-booking-submit">
-                  {submitting ? "Redirecting to Stripe…" : `Pay £${amountDueNow.toFixed(2)} & book`}
+                <Button type="submit" disabled={submitting || !cardEnabled} className="btn-dark rounded-none" data-testid="workshop-booking-submit">
+                  {submitting ? "Redirecting to Stripe…" : !cardEnabled ? "Card payment unavailable" : `Pay £${amountDueNow.toFixed(2)} & book`}
                 </Button>
               </div>
             </form>
