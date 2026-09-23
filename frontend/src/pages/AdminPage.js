@@ -54,6 +54,10 @@ export default function AdminPage() {
         whatsapp_default_message: settings.whatsapp_default_message || "",
         phone_number: settings.phone_number || "0116 212 3456",
         contact_email: settings.contact_email || "info@floweratelier.co.uk",
+        bank_account_name: settings.bank_account_name || "",
+        bank_sort_code: settings.bank_sort_code || "",
+        bank_account_number: settings.bank_account_number || "",
+        bank_name: settings.bank_name || "",
         favicon_url: settings.favicon_url || "",
         meta_pixel_id: settings.meta_pixel_id || "",
         ga4_id: settings.ga4_id || "",
@@ -568,6 +572,54 @@ export default function AdminPage() {
                           data-testid="settings-contact-email"
                         />
                         <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for mailto: links.</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* === Bank transfer details === */}
+                  <section className="pt-8 border-t border-[#E5E5E5]" data-testid="settings-section-bank">
+                    <p className="accent-label mb-4"><span className="thin-rule" />Bank transfer details</p>
+                    <p className="font-body text-[11px] text-[#7A7A7A] mb-4">Shown to customers who choose to pay by bank transfer (BACS) for a workshop booking — for example a private venue booking a session for their staff.</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Account name</Label>
+                        <Input
+                          value={settingsForm.bank_account_name}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, bank_account_name: e.target.value })}
+                          placeholder="e.g. Flower Atelier Ltd"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-bank-account-name"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Bank name</Label>
+                        <Input
+                          value={settingsForm.bank_name}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, bank_name: e.target.value })}
+                          placeholder="e.g. Barclays"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-bank-name"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Sort code</Label>
+                        <Input
+                          value={settingsForm.bank_sort_code}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, bank_sort_code: e.target.value })}
+                          placeholder="e.g. 12-34-56"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-bank-sort-code"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Account number</Label>
+                        <Input
+                          value={settingsForm.bank_account_number}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, bank_account_number: e.target.value })}
+                          placeholder="e.g. 12345678"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-bank-account-number"
+                        />
                       </div>
                     </div>
                   </section>
