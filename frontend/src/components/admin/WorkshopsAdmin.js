@@ -29,6 +29,14 @@ const emptySession = (workshop_id) => ({
   notes: "", private: false, active: true,
 });
 
+const emptyQuickAdd = () => ({
+  name: "", short_description: "",
+  price_per_guest: "", deposit_amount: "",
+  duration: "", group_size: "", location_default: "Flower Atelier — Leicester",
+  date: "", start_time: "", end_time: "", capacity: 14,
+  private: false,
+});
+
 const fmtDate = (iso) => {
   if (!iso) return "";
   try { return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
@@ -42,6 +50,8 @@ export default function WorkshopsAdmin() {
   const [bookings, setBookings] = useState([]);
   const [editingWorkshop, setEditingWorkshop] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
+  const [quickAdd, setQuickAdd] = useState(null);
+  const [quickAddDone, setQuickAddDone] = useState(null); // { link } once created, if private
   const [sessionFilter, setSessionFilter] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -114,6 +124,68 @@ export default function WorkshopsAdmin() {
     catch (err) { toast.error(err.response?.data?.detail || "Delete failed"); }
   };
 
+  const slugify = (name) => {
+    let base = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "workshop";
+    let slug = base;
+    let n = 2;
+    while (workshops.some((w) => w.slug === slug)) { slug = `${base}-${n}`; n += 1; }
+    return slug;
+  };
+
+  const saveQuickAdd = async (e) => {
+    e.preventDefault();
+    const q = quickAdd;
+    if (!q.name || !q.date) { toast.error("Name and date are required"); return; }
+    setSaving(true);
+    try {
+      // 1. Create the workshop (programme)
+      const workshopPayload = {
+        slug: slugify(q.name),
+        name: q.name,
+        tag: "", season: "",
+        short_description: q.short_description || "",
+        description: q.short_description || "",
+        includes: [],
+        duration: q.duration || "", group_size: q.group_size || "",
+        location_default: q.location_default || "",
+        image_url: "", gallery_images: [],
+        price_per_guest: parseFloat(q.price_per_guest) || 0,
+        deposit_amount: parseFloat(q.deposit_amount) || 0,
+        full_payment_discount_pct: 5,
+        cancellation_policy: "Deposits are non-refundable. Balance is collected on the day.",
+        booking_mode: "direct",
+        enquire_pitch: "", enquire_venues: [], enquire_bullets: [],
+        whatsapp_message: "",
+        sort_order: 0, active: true,
+      };
+      const wRes = await axios.post(`${API_URL}/api/admin/workshops`, workshopPayload);
+      const workshopId = wRes.data.id;
+
+      // 2. Create the dated session for it
+      const sessionPayload = {
+        workshop_id: workshopId,
+        date: q.date, start_time: q.start_time || "", end_time: q.end_time || "",
+        location: "", capacity: parseInt(q.capacity) || 14, spots_booked: 0,
+        price_per_guest: null, deposit_amount: null,
+        notes: "", private: !!q.private, active: true,
+      };
+      const sRes = await axios.post(`${API_URL}/api/admin/workshop-sessions`, sessionPayload);
+
+      toast.success("Workshop added");
+      await Promise.all([loadWorkshops(), loadSessions()]);
+
+      if (q.private) {
+        setQuickAddDone({ link: `${window.location.origin}/workshops/book/${sRes.data.id}` });
+      } else {
+        setQuickAdd(null);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to add workshop");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveSession = async (e) => {
     e.preventDefault();
     const s = editingSession;
@@ -170,7 +242,10 @@ export default function WorkshopsAdmin() {
           <h3 className="font-heading text-2xl font-light text-[#1A1A1A]">Workshops</h3>
           <p className="font-body text-sm text-[#7A7A7A] mt-1">Workshop programmes, dated sessions and bookings.</p>
         </div>
-        <Button onClick={seedWorkshops} variant="outline" className="rounded-none" data-testid="workshops-seed-btn">Add example workshops</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setQuickAdd(emptyQuickAdd())} className="btn-dark rounded-none" data-testid="workshops-quick-add-btn">+ Add workshop</Button>
+          <Button onClick={seedWorkshops} variant="outline" className="rounded-none" data-testid="workshops-seed-btn">Add example workshops</Button>
+        </div>
       </div>
 
       {/* Sub-tabs */}
@@ -197,7 +272,7 @@ export default function WorkshopsAdmin() {
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {workshops.length === 0 && <p className="text-sm text-[#7A7A7A] col-span-full">No workshops yet. Click &ldquo;Seed starter&rdquo; or &ldquo;Add programme&rdquo;.</p>}
+            {workshops.length === 0 && <p className="text-sm text-[#7A7A7A] col-span-full">No workshops yet. Click &ldquo;+ Add workshop&rdquo; above to create one with its first date.</p>}
             {workshops.map((w) => (
               <div key={w.id} className="border border-[#E5E5E5] bg-white" data-testid={`workshops-row-${w.id}`}>
                 <div className="aspect-[4/3] overflow-hidden bg-[#F2EFEB]">
@@ -444,6 +519,67 @@ export default function WorkshopsAdmin() {
               <Button type="button" variant="outline" className="rounded-none" onClick={() => setEditingSession(null)}>Cancel</Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* === QUICK ADD — one form: workshop + first date === */}
+      {quickAdd && (
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setQuickAdd(null)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveQuickAdd} className="bg-white max-w-lg w-full p-6 md:p-8" data-testid="workshops-quick-add-form">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="font-heading text-xl">Add workshop</h4>
+              <button type="button" onClick={() => setQuickAdd(null)}><X size={18} /></button>
+            </div>
+            <div className="space-y-4">
+              <Field label="Workshop name"><Input value={quickAdd.name} onChange={(e) => setQuickAdd({ ...quickAdd, name: e.target.value })} placeholder="e.g. Wreath Making Workshop" className="light-input rounded-none" data-testid="quick-add-name" /></Field>
+              <Field label="Short description (optional)"><Textarea rows={2} value={quickAdd.short_description} onChange={(e) => setQuickAdd({ ...quickAdd, short_description: e.target.value })} className="light-input rounded-none" /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Price per guest (£)"><Input type="number" step="0.01" value={quickAdd.price_per_guest} onChange={(e) => setQuickAdd({ ...quickAdd, price_per_guest: e.target.value })} className="light-input rounded-none" data-testid="quick-add-price" /></Field>
+                <Field label="Deposit per guest (£)"><Input type="number" step="0.01" value={quickAdd.deposit_amount} onChange={(e) => setQuickAdd({ ...quickAdd, deposit_amount: e.target.value })} placeholder="Blank = 50% of price" className="light-input rounded-none" /></Field>
+              </div>
+              <Field label="Date"><Input type="date" value={quickAdd.date} onChange={(e) => setQuickAdd({ ...quickAdd, date: e.target.value })} className="light-input rounded-none" data-testid="quick-add-date" /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Start time"><Input type="time" value={quickAdd.start_time} onChange={(e) => setQuickAdd({ ...quickAdd, start_time: e.target.value })} className="light-input rounded-none" /></Field>
+                <Field label="End time"><Input type="time" value={quickAdd.end_time} onChange={(e) => setQuickAdd({ ...quickAdd, end_time: e.target.value })} className="light-input rounded-none" /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Location"><Input value={quickAdd.location_default} onChange={(e) => setQuickAdd({ ...quickAdd, location_default: e.target.value })} className="light-input rounded-none" /></Field>
+                <Field label="Capacity"><Input type="number" value={quickAdd.capacity} onChange={(e) => setQuickAdd({ ...quickAdd, capacity: e.target.value })} className="light-input rounded-none" data-testid="quick-add-capacity" /></Field>
+              </div>
+              <div className="border-t border-[#E5E5E5] pt-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={quickAdd.private} onChange={(e) => setQuickAdd({ ...quickAdd, private: e.target.checked })} data-testid="quick-add-private" />
+                  <span>
+                    <span className="font-body text-sm text-[#1A1A1A] block">Private booking</span>
+                    <span className="font-body text-[11px] text-[#7A7A7A]">Hidden from the public Workshops page. Only bookable via a direct link — you'll get one to copy after saving.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <Button type="submit" disabled={saving} className="btn-dark rounded-none" data-testid="quick-add-save">{saving ? "Creating…" : "Create workshop"}</Button>
+              <Button type="button" variant="outline" className="rounded-none" onClick={() => setQuickAdd(null)}>Cancel</Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* === QUICK ADD SUCCESS — show booking link for private sessions === */}
+      {quickAddDone && (
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4 overflow-y-auto" onClick={() => { setQuickAddDone(null); setQuickAdd(null); }}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-white max-w-lg w-full p-6 md:p-8" data-testid="quick-add-success">
+            <h4 className="font-heading text-xl mb-2">Workshop created</h4>
+            <p className="font-body text-sm text-[#7A7A7A] mb-4">This session is private — it won't show on the public Workshops page. Send this link to the customer to let them book:</p>
+            <div className="flex gap-2 mb-6">
+              <Input readOnly value={quickAddDone.link} className="light-input rounded-none text-xs flex-1" onClick={(e) => e.target.select()} />
+              <Button type="button" variant="outline" className="rounded-none shrink-0" onClick={() => {
+                navigator.clipboard.writeText(quickAddDone.link)
+                  .then(() => toast.success("Booking link copied"))
+                  .catch(() => toast.error("Could not copy — select and copy manually"));
+              }}>Copy</Button>
+            </div>
+            <Button className="btn-dark rounded-none" onClick={() => { setQuickAddDone(null); setQuickAdd(null); }}>Done</Button>
+          </div>
         </div>
       )}
     </div>
