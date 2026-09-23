@@ -38,8 +38,20 @@ export default function PrivateWorkshopBookingPage() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "" });
   const [paymentChoice, setPaymentChoice] = useState("deposit");
   const [paymentMethod, setPaymentMethod] = useState("stripe");
+  const [cardEnabled, setCardEnabled] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/payment-methods`)
+      .then((r) => setCardEnabled(!!r.data.card_enabled))
+      .catch(() => setCardEnabled(true)); // fail open — don't block booking on a status-check error
+  }, []);
+
+  // If card payment isn't available, always fall back to bank transfer
+  useEffect(() => {
+    if (!cardEnabled) setPaymentMethod("bank_transfer");
+  }, [cardEnabled]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -143,9 +155,14 @@ export default function PrivateWorkshopBookingPage() {
           <CheckCircle2 size={40} strokeWidth={1.2} className="mx-auto text-[#5C7A3F] mb-6" />
           <p className="accent-label justify-center mb-4 text-center"><span className="thin-rule" />Booking held</p>
           <h1 className="font-heading text-3xl md:text-4xl text-[#1A1A1A] mb-3 text-center">Almost there.</h1>
-          <p className="font-body text-sm text-[#5A5A5A] mb-8 text-center">
-            Your spot is held for <strong className="text-[#1A1A1A]">{workshop.name}</strong>. Please transfer <strong className="text-[#1A1A1A]">£{Number(b.amount_due_now).toFixed(2)}</strong> using the details below, quoting the reference — we&rsquo;ll confirm as soon as it lands.
+          <p className="font-body text-sm text-[#5A5A5A] mb-4 text-center">
+            Your spot is <strong className="text-[#1A1A1A]">held provisionally</strong> for <strong className="text-[#1A1A1A]">{workshop.name}</strong>. Please transfer <strong className="text-[#1A1A1A]">£{Number(b.amount_due_now).toFixed(2)}</strong> using the details below, quoting the reference — we&rsquo;ll confirm as soon as it lands.
           </p>
+          <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mb-6">
+            <p className="text-[12px] text-[#6B4E00] leading-relaxed text-center">
+              <strong>This date is not secured until your deposit is received.</strong> Please transfer as soon as possible to avoid losing it to another booking.
+            </p>
+          </div>
 
           <div className="bg-[#FAFAF7] border border-[#E5E5E5] p-6 mb-6 space-y-3">
             <Row label="Account name" value={settings?.bank_account_name || "—"} />
@@ -226,8 +243,8 @@ export default function PrivateWorkshopBookingPage() {
             </div>
 
             <div>
-              <Label className="text-sm text-[#1A1A1A]">Anything else? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
-              <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="light-input rounded-none mt-2" placeholder="Any special requests for the group" />
+              <Label className="text-sm text-[#1A1A1A]">Any specific requests for this booking? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
+              <Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. a particular colour palette, a theme, arrival time preferences, anything you'd like us to know" />
             </div>
 
             {/* Deposit vs full */}
@@ -252,15 +269,36 @@ export default function PrivateWorkshopBookingPage() {
             <div className="border-t border-[#E5E5E5] pt-5">
               <p className="accent-label mb-3"><span className="thin-rule" />How to pay</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <button type="button" onClick={() => setPaymentMethod("stripe")} className={`text-left bg-white border p-4 ${paymentMethod === "stripe" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`} data-testid="private-payment-method-stripe">
+                <button
+                  type="button"
+                  disabled={!cardEnabled}
+                  onClick={() => cardEnabled && setPaymentMethod("stripe")}
+                  className={`text-left border p-4 ${!cardEnabled ? "bg-[#F2EFEB] border-[#E5E5E5] opacity-60 cursor-not-allowed" : paymentMethod === "stripe" ? "bg-white border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "bg-white border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                  data-testid="private-payment-method-stripe"
+                >
                   <p className="font-heading text-base text-[#1A1A1A]">Pay by card</p>
-                  <p className="text-[11px] text-[#7A7A7A] mt-1">Secure card payment via Stripe — instant confirmation.</p>
+                  {cardEnabled ? (
+                    <p className="text-[11px] text-[#7A7A7A] mt-1">Secure card payment via Stripe — instant confirmation.</p>
+                  ) : (
+                    <p className="text-[11px] text-[#7A7A7A] mt-1">
+                      Not available online right now. To pay by card, please call{" "}
+                      <a href={`tel:${(settings?.phone_number || "").replace(/\s/g, "")}`} onClick={(e) => e.stopPropagation()} className="underline text-[#1A1A1A]">{settings?.phone_number || "the studio"}</a>.
+                    </p>
+                  )}
                 </button>
                 <button type="button" onClick={() => setPaymentMethod("bank_transfer")} className={`text-left bg-white border p-4 ${paymentMethod === "bank_transfer" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`} data-testid="private-payment-method-bacs">
                   <p className="font-heading text-base text-[#1A1A1A]">Bank transfer (BACS)</p>
                   <p className="text-[11px] text-[#7A7A7A] mt-1">We'll show our bank details and a reference — we confirm once received.</p>
                 </button>
               </div>
+
+              {paymentMethod === "bank_transfer" && (
+                <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mt-3">
+                  <p className="text-[12px] text-[#6B4E00] leading-relaxed">
+                    <strong>Please note:</strong> this date is only held provisionally. Your booking is not secured until we've received your bank transfer — please send payment as soon as possible to avoid losing this date to another booking.
+                  </p>
+                </div>
+              )}
 
               <div className="bg-white border border-[#E5E5E5] p-4 mt-4 text-sm" data-testid="private-booking-summary">
                 <Row label={`${form.guests || 1} × guest @ £${pricePerGuest.toFixed(2)}`} value={`£${subtotal.toFixed(2)}`} />
