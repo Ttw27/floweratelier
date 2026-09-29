@@ -3527,6 +3527,7 @@ class WorkshopSessionCreate(BaseModel):
     deposit_amount: Optional[float] = Field(default=None, ge=0)     # override
     notes: str = ""
     private: bool = False            # True = hidden from public /workshops/{slug}/sessions, bookable only via direct link
+    at_customer_venue: bool = False  # True = we travel to the customer; booking must give the venue address
     active: bool = True
 
     @field_validator("date")
@@ -3550,6 +3551,24 @@ class WorkshopBookingCreate(BaseModel):
     guests: int = Field(default=1, ge=1)
     dietary_requirements: str = Field(default="", max_length=MAX_TEXT)
     notes: str = Field(default="", max_length=MAX_TEXT)
+    # Extra details for private / corporate bookings (all optional unless the session is at the customer's venue)
+    organisation_name: str = Field(default="", max_length=200)
+    venue_name: str = Field(default="", max_length=200)
+    venue_address: str = Field(default="", max_length=1000)
+    venue_postcode: str = Field(default="", max_length=20)
+    access_notes: str = Field(default="", max_length=MAX_TEXT)
+    setup_notes: str = Field(default="", max_length=MAX_TEXT)
+    arrival_time: str = Field(default="", max_length=50)
+    onsite_contact_name: str = Field(default="", max_length=200)
+    onsite_contact_phone: str = Field(default="", max_length=50)
+    billing_address: str = Field(default="", max_length=1000)
+    po_number: str = Field(default="", max_length=100)
+    occasion: str = Field(default="", max_length=200)
+    accessibility_needs: str = Field(default="", max_length=MAX_TEXT)
+    group_notes: str = Field(default="", max_length=MAX_TEXT)
+    theme_preferences: str = Field(default="", max_length=MAX_TEXT)
+    photo_consent: str = Field(default="", max_length=20)   # "yes" | "creations_only" | "no" | ""
+    heard_about: str = Field(default="", max_length=200)
     payment_choice: str = "deposit"   # "deposit" | "full"
     payment_method: str = "stripe"    # "stripe" | "bank_transfer"
 
@@ -3569,6 +3588,24 @@ class WorkshopBookingResponse(BaseModel):
     guests: int
     dietary_requirements: str
     notes: str
+    organisation_name: str = ""
+    venue_name: str = ""
+    venue_address: str = ""
+    venue_postcode: str = ""
+    access_notes: str = ""
+    setup_notes: str = ""
+    arrival_time: str = ""
+    onsite_contact_name: str = ""
+    onsite_contact_phone: str = ""
+    billing_address: str = ""
+    po_number: str = ""
+    occasion: str = ""
+    accessibility_needs: str = ""
+    group_notes: str = ""
+    theme_preferences: str = ""
+    photo_consent: str = ""
+    heard_about: str = ""
+    at_customer_venue: bool = False
     payment_choice: str
     payment_method: str = "stripe"
     bank_reference: Optional[str] = None
@@ -3638,6 +3675,24 @@ def _ws_serialise_booking(b: dict, workshop_name: str = "") -> WorkshopBookingRe
         guests=b.get("guests", 1),
         dietary_requirements=b.get("dietary_requirements", ""),
         notes=b.get("notes", ""),
+        organisation_name=b.get("organisation_name") or "",
+        venue_name=b.get("venue_name") or "",
+        venue_address=b.get("venue_address") or "",
+        venue_postcode=b.get("venue_postcode") or "",
+        access_notes=b.get("access_notes") or "",
+        setup_notes=b.get("setup_notes") or "",
+        arrival_time=b.get("arrival_time") or "",
+        onsite_contact_name=b.get("onsite_contact_name") or "",
+        onsite_contact_phone=b.get("onsite_contact_phone") or "",
+        billing_address=b.get("billing_address") or "",
+        po_number=b.get("po_number") or "",
+        occasion=b.get("occasion") or "",
+        accessibility_needs=b.get("accessibility_needs") or "",
+        group_notes=b.get("group_notes") or "",
+        theme_preferences=b.get("theme_preferences") or "",
+        photo_consent=b.get("photo_consent") or "",
+        heard_about=b.get("heard_about") or "",
+        at_customer_venue=bool(b.get("at_customer_venue", False)),
         payment_choice=b.get("payment_choice", "deposit"),
         payment_method=b.get("payment_method", "stripe"),
         bank_reference=b.get("bank_reference"),
@@ -3714,7 +3769,35 @@ def _booking_summary_html(b: dict, for_admin: bool) -> str:
             parts.append(f"<p>Dietary: {_e(b.get('dietary_requirements'))}</p>")
         if b.get("notes"):
             parts.append(f"<p>Notes: {_e(b.get('notes'))}</p>")
+        for title, rows in _BOOKING_DETAIL_SECTIONS:
+            lines = [f"{label}: {_e(_detail_value(k, b.get(k)))}" for k, label in rows if b.get(k)]
+            if lines:
+                parts.append(f"<p><strong>{title}</strong><br>" + "<br>".join(lines) + "</p>")
+    elif b.get("venue_address"):
+        parts.append(f"<p>Venue: {_e(', '.join(x for x in [b.get('venue_name'), b.get('venue_address'), b.get('venue_postcode')] if x))}</p>")
     return "".join(parts)
+
+
+_BOOKING_DETAIL_SECTIONS = [
+    ("Venue & logistics", [("venue_name", "Venue"), ("venue_address", "Address"), ("venue_postcode", "Postcode"),
+                           ("arrival_time", "Arrival / setup time"), ("access_notes", "Parking & access"),
+                           ("setup_notes", "Room & tables"), ("onsite_contact_name", "Contact on the day"),
+                           ("onsite_contact_phone", "Their mobile")]),
+    ("Organisation & invoice", [("organisation_name", "Organisation"), ("billing_address", "Billing address"),
+                                ("po_number", "PO / reference")]),
+    ("Event & group", [("occasion", "Occasion"), ("accessibility_needs", "Accessibility"),
+                       ("group_notes", "Group notes"), ("theme_preferences", "Colours / theme")]),
+    ("Photos & marketing", [("photo_consent", "Photo permission"), ("heard_about", "Heard about us")]),
+]
+
+_PHOTO_CONSENT_LABELS = {"yes": "Yes — photos of the group and creations",
+                         "creations_only": "Creations only — no faces", "no": "No photos"}
+
+
+def _detail_value(key: str, value) -> str:
+    if key == "photo_consent":
+        return _PHOTO_CONSENT_LABELS.get(value, value or "")
+    return str(value or "")
 
 
 async def _send_booking_bank_transfer_emails(booking_id: str) -> None:
@@ -3950,6 +4033,10 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         raise HTTPException(400, "This session has already taken place")
     if data.payment_choice not in ("deposit", "full"):
         raise HTTPException(400, "payment_choice must be 'deposit' or 'full'")
+    if session.get("at_customer_venue") and not (data.venue_address.strip() and data.venue_postcode.strip()):
+        raise HTTPException(400, "Please give the venue address and postcode for this booking")
+    if data.photo_consent not in ("", "yes", "creations_only", "no"):
+        raise HTTPException(400, "photo_consent must be yes, creations_only or no")
     if data.payment_method not in ("stripe", "bank_transfer"):
         raise HTTPException(400, "payment_method must be 'stripe' or 'bank_transfer'")
     capacity = int(session.get("capacity", 0) or 0)
@@ -3997,6 +4084,24 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         "guests": data.guests,
         "dietary_requirements": data.dietary_requirements,
         "notes": data.notes,
+        "organisation_name": (data.organisation_name or "").strip(),
+        "venue_name": (data.venue_name or "").strip(),
+        "venue_address": (data.venue_address or "").strip(),
+        "venue_postcode": (data.venue_postcode or "").strip(),
+        "access_notes": (data.access_notes or "").strip(),
+        "setup_notes": (data.setup_notes or "").strip(),
+        "arrival_time": (data.arrival_time or "").strip(),
+        "onsite_contact_name": (data.onsite_contact_name or "").strip(),
+        "onsite_contact_phone": (data.onsite_contact_phone or "").strip(),
+        "billing_address": (data.billing_address or "").strip(),
+        "po_number": (data.po_number or "").strip(),
+        "occasion": (data.occasion or "").strip(),
+        "accessibility_needs": (data.accessibility_needs or "").strip(),
+        "group_notes": (data.group_notes or "").strip(),
+        "theme_preferences": (data.theme_preferences or "").strip(),
+        "photo_consent": (data.photo_consent or "").strip(),
+        "heard_about": (data.heard_about or "").strip(),
+        "at_customer_venue": bool(session.get("at_customer_venue")),
         "payment_choice": data.payment_choice,
         "payment_method": data.payment_method,
         "bank_reference": bank_reference,

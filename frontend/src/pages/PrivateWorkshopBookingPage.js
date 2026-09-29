@@ -30,7 +30,17 @@ export default function PrivateWorkshopBookingPage() {
   const [session, setSession] = useState(null);
   const [workshop, setWorkshop] = useState(null);
 
-  const [form, setForm] = useState({ name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "" });
+  const [form, setForm] = useState({
+    name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "",
+    // Private / corporate booking details
+    organisation_name: "", billing_address: "", po_number: "",
+    venue_name: "", venue_address: "", venue_postcode: "", arrival_time: "", access_notes: "", setup_notes: "",
+    onsite_contact_name: "", onsite_contact_phone: "",
+    occasion: "", accessibility_needs: "", group_notes: "", theme_preferences: "",
+    photo_consent: "", heard_about: "",
+  });
+  const [forOrganisation, setForOrganisation] = useState(false);
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const [paymentChoice, setPaymentChoice] = useState("deposit");
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [cardEnabled, setCardEnabled] = useState(true);
@@ -82,6 +92,9 @@ export default function PrivateWorkshopBookingPage() {
     if (sessionPast) { toast.error("This session date has passed"); return; }
     if (noPaymentMethod) { toast.error("Online booking is unavailable — please call or WhatsApp the studio"); return; }
     if (form.guests > spotsRemaining) { toast.error(`Only ${spotsRemaining} spot(s) left`); return; }
+    if (session?.at_customer_venue && (!form.venue_address.trim() || !form.venue_postcode.trim())) {
+      toast.error("Please add the venue address and postcode"); return;
+    }
     setSubmitting(true);
     try {
       const r = await axios.post(`${API_URL}/api/workshop-bookings`, {
@@ -92,6 +105,20 @@ export default function PrivateWorkshopBookingPage() {
         guests: parseInt(form.guests, 10) || 1,
         dietary_requirements: form.dietary_requirements,
         notes: form.notes,
+        ...(forOrganisation ? {
+          organisation_name: form.organisation_name, billing_address: form.billing_address, po_number: form.po_number,
+        } : {}),
+        ...(session?.at_customer_venue ? {
+          venue_name: form.venue_name, venue_address: form.venue_address, venue_postcode: form.venue_postcode,
+          arrival_time: form.arrival_time, access_notes: form.access_notes, setup_notes: form.setup_notes,
+          onsite_contact_name: form.onsite_contact_name, onsite_contact_phone: form.onsite_contact_phone,
+        } : {}),
+        occasion: form.occasion,
+        accessibility_needs: form.accessibility_needs,
+        group_notes: form.group_notes,
+        theme_preferences: form.theme_preferences,
+        photo_consent: form.photo_consent,
+        heard_about: form.heard_about,
         payment_choice: effectiveChoice,
         payment_method: paymentMethod,
       });
@@ -201,7 +228,7 @@ export default function PrivateWorkshopBookingPage() {
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#5A5A5A]">
             <span className="inline-flex items-center gap-2"><Calendar size={14} className="text-[#B3A89B]" /> {fmtDate(session.date)}</span>
             {session.start_time && <span className="inline-flex items-center gap-2"><Clock size={14} className="text-[#B3A89B]" /> {session.start_time}{session.end_time ? `–${session.end_time}` : ""}</span>}
-            <span className="inline-flex items-center gap-2"><MapPin size={14} className="text-[#B3A89B]" /> {session.location || workshop.location_default}</span>
+            <span className="inline-flex items-center gap-2"><MapPin size={14} className="text-[#B3A89B]" /> {session.at_customer_venue ? "At your venue — we come to you" : (session.location || workshop.location_default)}</span>
             <span className="inline-flex items-center gap-2"><Users size={14} className="text-[#B3A89B]" /> {spotsRemaining} spot{spotsRemaining === 1 ? "" : "s"} available</span>
           </div>
           {session.notes && <p className="font-body text-sm text-[#7A7A7A] mt-4">{session.notes}</p>}
@@ -220,7 +247,7 @@ export default function PrivateWorkshopBookingPage() {
           <form onSubmit={submit} className="bg-white border border-[#E5E5E5] p-6 md:p-8 space-y-5" data-testid="private-booking-form">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Contact / company name *</Label>
+                <Label className="text-sm text-[#1A1A1A]">Your name *</Label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="light-input rounded-none mt-2" data-testid="private-booking-name" />
               </div>
               <div>
@@ -238,6 +265,104 @@ export default function PrivateWorkshopBookingPage() {
               </div>
             </div>
 
+            {/* Organisation & invoicing */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" className="mt-1" checked={forOrganisation} onChange={(e) => setForOrganisation(e.target.checked)} data-testid="private-booking-for-org" />
+              <span className="font-body text-sm text-[#1A1A1A]">This booking is for a business or organisation <span className="text-[#7A7A7A] text-xs block">e.g. a company, pub, care home or club — so we can invoice correctly</span></span>
+            </label>
+            {forOrganisation && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-l-2 border-[#E5E5E5] pl-4" data-testid="private-booking-org-section">
+                <div>
+                  <Label className="text-sm text-[#1A1A1A]">Organisation name</Label>
+                  <Input value={form.organisation_name} onChange={set("organisation_name")} className="light-input rounded-none mt-2" data-testid="private-booking-org-name" />
+                </div>
+                <div>
+                  <Label className="text-sm text-[#1A1A1A]">PO / reference number <span className="text-[#7A7A7A] text-xs">(if needed)</span></Label>
+                  <Input value={form.po_number} onChange={set("po_number")} className="light-input rounded-none mt-2" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-sm text-[#1A1A1A]">Billing address <span className="text-[#7A7A7A] text-xs">(for the invoice)</span></Label>
+                  <Textarea rows={2} value={form.billing_address} onChange={set("billing_address")} className="light-input rounded-none mt-2" />
+                </div>
+              </div>
+            )}
+
+            {/* Venue & logistics — only when we travel to the customer */}
+            {session?.at_customer_venue && (
+              <div className="border-t border-[#E5E5E5] pt-5 space-y-4" data-testid="private-booking-venue-section">
+                <p className="accent-label"><span className="thin-rule" />Your venue</p>
+                <p className="font-body text-xs text-[#7A7A7A] -mt-2">We'll bring everything to you — tell us where and how to get set up.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-[#1A1A1A]">Venue name</Label>
+                    <Input value={form.venue_name} onChange={set("venue_name")} placeholder="e.g. The Red Lion" className="light-input rounded-none mt-2" />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-[#1A1A1A]">Postcode *</Label>
+                    <Input value={form.venue_postcode} onChange={set("venue_postcode")} className="light-input rounded-none mt-2" data-testid="private-booking-venue-postcode" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-sm text-[#1A1A1A]">Venue address *</Label>
+                    <Textarea rows={2} value={form.venue_address} onChange={set("venue_address")} className="light-input rounded-none mt-2" data-testid="private-booking-venue-address" />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-[#1A1A1A]">Earliest time we can arrive to set up</Label>
+                    <Input value={form.arrival_time} onChange={set("arrival_time")} placeholder="e.g. 5:30pm" className="light-input rounded-none mt-2" />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-[#1A1A1A]">Contact on the day</Label>
+                    <Input value={form.onsite_contact_name} onChange={set("onsite_contact_name")} placeholder="Name" className="light-input rounded-none mt-2" />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-[#1A1A1A]">Their mobile</Label>
+                    <Input value={form.onsite_contact_phone} onChange={set("onsite_contact_phone")} className="light-input rounded-none mt-2" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-sm text-[#1A1A1A]">Parking &amp; access</Label>
+                    <Textarea rows={2} value={form.access_notes} onChange={set("access_notes")} placeholder="e.g. car park at the rear, room is upstairs with no lift, use side entrance" className="light-input rounded-none mt-2" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label className="text-sm text-[#1A1A1A]">Room &amp; tables</Label>
+                    <Textarea rows={2} value={form.setup_notes} onChange={set("setup_notes")} placeholder="e.g. function room with 4 long tables, we'll need tables provided / can you bring cloths?" className="light-input rounded-none mt-2" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* About the group */}
+            <div className="border-t border-[#E5E5E5] pt-5 space-y-4">
+              <p className="accent-label"><span className="thin-rule" />About your group</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm text-[#1A1A1A]">What's the occasion?</Label>
+                  <select value={form.occasion} onChange={set("occasion")} className="light-input rounded-none mt-2 w-full h-10 px-3 bg-white border border-[#E5E5E5] font-body text-sm" data-testid="private-booking-occasion">
+                    <option value="">Select…</option>
+                    <option>Team social / staff event</option>
+                    <option>Client or corporate event</option>
+                    <option>Hen party</option>
+                    <option>Birthday</option>
+                    <option>Baby or bridal shower</option>
+                    <option>Residents' activity (care home)</option>
+                    <option>Pub / venue event</option>
+                    <option>Friends get-together</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm text-[#1A1A1A]">Colours or theme <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
+                  <Input value={form.theme_preferences} onChange={set("theme_preferences")} placeholder="e.g. brand colours, pastels, autumnal" className="light-input rounded-none mt-2" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-sm text-[#1A1A1A]">Accessibility or mobility needs <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
+                  <Textarea rows={2} value={form.accessibility_needs} onChange={set("accessibility_needs")} placeholder="e.g. wheelchair users, limited hand strength, seated throughout" className="light-input rounded-none mt-2" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-sm text-[#1A1A1A]">Anything about the group we should know? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
+                  <Textarea rows={2} value={form.group_notes} onChange={set("group_notes")} placeholder="e.g. age range, complete beginners, some guests have dementia, children attending" className="light-input rounded-none mt-2" />
+                </div>
+              </div>
+            </div>
+
             <div>
               <Label className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(food &amp; drink is served)</span></Label>
               <Textarea rows={2} value={form.dietary_requirements} onChange={(e) => setForm({ ...form, dietary_requirements: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. gluten-free, vegan, nut allergy" />
@@ -246,6 +371,38 @@ export default function PrivateWorkshopBookingPage() {
             <div>
               <Label className="text-sm text-[#1A1A1A]">Any specific requests for this booking? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
               <Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. a particular colour palette, a theme, arrival time preferences, anything you'd like us to know" />
+            </div>
+
+            {/* Photos & marketing */}
+            <div className="border-t border-[#E5E5E5] pt-5 space-y-4">
+              <p className="accent-label"><span className="thin-rule" />Photos</p>
+              <div>
+                <Label className="text-sm text-[#1A1A1A]">Can we take photos on the day to share on our website and social media?</Label>
+                <div className="mt-2 space-y-2" role="radiogroup">
+                  {[
+                    ["yes", "Yes — photos of the group and the creations"],
+                    ["creations_only", "Creations only — no faces please"],
+                    ["no", "No photos please"],
+                  ].map(([val, label]) => (
+                    <label key={val} className="flex items-center gap-2 font-body text-sm text-[#1A1A1A] cursor-pointer">
+                      <input type="radio" name="photo_consent" value={val} checked={form.photo_consent === val} onChange={set("photo_consent")} data-testid={`private-booking-photo-${val}`} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="max-w-sm">
+                <Label className="text-sm text-[#1A1A1A]">How did you hear about us? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
+                <select value={form.heard_about} onChange={set("heard_about")} className="light-input rounded-none mt-2 w-full h-10 px-3 bg-white border border-[#E5E5E5] font-body text-sm">
+                  <option value="">Select…</option>
+                  <option>Instagram</option>
+                  <option>Facebook</option>
+                  <option>Google</option>
+                  <option>Recommendation</option>
+                  <option>Been to a workshop before</option>
+                  <option>Other</option>
+                </select>
+              </div>
             </div>
 
             {/* Deposit vs full */}

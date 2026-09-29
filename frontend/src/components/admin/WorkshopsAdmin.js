@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ const emptySession = (workshop_id) => ({
   workshop_id, date: "", start_time: "", end_time: "", location: "",
   capacity: 14,
   price_per_guest: "", deposit_amount: "",
-  notes: "", private: false, active: true,
+  notes: "", private: false, at_customer_venue: false, active: true,
 });
 
 const emptyQuickAdd = () => ({
@@ -43,8 +43,40 @@ const emptyQuickAdd = () => ({
   price_per_guest: "", deposit_amount: "",
   duration: "", group_size: "", location_default: "Flower Atelier — Leicester",
   date: "", start_time: "", end_time: "", capacity: 14,
-  private: false,
+  private: false, at_customer_venue: false,
 });
+
+const PHOTO_LABELS = { yes: "Yes — group & creations", creations_only: "Creations only — no faces", no: "No photos" };
+const DETAIL_SECTIONS = [
+  ["Venue & logistics", [["venue_name", "Venue"], ["venue_address", "Address"], ["venue_postcode", "Postcode"], ["arrival_time", "Arrival / setup"], ["access_notes", "Parking & access"], ["setup_notes", "Room & tables"], ["onsite_contact_name", "Contact on the day"], ["onsite_contact_phone", "Their mobile"]]],
+  ["Organisation & invoice", [["organisation_name", "Organisation"], ["billing_address", "Billing address"], ["po_number", "PO / reference"]]],
+  ["Event & group", [["occasion", "Occasion"], ["accessibility_needs", "Accessibility"], ["group_notes", "Group notes"], ["theme_preferences", "Colours / theme"], ["dietary_requirements", "Dietary"], ["notes", "Other requests"]]],
+  ["Photos & marketing", [["photo_consent", "Photo permission"], ["heard_about", "Heard about us"]]],
+];
+
+function BookingDetails({ b }) {
+  const sections = DETAIL_SECTIONS
+    .map(([title, rows]) => [title, rows.filter(([k]) => b[k])])
+    .filter(([, rows]) => rows.length);
+  if (!sections.length) return <p className="font-body text-sm text-[#7A7A7A]">No extra details were given.</p>;
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {sections.map(([title, rows]) => (
+        <div key={title}>
+          <p className="accent-label mb-2">{title}</p>
+          <dl className="space-y-1">
+            {rows.map(([k, label]) => (
+              <div key={k} className="font-body text-sm">
+                <dt className="inline text-[#7A7A7A]">{label}: </dt>
+                <dd className="inline text-[#1A1A1A] whitespace-pre-line">{k === "photo_consent" ? (PHOTO_LABELS[b[k]] || b[k]) : b[k]}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const fmtDate = (iso) => {
   if (!iso) return "";
@@ -57,6 +89,7 @@ export default function WorkshopsAdmin() {
   const [workshops, setWorkshops] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [openBookingId, setOpenBookingId] = useState(null);
   const [editingWorkshop, setEditingWorkshop] = useState(null);
   const [editingSession, setEditingSession] = useState(null);
   const [quickAdd, setQuickAdd] = useState(null);
@@ -180,7 +213,7 @@ export default function WorkshopsAdmin() {
         date: q.date, start_time: q.start_time || "", end_time: q.end_time || "",
         location: "", capacity: parseInt(q.capacity) || 14,
         price_per_guest: null, deposit_amount: null,
-        notes: "", private: !!q.private, active: true,
+        notes: "", private: !!q.private, at_customer_venue: !!q.at_customer_venue, active: true,
       };
       const sRes = await axios.post(`${API_URL}/api/admin/workshop-sessions`, sessionPayload);
 
@@ -212,7 +245,7 @@ export default function WorkshopsAdmin() {
         // spots_booked is never sent — the server maintains it from real bookings
         price_per_guest: s.price_per_guest === "" || s.price_per_guest === null ? null : parseFloat(s.price_per_guest),
         deposit_amount: s.deposit_amount === "" || s.deposit_amount === null ? null : parseFloat(s.deposit_amount),
-        notes: s.notes || "", private: !!s.private, active: !!s.active,
+        notes: s.notes || "", private: !!s.private, at_customer_venue: !!s.at_customer_venue, active: !!s.active,
       };
       if (s.id) await axios.put(`${API_URL}/api/admin/workshop-sessions/${s.id}`, payload);
       else await axios.post(`${API_URL}/api/admin/workshop-sessions`, payload);
@@ -392,7 +425,8 @@ export default function WorkshopsAdmin() {
             <tbody>
               {bookings.length === 0 && (<tr><td colSpan={14} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No bookings yet.</td></tr>)}
               {bookings.map((b) => (
-                <tr key={b.id} className="border-t border-[#E5E5E5]" data-testid={`bookings-row-${b.id}`}>
+                <Fragment key={b.id}>
+                <tr className="border-t border-[#E5E5E5]" data-testid={`bookings-row-${b.id}`}>
                   <td className="px-3 py-2 text-xs text-[#7A7A7A]">{b.created_at?.slice(0, 10)}</td>
                   <td className="px-3 py-2 text-sm">{b.workshop_title || b.workshop_name}</td>
                   <td className="px-3 py-2 text-sm whitespace-nowrap">{fmtDate(b.session_date || (b.session_id && sessions.find((s) => s.id === b.session_id)?.date)) || "—"}</td>
@@ -423,6 +457,9 @@ export default function WorkshopsAdmin() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <button onClick={() => setOpenBookingId(openBookingId === b.id ? null : b.id)} className="text-[11px] uppercase tracking-wider underline text-[#1A1A1A] mr-3" data-testid={`bookings-details-${b.id}`}>
+                      {openBookingId === b.id ? "Hide" : "Details"}
+                    </button>
                     {b.payment_method === "bank_transfer" && b.payment_status !== "paid" && b.status !== "cancelled" && (
                       <button onClick={() => markBookingPaid(b.id)} className="text-[11px] uppercase tracking-wider underline text-[#1A1A1A] hover:text-[#5C7A3F] mr-3" data-testid={`bookings-mark-paid-${b.id}`}>
                         Mark paid
@@ -435,6 +472,14 @@ export default function WorkshopsAdmin() {
                     )}
                   </td>
                 </tr>
+                {openBookingId === b.id && (
+                  <tr className="bg-[#FAFAF7]" data-testid={`bookings-detail-row-${b.id}`}>
+                    <td colSpan={14} className="px-4 py-4">
+                      <BookingDetails b={b} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -545,6 +590,13 @@ export default function WorkshopsAdmin() {
                   <span className="font-body text-[11px] text-[#7A7A7A]">Hidden from the public Workshops page. Only bookable via a direct link you send yourself — use "Copy booking link" once saved.</span>
                 </span>
               </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" className="mt-1" checked={!!editingSession.at_customer_venue} onChange={(e) => setEditingSession({ ...editingSession, at_customer_venue: e.target.checked })} data-testid="sessions-form-at-venue" />
+                <span>
+                  <span className="font-body text-xs text-[#1A1A1A] block">At the customer's venue</span>
+                  <span className="font-body text-[11px] text-[#7A7A7A]">We travel to them. The booking form will ask for the venue address, parking/access, setup time and a contact on the day.</span>
+                </span>
+              </label>
               {editingSession.id && (
                 <div className="bg-[#F2EFEB] border border-[#E5E5E5] p-3">
                   <p className="font-body text-[11px] text-[#7A7A7A] mb-2">Direct booking link for this date:</p>
@@ -597,6 +649,13 @@ export default function WorkshopsAdmin() {
                   <span>
                     <span className="font-body text-sm text-[#1A1A1A] block">Private booking</span>
                     <span className="font-body text-[11px] text-[#7A7A7A]">Hidden from the public Workshops page. Only bookable via a direct link — you'll get one to copy after saving.</span>
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer mt-3">
+                  <input type="checkbox" checked={!!quickAdd.at_customer_venue} onChange={(e) => setQuickAdd({ ...quickAdd, at_customer_venue: e.target.checked })} data-testid="quick-add-at-venue" />
+                  <span>
+                    <span className="font-body text-sm text-[#1A1A1A] block">At the customer's venue</span>
+                    <span className="font-body text-[11px] text-[#7A7A7A]">We travel to them. The booking form will ask for the venue address, parking/access, setup time and a contact on the day.</span>
                   </span>
                 </label>
               </div>
