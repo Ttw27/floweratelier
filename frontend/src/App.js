@@ -1,5 +1,5 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
@@ -33,12 +33,14 @@ import RegisterPage from "./pages/RegisterPage";
 import AccountPage from "./pages/AccountPage";
 import ConsultationPage from "./pages/ConsultationPage";
 import AdminPage from "./pages/AdminPage";
-import ThemePreviewPage from "./pages/ThemePreviewPage";
 import HotelsHospitalityPage from "./pages/HotelsHospitalityPage";
 import RestaurantsPage from "./pages/RestaurantsPage";
 import WorkshopsPubsPage from "./pages/WorkshopsPubsPage";
 import WorkshopsCareHomesPage from "./pages/WorkshopsCareHomesPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import DeliveryPage from "./pages/DeliveryPage";
+import GenericContentPage from "./pages/GenericContentPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 // Layout
 import Header from "./components/Header";
@@ -48,6 +50,13 @@ import WhatsAppButton from "./components/WhatsAppButton";
 import SEOHead from "./components/SEOHead";
 import Pixels from "./components/Pixels";
 import CookieConsent from "./components/CookieConsent";
+import ErrorBoundary from "./components/ErrorBoundary";
+
+// Resets the error boundary whenever the route changes.
+function RouteErrorBoundary({ children }) {
+  const location = useLocation();
+  return <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>;
+}
 
 function App() {
   return (
@@ -62,6 +71,7 @@ function App() {
             <div className="min-h-screen flex flex-col bg-[#FAFAF7] text-[#1A1A1A]">
               <Header />
               <main className="flex-1">
+              <RouteErrorBoundary>
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/collection" element={<CollectionPage />} />
@@ -90,13 +100,17 @@ function App() {
                 <Route path="/account" element={<AccountPage />} />
                 <Route path="/consultation" element={<ConsultationPage />} />
                 <Route path="/admin" element={<AdminPage />} />
-                <Route path="/themes" element={<ThemePreviewPage />} />
                 <Route path="/hotels-hospitality" element={<HotelsHospitalityPage />} />
                 <Route path="/restaurants" element={<RestaurantsPage />} />
                 <Route path="/workshops/pubs-venues" element={<WorkshopsPubsPage />} />
                 <Route path="/workshops/care-homes" element={<WorkshopsCareHomesPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/delivery" element={<DeliveryPage />} />
+                {/* Admin-created pages (Page Content → Add page). Must stay after all specific routes. */}
+                <Route path="/:slug" element={<GenericContentPage />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
+              </RouteErrorBoundary>
             </main>
             <Footer />
             <WhatsAppButton />

@@ -28,7 +28,7 @@ const ADDON_GROUPS = [
   { sub_type: "jewellery_box", title: "Keepsake jewellery boxes" },
 ];
 
-export default function SendFlow({ product, open, onClose }) {
+export default function SendFlow({ product, size = null, open, onClose }) {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [step, setStep] = useState(0);
@@ -98,8 +98,14 @@ export default function SendFlow({ product, open, onClose }) {
   }, [chosenAddonIds, addons]);
 
   const boxObj = boxes.find((b) => b.id === chosenBoxId);
+  const satFee = Number(delivery?.delivery_fees?.saturday);
+  const saturdayPremium = Number.isFinite(satFee) && satFee !== Number(delivery?.delivery_fees?.standard);
   const isNoCard = chosenCardId === NO_CARD.id;
-  const totalPrice = (product?.price || 0) + (boxObj?.price || 0) + totalAddonsPrice;
+  const cardObj = isNoCard ? null : cards.find((c) => c.id === chosenCardId);
+  const cardPrice = Number(cardObj?.price) || 0;
+  const sizeModifier = Number(size?.price_modifier) || 0;
+  const bouquetPrice = (Number(product?.price) || 0) + sizeModifier;
+  const totalPrice = bouquetPrice + (Number(boxObj?.price) || 0) + cardPrice + totalAddonsPrice;
 
   // "No card" → skip the message step entirely
   const visibleSteps = isNoCard ? STEPS.filter((s) => s.key !== "message") : STEPS;
@@ -124,7 +130,7 @@ export default function SendFlow({ product, open, onClose }) {
     if (!product) return;
     setBusy(true);
     try {
-      const card = isNoCard ? null : cards.find((c) => c.id === chosenCardId);
+      const card = cardObj;
       const all = [...addons.treat, ...addons.candle, ...addons.jewellery_box];
       const chosenAddons = all.filter((a) => chosenAddonIds.includes(a.id));
       const meta = {
@@ -137,7 +143,7 @@ export default function SendFlow({ product, open, onClose }) {
           addons: chosenAddons.map((a) => ({ id: a.id, name: a.name, price: a.price, sub_type: a.sub_type, image_url: a.image_url })),
         },
       };
-      await addToCart(product.id, 1, null, meta);
+      await addToCart(product.id, 1, size?.name || null, meta);
       trackEvent("AddToCart", { content_name: product.name, value: totalPrice, currency: "GBP" });
       toast.success("Added to your basket");
       onClose?.();
@@ -210,7 +216,7 @@ export default function SendFlow({ product, open, onClose }) {
                       <img src={c.image_url} alt={c.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-3">
-                      <p className="font-body text-[13px] text-[#1A1A1A] truncate">{c.name}</p>
+                      <p className="font-body text-[13px] text-[#1A1A1A] truncate">{c.name}{Number(c.price) > 0 ? ` · +£${Number(c.price).toFixed(2)}` : ""}</p>
                       <p className="font-body text-[11px] text-[#7A7A7A] truncate">{c.description}</p>
                     </div>
                   </button>
@@ -246,7 +252,7 @@ export default function SendFlow({ product, open, onClose }) {
                   {delivery?.rules?.blocked_weekdays?.length ? `, ${delivery.rules.blocked_weekdays.map(d => ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][d]).join(" / ")} closed` : ""}.
                 </p>
               </div>
-              <p className="font-body text-xs text-[#7A7A7A] mb-5">Saturday delivery carries a small premium.</p>
+              <p className="font-body text-xs text-[#7A7A7A] mb-5">{saturdayPremium ? `Saturday delivery is £${satFee.toFixed(2)}.` : "Saturday delivery available."}</p>
               {!delivery ? (
                 <p className="text-sm text-[#7A7A7A]">Loading dates…</p>
               ) : (
@@ -261,7 +267,7 @@ export default function SendFlow({ product, open, onClose }) {
                     >
                       <span className="block text-[10px] uppercase tracking-[0.18em] opacity-80">{d.day_name}</span>
                       <span className="block font-body text-[13px]">{d.formatted}</span>
-                      {d.is_saturday && <span className="block text-[10px] mt-0.5 opacity-75">+ Saturday fee</span>}
+                      {d.is_saturday && saturdayPremium && <span className="block text-[10px] mt-0.5 opacity-75">Saturday fee</span>}
                     </button>
                   ))}
                 </div>
@@ -372,8 +378,8 @@ export default function SendFlow({ product, open, onClose }) {
           {currentStep.key === "review" && (
             <div data-testid="step-review" className="max-w-xl">
               <div className="space-y-4 text-sm text-[#1A1A1A]">
-                <Row label="Bouquet" value={`${product?.name} — £${(product?.price || 0).toFixed(2)}`} />
-                <Row label="Card" value={isNoCard ? "No card" : (cards.find(c => c.id === chosenCardId)?.name || "—")} />
+                <Row label="Bouquet" value={`${product?.name}${size?.name ? ` (${size.name})` : ""} — £${bouquetPrice.toFixed(2)}`} />
+                <Row label="Card" value={isNoCard ? "No card" : `${cardObj?.name || "—"}${cardPrice > 0 ? ` — +£${cardPrice.toFixed(2)}` : ""}`} />
                 {!isNoCard && <Row label="Message" value={cardMessage || "—"} />}
                 <Row label="Delivery" value={chosenDate ? new Date(chosenDate).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }) : "—"} />
                 <Row label="Box" value={`${boxObj?.name || "—"}${boxObj?.price ? ` — +£${boxObj.price.toFixed(2)}` : ""}`} />
@@ -418,6 +424,7 @@ export default function SendFlow({ product, open, onClose }) {
       <BoxDesigner
         open={designerOpen}
         initialBg={boxDesign?.background || boxObj?.bg_color}
+        initialLayers={boxDesign?.layers || null}
         onClose={() => setDesignerOpen(false)}
         onSave={(design) => setBoxDesign(design)}
       />

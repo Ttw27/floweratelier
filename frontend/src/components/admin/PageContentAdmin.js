@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { clearPageCache } from "../../hooks/usePageContent";
+import { isCustomPageSlug, RESERVED_SLUGS } from "../../lib/pageRoutes";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ const LIVE_SLUGS = new Set([
   "traveller-weddings", "in-shop-displays",
   "faith-weddings", "traveller-funerals",
   "hotels-hospitality", "restaurants", "workshops",
+  "workshops-pubs", "workshops-care-homes",
 ]);
 
 const BESPOKE_SLUGS = new Set(["faith-weddings", "traveller-funerals"]);
@@ -33,7 +35,7 @@ export default function PageContentAdmin() {
     setLoading(true);
     try {
       const r = await axios.get(`${API_URL}/api/admin/page-content`);
-      setPages(r.data || []);
+      setPages(Array.isArray(r.data) ? r.data : []);
     } catch (err) { toast.error("Could not load page content"); }
     finally { setLoading(false); }
   };
@@ -111,10 +113,12 @@ export default function PageContentAdmin() {
   const [newLabel, setNewLabel] = useState("");
 
   const createPage = async () => {
-    if (!newSlug.trim()) { toast.error("Slug is required"); return; }
+    const slug = newSlug.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    if (!slug) { toast.error("Slug is required"); return; }
+    if (RESERVED_SLUGS.has(slug)) { toast.error(`"/${slug}" is already used by the site — please choose another slug`); return; }
     try {
       await axios.post(`${API_URL}/api/admin/page-content`, {
-        slug: newSlug.trim().toLowerCase().replace(/\s+/g, "-"),
+        slug,
         label: newLabel.trim() || newSlug.trim(),
         hero_eyebrow: "", hero_title_line1: "", hero_title_italic: "",
         hero_title_line2: "", hero_subheading: "", hero_image: "",
@@ -153,7 +157,8 @@ export default function PageContentAdmin() {
 
       {adding && (
         <div className="border border-[#E5E5E5] p-6 mb-6 bg-[#FAFAF7]">
-          <h4 className="font-heading text-lg font-light text-[#1A1A1A] mb-4">New service page</h4>
+          <h4 className="font-heading text-lg font-light text-[#1A1A1A] mb-1">New service page</h4>
+          <p className="font-body text-[11px] text-[#7A7A7A] mb-4">The page goes live at floweratelier.co.uk/&lt;slug&gt; and appears under Services in the menu while it&rsquo;s shown in nav.</p>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div>
               <Label className="text-[#1A1A1A] text-sm">Slug <span className="text-[#7A7A7A] font-normal">(URL path, e.g. hotels-hospitality)</span></Label>
@@ -186,6 +191,10 @@ export default function PageContentAdmin() {
                 </div>
                 {LIVE_SLUGS.has(p.slug) ? (
                   <span className="font-body text-[9px] uppercase tracking-[0.18em] bg-[#C4CFC0] px-2 py-0.5 shrink-0">Live</span>
+                ) : isCustomPageSlug(p.slug) && !RESERVED_SLUGS.has(p.slug) ? (
+                  <a href={`/${p.slug}`} target="_blank" rel="noopener noreferrer" className="font-body text-[9px] uppercase tracking-[0.18em] bg-[#C4CFC0] px-2 py-0.5 shrink-0 underline" title="Custom page — shown under Services in the menu when active" data-testid={`page-content-custom-${p.slug}`}>
+                    Custom page ↗
+                  </a>
                 ) : (
                   <span className="font-body text-[9px] uppercase tracking-[0.18em] bg-[#F2EFEB] text-[#7A7A7A] px-2 py-0.5 shrink-0">Editable</span>
                 )}

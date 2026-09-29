@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account
+Disallow: /order-success
+Disallow: /workshops/book/
+Disallow: /workshops/booking-success
+
+Sitemap: https://www.floweratelier.co.uk/sitemap.xml

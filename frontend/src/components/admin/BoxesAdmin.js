@@ -51,9 +51,11 @@ export default function BoxesAdmin() {
 
   const remove = async (id) => {
     if (!window.confirm("Delete this box choice?")) return;
-    await axios.delete(`${API_URL}/api/admin/boxes/${id}`);
-    toast.success("Deleted");
-    await load();
+    try {
+      await axios.delete(`${API_URL}/api/admin/boxes/${id}`);
+      toast.success("Deleted");
+      await load();
+    } catch (err) { toast.error(err.response?.data?.detail || "Delete failed"); }
   };
 
   return (

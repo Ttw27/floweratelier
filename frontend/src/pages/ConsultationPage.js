@@ -12,31 +12,91 @@ import { useSettings } from "../context/SettingsContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Calendar, Clock, Phone, Mail, CheckCircle } from "lucide-react";
+import { getContact } from "../lib/contact";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+// Every service value any link on the site can send (?service=...), normalised to underscores.
+const SERVICE_OPTIONS = [
+  { value: "wedding", label: "Wedding" },
+  { value: "traveller_wedding", label: "Traveller Wedding" },
+  { value: "faith_wedding", label: "Faith & Cultural Wedding" },
+  { value: "sympathy", label: "Sympathy / Funeral" },
+  { value: "traveller_funeral", label: "Traveller Funeral" },
+  { value: "corporate", label: "Corporate / Event" },
+  { value: "hotels_hospitality", label: "Hotels & Hospitality" },
+  { value: "restaurants", label: "Restaurants & Members' Clubs" },
+  { value: "house", label: "House Install" },
+  { value: "shop_front", label: "Shop Front Install" },
+  { value: "in_shop_display", label: "In-Shop Display" },
+  { value: "film_tv", label: "Film, TV & Photoshoot" },
+  { value: "workshop", label: "Workshop" },
+  { value: "workshops_pubs", label: "Workshop Night — Pubs & Venues" },
+  { value: "workshops_care_homes", label: "Workshops — Care Homes & Hospices" },
+  { value: "bespoke", label: "Bespoke Commission" },
+  { value: "gift", label: "Gift Bouquet" },
+  { value: "other", label: "Other" },
+];
+
+const SERVICE_ALIASES = {
+  weddings: "wedding",
+  funeral: "sympathy",
+  funerals: "sympathy",
+  hotels: "hotels_hospitality",
+  hospitality: "hotels_hospitality",
+  restaurant: "restaurants",
+  house_installs: "house",
+  house_install: "house",
+  shop: "shop_front",
+  shop_front_installs: "shop_front",
+  in_shop: "in_shop_display",
+  in_shop_displays: "in_shop_display",
+  film_tv_photoshoot: "film_tv",
+  film: "film_tv",
+  workshops: "workshop",
+  workshops_pubs_venues: "workshops_pubs",
+  pubs: "workshops_pubs",
+  care_homes: "workshops_care_homes",
+  workshops_care_home: "workshops_care_homes",
+};
+
+function normaliseService(raw) {
+  const v = String(raw || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (!v) return "";
+  const mapped = SERVICE_ALIASES[v] || v;
+  return SERVICE_OPTIONS.some((o) => o.value === mapped) ? mapped : "other";
+}
 
 export default function ConsultationPage() {
   const [searchParams] = useSearchParams();
   const { settings } = useSettings();
-  const phone = settings?.phone_number || "0116 212 3456";
-  const phoneE164 = `+44${phone.replace(/^0/, "").replace(/\s/g, "")}`;
-  const email = settings?.contact_email || "info@floweratelier.co.uk";
-  const defaultService = searchParams.get("service") || "";
+  const { phone, telHref, email } = getContact(settings);
+  const defaultService = normaliseService(searchParams.get("service"));
   const portfolioItemId = searchParams.get("portfolio_item_id") || null;
   const portfolioTitle = searchParams.get("ref_title") || null;
+  const workshopRef = searchParams.get("workshop") || null;
+  const workshopLabel = workshopRef ? workshopRef.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : null;
+  const initialMessage = [
+    portfolioTitle ? `Interest in: ${portfolioTitle}` : null,
+    workshopLabel ? `Workshop: ${workshopLabel}` : null,
+  ].filter(Boolean).join("\n");
 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [eventDate, setEventDate] = useState(null);
   const [formData, setFormData] = useState({
     name: "", email: "", phone: "", service_type: defaultService,
-    budget: "", message: portfolioTitle ? `Interest in: ${portfolioTitle}\n\n` : "",
+    budget: "", message: initialMessage ? `${initialMessage}\n\n` : "",
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.service_type) {
+      toast.error("Please choose the service you're enquiring about");
+      return;
+    }
     setSubmitting(true);
     try {
       await axios.post(`${API_URL}/api/inquiries`, {
@@ -70,8 +130,8 @@ export default function ConsultationPage() {
             and respond within 24 hours to arrange a conversation.
           </p>
           <div className="space-y-2 font-body text-sm text-[#7A7A7A]">
-            <p className="flex items-center justify-center gap-2"><Phone size={14} strokeWidth={1.3} />{phone}</p>
-            <p className="flex items-center justify-center gap-2"><Mail size={14} strokeWidth={1.3} />atelier@floweratelier.com</p>
+            <a href={telHref} className="flex items-center justify-center gap-2 hover:text-[#1A1A1A]"><Phone size={14} strokeWidth={1.3} />{phone}</a>
+            <a href={`mailto:${email}`} className="flex items-center justify-center gap-2 hover:text-[#1A1A1A]"><Mail size={14} strokeWidth={1.3} />{email}</a>
           </div>
         </div>
       </div>
@@ -92,6 +152,9 @@ export default function ConsultationPage() {
           </p>
           {portfolioTitle && (
             <p className="mt-4 accent-label text-[#1A1A1A]">Reference · {portfolioTitle}</p>
+          )}
+          {workshopLabel && (
+            <p className="mt-4 accent-label text-[#1A1A1A]" data-testid="consultation-workshop-ref">Workshop · {workshopLabel}</p>
           )}
         </div>
       </section>
@@ -124,13 +187,9 @@ export default function ConsultationPage() {
                       <SelectValue placeholder="Select service" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-[#E5E5E5] rounded-none">
-                      <SelectItem value="wedding">Wedding</SelectItem>
-                      <SelectItem value="sympathy">Sympathy / Funeral</SelectItem>
-                      <SelectItem value="corporate">Corporate / Event</SelectItem>
-                      <SelectItem value="house">House Install</SelectItem>
-                      <SelectItem value="bespoke">Bespoke Commission</SelectItem>
-                      <SelectItem value="gift">Gift Bouquet</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      {SERVICE_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -217,8 +276,8 @@ export default function ConsultationPage() {
             <div className="bg-white border border-[#E5E5E5] p-8">
               <p className="accent-label mb-5 text-[#1A1A1A]">Direct</p>
               <div className="space-y-3">
-                <a href={`tel:${phoneE164}`} className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />{phone}</a>
-                <a href="mailto:atelier@floweratelier.com" className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Mail size={14} strokeWidth={1.3} />atelier@floweratelier.com</a>
+                <a href={telHref} className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Phone size={14} strokeWidth={1.3} />{phone}</a>
+                <a href={`mailto:${email}`} className="flex items-center gap-3 font-body text-sm text-[#1A1A1A] hover:text-[#B3A89B] transition-colors"><Mail size={14} strokeWidth={1.3} />{email}</a>
               </div>
             </div>
           </div>

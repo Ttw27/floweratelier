@@ -56,6 +56,7 @@ export default function WeddingsPage() {
 
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={DEFAULT_TIERS}
         eyebrow="Services"
         heading={<>Complete wedding<br /><span className="italic">floristry.</span></>}

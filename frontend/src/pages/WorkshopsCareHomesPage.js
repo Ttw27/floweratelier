@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Heart, Smile, Users, Leaf, MessageCircle, CheckCircle } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import { useSettings } from "../context/SettingsContext";
+import { getContact } from "../lib/contact";
 import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1800";
@@ -30,7 +31,7 @@ export default function WorkshopsCareHomesPage() {
   const { settings } = useSettings();
   const { content, loading } = usePageContent("workshops-care-homes");
 
-  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const waNumber = getContact(settings).whatsapp;
   const waHref = `https://wa.me/${waNumber}?text=${encodeURIComponent("Hello Flower Atelier — I'd like to arrange a floristry session for our residents.")}`;
 
   return (

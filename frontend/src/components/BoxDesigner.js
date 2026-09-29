@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { X, Type, ImagePlus, Trash2, Undo2, Check, Square, Circle as CircleIcon, Heart, RectangleHorizontal, LayoutTemplate, ChevronsUp, ChevronsDown, ChevronUp, ChevronDown } from "lucide-react";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+// Upload responses are absolute URLs — use them as-is. (Only a legacy relative path gets the API origin.)
+const absUrl = (u) => (u && /^https?:\/\//i.test(u) ? u : `${API_URL}${u || ""}`);
 
 const BOX_W = 800;
 const BOX_H = 560;
@@ -171,7 +173,7 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
     fd.append("file", file);
     try {
       const r = await axios.post(`${API_URL}/api/uploads/image`, fd);
-      const url = `${API_URL}${r.data.url}`;
+      const url = absUrl(r.data.url);
       const id = uid();
       pushHistory([...layers, { id, type: "image", url, x: 250, y: 150, width: 280, height: 280, rotation: 0 }]);
       setSelectedId(id);
@@ -282,7 +284,7 @@ export default function BoxDesigner({ open, onClose, onSave, initialBg, template
       const fd = new FormData();
       fd.append("file", new File([blob], "design.png", { type: "image/png" }));
       const r = await axios.post(`${API_URL}/api/uploads/image`, fd);
-      const previewUrl = `${API_URL}${r.data.url}`;
+      const previewUrl = absUrl(r.data.url);
 
       if (templateMode) {
         if (!tplName.trim()) { toast.error("Template name required"); return; }

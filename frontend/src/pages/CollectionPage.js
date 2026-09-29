@@ -6,6 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+const fmt = (n) => `£${(Number(n) || 0).toFixed(2)}`;
+
+// Occasion tags used by the "Shop by occasion" tiles on the homepage (not Ready Collection).
+const GIFT_OCCASION_LABELS = {
+  birthday: "Birthday",
+  anniversary: "Anniversary",
+  "thank-you": "Thank You",
+  congratulations: "Congratulations",
+  celebration: "Celebration",
+  proposal: "Proposal",
+};
+
 const OCCASION_LABELS = {
   ready: "The Ready Collection",
   traveller_funeral: "Ready Tributes · Traveller Funerals",
@@ -25,12 +37,19 @@ export default function CollectionPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   const categoryData = categories.find((c) => c.slug === category);
-  const pageTitle = occasion ? (OCCASION_LABELS[occasion] || "The Ready Collection") : (categoryData?.name || "The Collection");
+  const categoryNotFound = !!category && categoriesLoaded && !categoryData;
+  const giftOccasion = occasion ? GIFT_OCCASION_LABELS[occasion] : null;
+  const pageTitle = occasion
+    ? (giftOccasion || OCCASION_LABELS[occasion] || "The Ready Collection")
+    : (categoryNotFound ? "Category not found" : (categoryData?.name || (category ? "" : "The Collection")));
   const pageDescription = occasion
-    ? "Standard-size pieces — order direct, no consultation required. 4-day turnaround as we source fresh stems from Holland & Colombia and hand-build each piece in our atelier."
-    : categoryData?.description;
+    ? (giftOccasion
+        ? `Hand-tied pieces chosen for ${giftOccasion.toLowerCase()} moments.`
+        : "Standard-size pieces — order direct, no consultation required. 4-day turnaround as we source fresh stems from Holland & Colombia and hand-build each piece in our atelier.")
+    : (categoryNotFound ? null : categoryData?.description);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,6 +78,7 @@ export default function CollectionPage() {
 
         setProducts(sortedProducts);
         setCategories(categoriesRes.data);
+        setCategoriesLoaded(true);
       } catch (error) {
         console.error("Failed to fetch products:", error);
       } finally {
@@ -73,7 +93,7 @@ export default function CollectionPage() {
       {/* Header */}
       <section className="py-20 md:py-28 px-6 md:px-12 border-b border-[#E5E5E5]">
         <div className="max-w-[1400px] mx-auto">
-          <p className="accent-label mb-6"><span className="thin-rule" />{occasion ? "The Ready Collection" : (category ? "Category" : "Shop")}</p>
+          <p className="accent-label mb-6"><span className="thin-rule" />{occasion ? (giftOccasion ? "Shop by occasion" : "The Ready Collection") : (category ? "Category" : "Shop")}</p>
           <h1
             className="font-heading text-5xl md:text-7xl lg:text-8xl font-light text-[#1A1A1A] leading-[0.95] tracking-tight"
             data-testid="collection-title"
@@ -91,7 +111,7 @@ export default function CollectionPage() {
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-4">
             <p className="accent-label" data-testid="product-count">
-              {products.length} {products.length === 1 ? "piece" : "pieces"}
+              {categoryNotFound ? "" : `${products.length} ${products.length === 1 ? "piece" : "pieces"}`}
             </p>
             <div className="flex items-center gap-6">
               <button
@@ -192,6 +212,13 @@ export default function CollectionPage() {
                     </div>
                   ))}
                 </div>
+              ) : categoryNotFound ? (
+                <div className="text-center py-24" data-testid="category-not-found">
+                  <p className="font-body text-[#7A7A7A] mb-6">We couldn't find that category — it may have been renamed or removed.</p>
+                  <Link to="/collection" className="font-body text-[11px] uppercase tracking-[0.22em] text-[#1A1A1A] border-b border-[#1A1A1A] pb-1">
+                    Browse the full collection →
+                  </Link>
+                </div>
               ) : products.length === 0 ? (
                 <div className="text-center py-24" data-testid="no-products">
                   <p className="font-body text-[#7A7A7A]">No pieces in this category.</p>
@@ -207,7 +234,11 @@ export default function CollectionPage() {
                     >
                       <div className="aspect-[4/5] overflow-hidden bg-[#F2EFEB] image-hover-container relative">
                         <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-                        {product.featured && (
+                        {product.in_stock === false ? (
+                          <span className="absolute top-4 left-4 bg-[#1A1A1A]/80 text-white text-[10px] font-body uppercase tracking-[0.22em] px-3 py-1.5">
+                            Currently unavailable
+                          </span>
+                        ) : product.featured && (
                           <span className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-[#1A1A1A] text-[10px] font-body uppercase tracking-[0.22em] px-3 py-1.5">
                             Signature
                           </span>
@@ -219,7 +250,7 @@ export default function CollectionPage() {
                           {product.name}
                         </h3>
                         <p className="font-body text-sm text-[#7A7A7A]">
-                          from <span className="text-[#1A1A1A]">£{product.price.toFixed(0)}</span>
+                          from <span className="text-[#1A1A1A]">{fmt(product.price)}</span>
                         </p>
                       </div>
                     </Link>

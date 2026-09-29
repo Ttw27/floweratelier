@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,21 +8,45 @@ import { Trash2, Plus, Minus, Gift, ArrowRight, ShoppingBag } from "lucide-react
 import { toast } from "sonner";
 import SendFlowSummary from "../components/SendFlowSummary";
 
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+const fmt = (n) => `£${(Number(n) || 0).toFixed(2)}`;
+const MAX_QTY = 20;
+
 export default function CartPage() {
   const navigate = useNavigate();
-  const { cart, updateQuantity, removeFromCart, updateGiftMessage } = useCart();
+  const { cart, loaded, updateQuantity, removeFromCart, updateGiftMessage } = useCart();
   const [giftMessage, setGiftMessage] = useState(cart.gift_message || "");
   const [showGiftMessage, setShowGiftMessage] = useState(!!cart.gift_message);
   const [updatingGift, setUpdatingGift] = useState(false);
+  const [fees, setFees] = useState(null);
+  const [busyLine, setBusyLine] = useState(null);
 
-  const handleUpdateQuantity = async (productId, currentQty, delta) => {
+  // Keep the gift message in sync once the cart has loaded / changed on the server.
+  useEffect(() => {
+    setGiftMessage(cart.gift_message || "");
+    if (cart.gift_message) setShowGiftMessage(true);
+  }, [cart.gift_message]);
+
+  useEffect(() => {
+    let cancelled = false;
+    axios.get(`${API_URL}/api/delivery/options`)
+      .then((r) => { if (!cancelled) setFees(r.data?.delivery_fees || null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleUpdateQuantity = async (lineId, currentQty, delta) => {
     const newQty = currentQty + delta;
-    if (newQty < 1) return;
-    try { await updateQuantity(productId, newQty); } catch { toast.error("Failed to update"); }
+    if (newQty < 1 || newQty > MAX_QTY) return;
+    setBusyLine(lineId);
+    try { await updateQuantity(lineId, newQty); } catch { toast.error("Failed to update"); }
+    finally { setBusyLine(null); }
   };
 
-  const handleRemove = async (productId) => {
-    try { await removeFromCart(productId); toast.success("Removed"); } catch { toast.error("Failed"); }
+  const handleRemove = async (lineId) => {
+    setBusyLine(lineId);
+    try { await removeFromCart(lineId); toast.success("Removed"); } catch { toast.error("Failed"); }
+    finally { setBusyLine(null); }
   };
 
   const handleSaveGiftMessage = async () => {
@@ -31,17 +56,19 @@ export default function CartPage() {
     finally { setUpdatingGift(false); }
   };
 
-  const sendFlowExtras = cart.items.reduce((sum, it) => {
-    const sf = it.box_personalization?.send_flow;
-    if (!sf) return sum;
-    const boxExtra = sf.box?.price || 0;
-    const addons = (sf.addons || []).reduce((s, a) => s + (Number(a.price) || 0), 0);
-    return sum + (boxExtra + addons) * (it.quantity || 1);
-  }, 0);
+  // All prices are computed server-side (unit_price / item_total / subtotal).
+  const subtotal = Number(cart.subtotal) || 0;
+  const freeThreshold = fees ? Number(fees.free_threshold) : null;
+  const standardFee = fees ? Number(fees.standard) : null;
+  const saturdayFee = fees ? Number(fees.saturday) : null;
+  const isFree = freeThreshold !== null && subtotal >= freeThreshold;
+  const deliveryFee = fees ? (isFree ? 0 : standardFee) : null;
+  const saturdayDiffers = !isFree && fees && saturdayFee !== standardFee;
+  const total = subtotal + (deliveryFee || 0);
 
-  const adjustedSubtotal = cart.subtotal + sendFlowExtras;
-  const deliveryFee = adjustedSubtotal >= 100 ? 0 : 9.99;
-  const total = adjustedSubtotal + deliveryFee;
+  if (!loaded && cart.items.length === 0) {
+    return <div className="min-h-[60vh] flex items-center justify-center pt-28"><div className="spinner" /></div>;
+  }
 
   if (cart.items.length === 0) {
     return (
@@ -69,7 +96,7 @@ export default function CartPage() {
           <div className="lg:col-span-2 space-y-8" data-testid="cart-items">
             {cart.items.map((item, index) => (
               <div
-                key={`${item.product_id}-${item.size}-${index}`}
+                key={item.line_id || `${item.product_id}-${item.size}-${index}`}
                 className="flex gap-6 pb-8 border-b border-[#E5E5E5]"
                 data-testid={`cart-item-${item.product_id}`}
               >
@@ -94,7 +121,9 @@ export default function CartPage() {
                       )}
                     </div>
                     <button
-                      onClick={() => handleRemove(item.product_id)}
+                      onClick={() => handleRemove(item.line_id || item.product_id)}
+                      disabled={busyLine === (item.line_id || item.product_id)}
+                      aria-label={`Remove ${item.name}`}
                       className="text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors flex-shrink-0"
                       data-testid={`remove-item-${item.product_id}`}
                     >
@@ -105,18 +134,27 @@ export default function CartPage() {
                   <div className="mt-auto flex items-center justify-between pt-4">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleUpdateQuantity(item.product_id, item.quantity, -1)}
-                        className="w-9 h-9 border border-[#E5E5E5] flex items-center justify-center hover:border-[#1A1A1A] transition-colors text-[#1A1A1A]"
+                        onClick={() => handleUpdateQuantity(item.line_id || item.product_id, item.quantity, -1)}
+                        disabled={item.quantity <= 1 || busyLine === (item.line_id || item.product_id)}
+                        aria-label="Decrease quantity"
+                        className="w-9 h-9 border border-[#E5E5E5] flex items-center justify-center hover:border-[#1A1A1A] transition-colors text-[#1A1A1A] disabled:opacity-40"
                         data-testid={`decrease-qty-${item.product_id}`}
                       ><Minus size={12} /></button>
                       <span className="font-body text-sm w-6 text-center text-[#1A1A1A]">{item.quantity}</span>
                       <button
-                        onClick={() => handleUpdateQuantity(item.product_id, item.quantity, 1)}
-                        className="w-9 h-9 border border-[#E5E5E5] flex items-center justify-center hover:border-[#1A1A1A] transition-colors text-[#1A1A1A]"
+                        onClick={() => handleUpdateQuantity(item.line_id || item.product_id, item.quantity, 1)}
+                        disabled={item.quantity >= MAX_QTY || busyLine === (item.line_id || item.product_id)}
+                        aria-label="Increase quantity"
+                        className="w-9 h-9 border border-[#E5E5E5] flex items-center justify-center hover:border-[#1A1A1A] transition-colors text-[#1A1A1A] disabled:opacity-40"
                         data-testid={`increase-qty-${item.product_id}`}
                       ><Plus size={12} /></button>
                     </div>
-                    <p className="font-heading text-xl font-light text-[#1A1A1A]">£{item.item_total.toFixed(0)}</p>
+                    <div className="text-right">
+                      <p className="font-heading text-xl font-light text-[#1A1A1A]">{fmt(item.item_total)}</p>
+                      {item.quantity > 1 && item.unit_price != null && (
+                        <p className="font-body text-[11px] text-[#7A7A7A]">{fmt(item.unit_price)} each</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -157,26 +195,27 @@ export default function CartPage() {
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between font-body text-sm text-[#7A7A7A]">
-                  <span>Bouquets</span>
-                  <span className="text-[#1A1A1A]" data-testid="subtotal">£{cart.subtotal.toFixed(2)}</span>
+                  <span>Subtotal</span>
+                  <span className="text-[#1A1A1A]" data-testid="subtotal">{fmt(subtotal)}</span>
                 </div>
-                {sendFlowExtras > 0 && (
-                  <div className="flex justify-between font-body text-sm text-[#7A7A7A]" data-testid="extras-row">
-                    <span>Box &amp; add-ons</span>
-                    <span className="text-[#1A1A1A]">£{sendFlowExtras.toFixed(2)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between font-body text-sm text-[#7A7A7A]">
                   <span>Delivery</span>
-                  <span className="text-[#1A1A1A]" data-testid="delivery-fee">{deliveryFee === 0 ? "Complimentary" : `£${deliveryFee.toFixed(2)}`}</span>
+                  <span className="text-[#1A1A1A]" data-testid="delivery-fee">
+                    {deliveryFee === null ? "Calculated at checkout" : deliveryFee === 0 ? "Complimentary" : `${saturdayDiffers ? "From " : ""}${fmt(deliveryFee)}`}
+                  </span>
                 </div>
-                {deliveryFee > 0 && <p className="font-body text-xs text-[#B3A89B] italic">Complimentary delivery over £100</p>}
+                {saturdayDiffers && (
+                  <p className="font-body text-xs text-[#B3A89B] italic">Saturday delivery {fmt(saturdayFee)} — confirmed at checkout</p>
+                )}
+                {fees && !isFree && freeThreshold > 0 && (
+                  <p className="font-body text-xs text-[#B3A89B] italic">Complimentary delivery on orders over {fmt(freeThreshold)}</p>
+                )}
               </div>
 
               <div className="border-t border-[#E5E5E5] pt-5 mb-7">
                 <div className="flex justify-between items-baseline">
-                  <span className="accent-label text-[#1A1A1A]">Total</span>
-                  <span className="font-heading text-3xl font-light text-[#1A1A1A]" data-testid="total">£{total.toFixed(2)}</span>
+                  <span className="accent-label text-[#1A1A1A]">{deliveryFee === null || saturdayDiffers ? "Estimated total" : "Total"}</span>
+                  <span className="font-heading text-3xl font-light text-[#1A1A1A]" data-testid="total">{fmt(total)}</span>
                 </div>
               </div>
 

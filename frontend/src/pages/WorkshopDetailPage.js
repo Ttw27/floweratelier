@@ -6,6 +6,8 @@ import { ArrowRight, Calendar, Users, MapPin, Clock, MessageCircle, Building2 } 
 import WorkshopBookingModal from "../components/WorkshopBookingModal";
 import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
 import { useSettings } from "../context/SettingsContext";
+import { getContact } from "../lib/contact";
+import { workshopPricePerGuest, isSessionPast } from "../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -36,7 +38,7 @@ export default function WorkshopDetailPage() {
         setWorkshop(w.data);
         if (w.data.booking_mode !== "enquire") {
           const s = await axios.get(`${API_URL}/api/workshops/${slug}/sessions`);
-          if (alive) setSessions(s.data || []);
+          if (alive) setSessions(Array.isArray(s.data) ? s.data.filter((x) => !isSessionPast(x)) : []);
         }
       } catch (err) {
         if (!alive) return;
@@ -61,7 +63,7 @@ export default function WorkshopDetailPage() {
   const isEnquire = workshop.booking_mode === "enquire";
   const upcoming = sessions.filter((s) => (s.capacity || 0) - (s.spots_booked || 0) > 0);
   const whatsappMsg = encodeURIComponent(workshop.whatsapp_message || `Hello Flower Atelier — I'd like to enquire about ${workshop.name}.`);
-  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const waNumber = getContact(settings).whatsapp;
   const whatsappHref = `https://wa.me/${waNumber}?text=${whatsappMsg}`;
 
   const primaryCTA = () => isEnquire ? setEnquireOpen(true) : setBookingOpen(true);
@@ -72,7 +74,11 @@ export default function WorkshopDetailPage() {
       <section className="relative">
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[55vh] lg:min-h-[65vh]">
           <div className="lg:col-span-7 order-1 h-[45vh] lg:h-auto">
-            <img src={workshop.image_url} alt={workshop.name} className="w-full h-full object-cover" />
+            {workshop.image_url ? (
+              <img src={workshop.image_url} alt={workshop.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-[#F2EFEB]" />
+            )}
           </div>
           <div className="lg:col-span-5 flex items-center px-6 md:px-12 lg:px-16 py-14 lg:py-16 order-2 bg-[#FAFAF7]">
             <div className="max-w-md">
@@ -90,7 +96,7 @@ export default function WorkshopDetailPage() {
               </div>
 
               <div className="flex items-end gap-4 mb-8">
-                <p className="font-heading text-3xl text-[#1A1A1A]">{isEnquire ? "Bespoke" : `£${Number(workshop.price_per_guest).toFixed(0)}`}</p>
+                <p className="font-heading text-3xl text-[#1A1A1A]">{isEnquire ? "Bespoke" : `£${workshopPricePerGuest(workshop, null).toFixed(0)}`}</p>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#7A7A7A] pb-2">{isEnquire ? "pricing" : "per guest"}</p>
               </div>
 
@@ -112,7 +118,7 @@ export default function WorkshopDetailPage() {
                       <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
                     </Button>
                   </a>
-                  <Link to={`/consultation?service=workshop&workshop=${workshop.slug}`}>
+                  <Link to={`/consultation?service=workshop&workshop=${encodeURIComponent(workshop.slug || "")}`}>
                     <Button variant="outline" className="rounded-none py-6 px-8" data-testid="workshop-detail-nodates-cta">
                       Arrange a date <ArrowRight size={14} className="ml-2" strokeWidth={1.5} />
                     </Button>
@@ -190,7 +196,7 @@ export default function WorkshopDetailPage() {
                       <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
                     </Button>
                   </a>
-                  <Link to={`/consultation?service=workshop&workshop=${workshop.slug}`}>
+                  <Link to={`/consultation?service=workshop&workshop=${encodeURIComponent(workshop.slug || "")}`}>
                     <Button variant="outline" className="rounded-none py-5 px-6 w-full sm:w-auto">Send a brief</Button>
                   </Link>
                 </div>
@@ -209,7 +215,7 @@ export default function WorkshopDetailPage() {
                         <p><Users size={11} className="inline mr-1" /> {soldOut ? "Sold out" : `${remaining} spot${remaining === 1 ? "" : "s"} remaining`}</p>
                       </div>
                       <div className="mt-4 flex items-center justify-between">
-                        <p className="font-heading text-xl text-[#1A1A1A]">£{Number(s.price_per_guest ?? workshop.price_per_guest).toFixed(0)}<span className="text-[11px] text-[#7A7A7A] ml-1">/ guest</span></p>
+                        <p className="font-heading text-xl text-[#1A1A1A]">£{workshopPricePerGuest(workshop, s).toFixed(0)}<span className="text-[11px] text-[#7A7A7A] ml-1">/ guest</span></p>
                         <Button size="sm" onClick={primaryCTA} disabled={soldOut} className="btn-dark rounded-none" data-testid={`workshop-detail-book-${s.id}`}>
                           {soldOut ? "Sold out" : "Book"}
                         </Button>

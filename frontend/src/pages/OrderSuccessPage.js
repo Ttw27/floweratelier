@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { CheckCircle, Package, Truck, Gift } from "lucide-react";
@@ -13,23 +13,45 @@ export default function OrderSuccessPage() {
   const { clearCart } = useCart();
   const [status, setStatus] = useState("checking");
 
+  const clearedRef = useRef(false);
+
   useEffect(() => {
-    const check = async () => {
-      if (!sessionId) { setStatus("error"); return; }
-      let attempts = 0;
-      const poll = async () => {
-        if (attempts >= 5) { setStatus("timeout"); return; }
-        try {
-          const response = await axios.get(`${API_URL}/api/checkout/status/${sessionId}`);
-          if (response.data.payment_status === "paid") { setStatus("success"); clearCart(); return; }
-          if (response.data.status === "expired") { setStatus("expired"); return; }
-          attempts++; setTimeout(poll, 2000);
-        } catch { attempts++; setTimeout(poll, 2000); }
-      };
-      poll();
+    if (!sessionId) { setStatus("error"); return undefined; }
+    let cancelled = false;
+    let timer = null;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 8;
+
+    const poll = async () => {
+      if (cancelled) return;
+      if (attempts >= MAX_ATTEMPTS) { setStatus("timeout"); return; }
+      attempts += 1;
+      try {
+        const response = await axios.get(`${API_URL}/api/checkout/status/${encodeURIComponent(sessionId)}`);
+        if (cancelled) return;
+        if (response.data.payment_status === "paid") {
+          setStatus("success");
+          if (!clearedRef.current) {
+            clearedRef.current = true;
+            clearCart();
+          }
+          return;
+        }
+        if (response.data.status === "expired") { setStatus("expired"); return; }
+      } catch {
+        if (cancelled) return;
+      }
+      timer = setTimeout(poll, 2000);
     };
-    check();
-  }, [sessionId, clearCart]);
+    poll();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    // clearCart is stable (useCallback) but deliberately excluded so polling never restarts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   if (status === "checking") {
     return (
@@ -45,9 +67,13 @@ export default function OrderSuccessPage() {
       <div className="min-h-[60vh] flex flex-col items-center justify-center py-20 px-4 pt-32" data-testid="payment-error">
         <div className="text-center max-w-md">
           <h1 className="font-heading text-3xl font-light text-[#1A1A1A] mb-4">
-            {status === "expired" ? "Payment expired" : "Could not verify payment"}
+            {status === "expired" ? "Payment expired" : status === "timeout" ? "Still confirming your payment" : "Could not verify payment"}
           </h1>
-          <p className="font-body text-[#7A7A7A] mb-8">Please try again or contact us.</p>
+          <p className="font-body text-[#7A7A7A] mb-8">
+            {status === "timeout"
+              ? "This can take a minute. If you were charged, your order is safe — you'll receive a confirmation email shortly, or contact us."
+              : "Please try again or contact us."}
+          </p>
           <Link to="/cart"><Button className="btn-dark rounded-none">Return to basket</Button></Link>
         </div>
       </div>

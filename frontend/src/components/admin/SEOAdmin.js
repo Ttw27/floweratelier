@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil, Trash2, Plus } from "lucide-react";
+import { clearSEOCache } from "../SEOHead";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -22,8 +23,15 @@ const PRESET_PATHS = [
   { path: "/shop-front-installs", label: "Shop-Front Installs" },
   { path: "/in-shop-displays", label: "In-Shop Displays" },
   { path: "/film-tv-photoshoot", label: "Film, TV & Photoshoot" },
+  { path: "/hotels-hospitality", label: "Hotels & Hospitality" },
+  { path: "/restaurants", label: "Restaurants & Members' Clubs" },
+  { path: "/workshops", label: "Workshops" },
+  { path: "/workshops/pubs-venues", label: "Workshops — Pubs & Venues" },
+  { path: "/workshops/care-homes", label: "Workshops — Care Homes" },
   { path: "/portfolio", label: "Portfolio" },
   { path: "/consultation", label: "Consultation" },
+  { path: "/delivery", label: "Delivery & Care" },
+  { path: "/privacy", label: "Privacy" },
 ];
 
 const empty = (path = "") => ({
@@ -41,7 +49,7 @@ export default function SEOAdmin() {
     setLoading(true);
     try {
       const r = await axios.get(`${API_URL}/api/admin/seo`);
-      setPages(r.data || []);
+      setPages(Array.isArray(r.data) ? r.data : []);
     } catch (e) {
       toast.error("Could not load SEO pages");
     } finally { setLoading(false); }
@@ -63,6 +71,7 @@ export default function SEOAdmin() {
     setSaving(true);
     try {
       await axios.put(`${API_URL}/api/admin/seo`, editing);
+      clearSEOCache();
       toast.success("SEO saved");
       setEditing(null);
       await load();
@@ -75,6 +84,7 @@ export default function SEOAdmin() {
     if (!window.confirm(`Remove SEO for ${path}? It will fall back to defaults.`)) return;
     try {
       await axios.delete(`${API_URL}/api/admin/seo`, { params: { path } });
+      clearSEOCache();
       toast.success("Removed");
       await load();
     } catch (err) {

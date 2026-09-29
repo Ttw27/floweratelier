@@ -1,21 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { X, Calendar, Clock, MapPin, Users, MessageCircle } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Users, MessageCircle, Phone, CheckCircle2, Copy } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
+import { getContact, whatsappHref } from "../lib/contact";
+import { calcWorkshopAmounts, workshopPricePerGuest, isSessionPast, fmtWorkshopDate as fmtDate } from "../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
-
-const fmtDate = (iso) => {
-  if (!iso) return "";
-  try {
-    return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  } catch { return iso; }
-};
 
 export default function WorkshopBookingModal({ open, workshop, onClose }) {
   const { settings } = useSettings();
@@ -27,12 +23,26 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
   const [paymentChoice, setPaymentChoice] = useState("deposit");
   const [submitting, setSubmitting] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(true);
+  const [bankEnabled, setBankEnabled] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("stripe");
+  const [confirmedBooking, setConfirmedBooking] = useState(null);
 
   useEffect(() => {
     axios.get(`${API_URL}/api/payment-methods`)
-      .then((r) => setCardEnabled(!!r.data.card_enabled))
-      .catch(() => setCardEnabled(true));
+      .then((r) => {
+        setCardEnabled(!!r.data?.card_enabled);
+        setBankEnabled(!!r.data?.bank_transfer_enabled);
+      })
+      .catch(() => { setCardEnabled(true); setBankEnabled(false); }); // fail open for card
   }, []);
+
+  // Pick a sensible default payment method once we know what's available
+  useEffect(() => {
+    if (!cardEnabled && bankEnabled) setPaymentMethod("bank_transfer");
+    else if (cardEnabled) setPaymentMethod("stripe");
+  }, [cardEnabled, bankEnabled]);
+
+  const noPaymentMethod = !cardEnabled && !bankEnabled;
 
   useEffect(() => {
     if (!open || !workshop) return;
@@ -40,33 +50,22 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
     setSelectedSessionId("");
     setForm({ name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "" });
     setPaymentChoice("deposit");
+    setConfirmedBooking(null);
+    setSubmitting(false);
     setLoadingSessions(true);
     axios.get(`${API_URL}/api/workshops/${workshop.slug}/sessions`)
-      .then((r) => setSessions(r.data || []))
+      .then((r) => setSessions(Array.isArray(r.data) ? r.data.filter((s) => !isSessionPast(s)) : []))
       .catch(() => toast.error("Could not load dates"))
       .finally(() => setLoadingSessions(false));
   }, [open, workshop]);
 
   const selectedSession = useMemo(() => sessions.find((s) => s.id === selectedSessionId), [sessions, selectedSessionId]);
 
-  const pricePerGuest = useMemo(() => {
-    if (!workshop) return 0;
-    return Number(selectedSession?.price_per_guest ?? workshop.price_per_guest ?? 0);
-  }, [workshop, selectedSession]);
-
-  const depositPerGuest = useMemo(() => {
-    if (!workshop) return 0;
-    const explicit = selectedSession?.deposit_amount ?? workshop.deposit_amount;
-    if (explicit && Number(explicit) > 0) return Number(explicit);
-    return Math.round((pricePerGuest * 0.5) * 100) / 100;
-  }, [workshop, selectedSession, pricePerGuest]);
-
-  const subtotal = useMemo(() => +(pricePerGuest * Math.max(1, form.guests)).toFixed(2), [pricePerGuest, form.guests]);
-
-  const discountPct = Number(workshop?.full_payment_discount_pct ?? 0);
-  const discountAmount = useMemo(() => paymentChoice === "full" ? +(subtotal * discountPct / 100).toFixed(2) : 0, [subtotal, discountPct, paymentChoice]);
-  const amountDueNow = useMemo(() => paymentChoice === "full" ? +(subtotal - discountAmount).toFixed(2) : +(depositPerGuest * Math.max(1, form.guests)).toFixed(2), [paymentChoice, subtotal, discountAmount, depositPerGuest, form.guests]);
-  const balanceOnDay = useMemo(() => +(subtotal - amountDueNow).toFixed(2), [subtotal, amountDueNow]);
+  const amounts = useMemo(
+    () => calcWorkshopAmounts(workshop, selectedSession, form.guests, paymentChoice),
+    [workshop, selectedSession, form.guests, paymentChoice]
+  );
+  const { pricePerGuest, discountPct, subtotal, fullAmount, depositAmount, depositAvailable, effectiveChoice, discountAmount, amountDueNow, balanceOnDay } = amounts;
 
   const spotsRemaining = (s) => Math.max(0, (s.capacity || 0) - (s.spots_booked || 0));
 
@@ -79,6 +78,8 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
     e.preventDefault();
     if (!form.name || !form.email || !form.phone) { toast.error("Name, email & phone are required"); return; }
     if (!selectedSession) { toast.error("Pick a date"); return; }
+    if (noPaymentMethod) { toast.error("Online booking is unavailable — please call or WhatsApp the studio"); return; }
+    if (isSessionPast(selectedSession)) { toast.error("This date has already passed — please pick another"); return; }
     const remaining = spotsRemaining(selectedSession);
     if (form.guests > remaining) { toast.error(`Only ${remaining} spot(s) left`); return; }
     setSubmitting(true);
@@ -91,8 +92,15 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
         guests: parseInt(form.guests, 10) || 1,
         dietary_requirements: form.dietary_requirements,
         notes: form.notes,
-        payment_choice: paymentChoice,
+        payment_choice: effectiveChoice,
+        payment_method: paymentMethod,
       });
+      if (paymentMethod === "bank_transfer") {
+        // No Stripe redirect — show bank details & reference in the modal
+        setConfirmedBooking(r.data);
+        setSubmitting(false);
+        return;
+      }
       const bookingId = r.data.id;
       const c = await axios.post(`${API_URL}/api/workshop-checkout/session`, {
         booking_id: bookingId,
@@ -103,6 +111,13 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
       toast.error(err.response?.data?.detail || "Booking failed");
       setSubmitting(false);
     }
+  };
+
+  const copyText = (text, label) => {
+    if (!text || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success(`${label} copied`))
+      .catch(() => {});
   };
 
   if (!open || !workshop) return null;
@@ -129,7 +144,11 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 md:p-7">
-          {step === 1 && (
+          {confirmedBooking && (
+            <BankTransferConfirmation booking={confirmedBooking} workshop={workshop} session={selectedSession} settings={settings} onCopy={copyText} onClose={onClose} />
+          )}
+
+          {!confirmedBooking && step === 1 && (
             <div data-testid="workshop-booking-step-date">
               <p className="font-body text-sm text-[#5A5A5A] leading-relaxed mb-6">{workshop.short_description || workshop.description}</p>
 
@@ -143,7 +162,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                     const remaining = spotsRemaining(s);
                     const isSelected = s.id === selectedSessionId;
                     const isSoldOut = remaining <= 0;
-                    const sessionPrice = Number(s.price_per_guest ?? workshop.price_per_guest ?? 0);
+                    const sessionPrice = workshopPricePerGuest(workshop, s);
                     return (
                       <button
                         key={s.id}
@@ -182,7 +201,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
             </div>
           )}
 
-          {step === 2 && selectedSession && (
+          {!confirmedBooking && step === 2 && selectedSession && (
             <form onSubmit={submit} className="space-y-5" data-testid="workshop-booking-step-details">
               <div className="bg-white border border-[#E5E5E5] p-4">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[#B3A89B]">Selected date</p>
@@ -224,29 +243,31 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
               {/* Payment choice */}
               <div className="border-t border-[#E5E5E5] pt-5">
                 <p className="accent-label mb-3"><span className="thin-rule" />Payment</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={`grid grid-cols-1 ${depositAvailable ? "md:grid-cols-2" : ""} gap-3`}>
+                  {depositAvailable && (
                   <button
                     type="button"
                     onClick={() => setPaymentChoice("deposit")}
-                    className={`text-left bg-white border p-4 ${paymentChoice === "deposit" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                    className={`text-left bg-white border p-4 ${effectiveChoice === "deposit" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
                     data-testid="workshop-payment-deposit"
                   >
                     <p className="font-heading text-base text-[#1A1A1A]">Pay deposit</p>
                     <p className="text-[11px] text-[#7A7A7A] mt-1">Secure your spot with a deposit. Balance collected on the day (cash or card).</p>
-                    <p className="font-heading text-lg text-[#1A1A1A] mt-2">£{(depositPerGuest * Math.max(1, form.guests)).toFixed(2)}<span className="text-[11px] text-[#7A7A7A] font-body ml-2">now</span></p>
+                    <p className="font-heading text-lg text-[#1A1A1A] mt-2">£{depositAmount.toFixed(2)}<span className="text-[11px] text-[#7A7A7A] font-body ml-2">now</span></p>
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setPaymentChoice("full")}
-                    className={`text-left bg-white border p-4 relative ${paymentChoice === "full" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                    className={`text-left bg-white border p-4 relative ${effectiveChoice === "full" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
                     data-testid="workshop-payment-full"
                   >
                     {discountPct > 0 && (
                       <span className="absolute top-3 right-3 bg-[#1A1A1A] text-white text-[9px] uppercase tracking-[0.2em] px-2 py-0.5">{discountPct}% off</span>
                     )}
                     <p className="font-heading text-base text-[#1A1A1A]">Pay in full</p>
-                    <p className="text-[11px] text-[#7A7A7A] mt-1">Pay everything now and save {discountPct}%.</p>
-                    <p className="font-heading text-lg text-[#1A1A1A] mt-2">£{(subtotal - +(subtotal * discountPct / 100).toFixed(2)).toFixed(2)}<span className="text-[11px] text-[#7A7A7A] font-body ml-2">now</span></p>
+                    <p className="text-[11px] text-[#7A7A7A] mt-1">Pay everything now{discountPct > 0 ? ` and save ${discountPct}%` : ""}.</p>
+                    <p className="font-heading text-lg text-[#1A1A1A] mt-2">£{fullAmount.toFixed(2)}<span className="text-[11px] text-[#7A7A7A] font-body ml-2">now</span></p>
                   </button>
                 </div>
 
@@ -255,7 +276,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                   <Row label={`${form.guests || 1} × guest @ £${pricePerGuest.toFixed(2)}`} value={`£${subtotal.toFixed(2)}`} />
                   {discountAmount > 0 && <Row label={`Full-payment discount (${discountPct}%)`} value={`–£${discountAmount.toFixed(2)}`} />}
                   <div className="border-t border-[#E5E5E5] mt-2 pt-2">
-                    <Row label="Pay now (Stripe)" value={`£${amountDueNow.toFixed(2)}`} bold />
+                    <Row label={paymentMethod === "bank_transfer" ? "Due now (bank transfer)" : "Pay now (card)"} value={`£${amountDueNow.toFixed(2)}`} bold />
                     {balanceOnDay > 0 && <Row label="Balance — collected on the day" value={`£${balanceOnDay.toFixed(2)}`} />}
                   </div>
                 </div>
@@ -265,20 +286,63 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                 </p>
               </div>
 
-              {!cardEnabled && (
-                <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3" data-testid="workshop-card-unavailable">
-                  <p className="text-[12px] text-[#6B4E00] leading-relaxed">
-                    Online card payment isn&rsquo;t available right now. To book this workshop, please call{" "}
-                    <a href={`tel:${(settings?.phone_number || "").replace(/\s/g, "")}`} className="underline text-[#1A1A1A]">{settings?.phone_number || "the studio"}</a>.
-                  </p>
+              {/* Payment method */}
+              {noPaymentMethod ? (
+                <ContactToBookPanel settings={settings} workshop={workshop} session={selectedSession} />
+              ) : (
+                <div className="border-t border-[#E5E5E5] pt-5">
+                  <p className="accent-label mb-3"><span className="thin-rule" />How to pay</p>
+                  <div className={`grid grid-cols-1 ${cardEnabled && bankEnabled ? "md:grid-cols-2" : ""} gap-3`}>
+                    {cardEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("stripe")}
+                        className={`text-left bg-white border p-4 ${paymentMethod === "stripe" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                        data-testid="workshop-payment-method-stripe"
+                      >
+                        <p className="font-heading text-base text-[#1A1A1A]">Pay by card</p>
+                        <p className="text-[11px] text-[#7A7A7A] mt-1">Secure card payment via Stripe — instant confirmation.</p>
+                      </button>
+                    )}
+                    {bankEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod("bank_transfer")}
+                        className={`text-left bg-white border p-4 ${paymentMethod === "bank_transfer" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                        data-testid="workshop-payment-method-bacs"
+                      >
+                        <p className="font-heading text-base text-[#1A1A1A]">Bank transfer (BACS)</p>
+                        <p className="text-[11px] text-[#7A7A7A] mt-1">We&rsquo;ll show our bank details and a reference — we confirm once received.</p>
+                      </button>
+                    )}
+                  </div>
+                  {!cardEnabled && (
+                    <p className="text-[11px] text-[#7A7A7A] mt-2" data-testid="workshop-card-unavailable">
+                      Online card payment isn&rsquo;t available right now. To pay by card, please call{" "}
+                      <a href={getContact(settings).telHref} className="underline text-[#1A1A1A]">{getContact(settings).phone}</a>.
+                    </p>
+                  )}
+                  {paymentMethod === "bank_transfer" && (
+                    <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mt-3">
+                      <p className="text-[12px] text-[#6B4E00] leading-relaxed">
+                        <strong>Please note:</strong> your place is held provisionally and is not secured until we&rsquo;ve received your bank transfer — please send payment as soon as possible.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
               <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-[#E5E5E5]">
                 <Button type="button" variant="outline" className="rounded-none" onClick={() => setStep(1)}>Back</Button>
-                <Button type="submit" disabled={submitting || !cardEnabled} className="btn-dark rounded-none" data-testid="workshop-booking-submit">
-                  {submitting ? "Redirecting to Stripe…" : !cardEnabled ? "Card payment unavailable" : `Pay £${amountDueNow.toFixed(2)} & book`}
-                </Button>
+                {!noPaymentMethod && (
+                  <Button type="submit" disabled={submitting} className="btn-dark rounded-none" data-testid="workshop-booking-submit">
+                    {submitting
+                      ? (paymentMethod === "bank_transfer" ? "Please wait…" : "Redirecting to Stripe…")
+                      : paymentMethod === "bank_transfer"
+                        ? `Confirm booking — £${amountDueNow.toFixed(2)} by bank transfer`
+                        : `Pay £${amountDueNow.toFixed(2)} & book`}
+                  </Button>
+                )}
               </div>
             </form>
           )}
@@ -298,11 +362,10 @@ function Row({ label, value, bold = false }) {
 }
 
 function NoDatesCard({ workshop, settings, onClose }) {
-  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
-  const waMsg = encodeURIComponent(
+  const waHref = whatsappHref(
+    settings,
     `Hello Flower Atelier — I'd like to arrange a date for the ${workshop.name} workshop (or host it at our own venue). Could you let me know what's available?`
   );
-  const waHref = `https://wa.me/${waNumber}?text=${waMsg}`;
   return (
     <div className="bg-white border border-[#E5E5E5] p-6 md:p-8 text-center" data-testid="workshop-booking-no-dates">
       <p className="accent-label justify-center mb-4"><span className="thin-rule" />No dates booked in yet</p>
@@ -316,11 +379,99 @@ function NoDatesCard({ workshop, settings, onClose }) {
             <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
           </Button>
         </a>
-        <a href={`/consultation?service=workshop&workshop=${workshop.slug}`} onClick={onClose} data-testid="workshop-booking-no-dates-enquire">
+        <Link to={`/consultation?service=workshop&workshop=${encodeURIComponent(workshop.slug || "")}`} onClick={onClose} data-testid="workshop-booking-no-dates-enquire">
           <Button variant="outline" className="rounded-none py-5 px-6 w-full sm:w-auto">
             Send a brief
           </Button>
-        </a>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ContactToBookPanel({ settings, workshop, session }) {
+  const contact = getContact(settings);
+  const waHref = whatsappHref(
+    settings,
+    `Hello Flower Atelier — I'd like to book the ${workshop?.name || ""} workshop${session?.date ? ` on ${fmtDate(session.date)}` : ""}.`
+  );
+  return (
+    <div className="border-t border-[#E5E5E5] pt-5" data-testid="workshop-contact-to-book">
+      <div className="bg-[#FBF3E7] border border-[#E9C46A] p-4">
+        <p className="font-heading text-base text-[#1A1A1A] mb-1">Book by phone or WhatsApp</p>
+        <p className="text-[12px] text-[#6B4E00] leading-relaxed mb-4">
+          Online payment isn&rsquo;t available right now. Call or message the studio and we&rsquo;ll secure your place personally.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <a href={contact.telHref} data-testid="workshop-contact-call">
+            <Button type="button" variant="outline" className="rounded-none w-full sm:w-auto">
+              <Phone size={14} className="mr-2" /> Call {contact.phone}
+            </Button>
+          </a>
+          <a href={waHref} target="_blank" rel="noopener noreferrer" data-testid="workshop-contact-whatsapp">
+            <Button type="button" className="bg-[#25D366] hover:bg-[#1ebe5b] text-white rounded-none w-full sm:w-auto">
+              <MessageCircle size={14} className="mr-2" /> WhatsApp the studio
+            </Button>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BankTransferConfirmation({ booking: b, workshop, session, settings, onCopy, onClose }) {
+  const contact = getContact(settings);
+  const dateStr = fmtDate(b.session_date || session?.date);
+  return (
+    <div data-testid="workshop-booking-bacs-confirmation">
+      <CheckCircle2 size={40} strokeWidth={1.2} className="mx-auto text-[#5C7A3F] mb-5" />
+      <p className="accent-label justify-center mb-3 text-center"><span className="thin-rule" />Booking held</p>
+      <h3 className="font-heading text-2xl md:text-3xl text-[#1A1A1A] mb-3 text-center">Almost there.</h3>
+      <p className="font-body text-sm text-[#5A5A5A] mb-4 text-center">
+        Your place is <strong className="text-[#1A1A1A]">held provisionally</strong> for <strong className="text-[#1A1A1A]">{b.workshop_title || workshop?.name}</strong>{dateStr ? <> on <strong className="text-[#1A1A1A]">{dateStr}</strong></> : null}. Please transfer <strong className="text-[#1A1A1A]">£{Number(b.amount_due_now || 0).toFixed(2)}</strong> using the details below, quoting the reference — we&rsquo;ll confirm as soon as it lands.
+      </p>
+      <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mb-5">
+        <p className="text-[12px] text-[#6B4E00] leading-relaxed text-center">
+          <strong>Your place is not secured until your payment is received.</strong> Please transfer as soon as possible.
+        </p>
+      </div>
+
+      <div className="bg-white border border-[#E5E5E5] p-5 mb-5 space-y-2">
+        {settings?.bank_account_name && <Row label="Account name" value={settings.bank_account_name} />}
+        {settings?.bank_name && <Row label="Bank" value={settings.bank_name} />}
+        {settings?.bank_sort_code && <Row label="Sort code" value={settings.bank_sort_code} />}
+        {settings?.bank_account_number && <Row label="Account number" value={settings.bank_account_number} />}
+        {!settings?.bank_sort_code && !settings?.bank_account_number && (
+          <p className="text-[12px] text-[#5A5A5A]">
+            We&rsquo;ll email you our bank details shortly. Any questions? Call <a href={contact.telHref} className="underline text-[#1A1A1A]">{contact.phone}</a>.
+          </p>
+        )}
+        {b.bank_reference && (
+          <div className="border-t border-[#E5E5E5] mt-3 pt-3 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-[#B3A89B]">Reference — please quote this</p>
+              <p className="font-heading text-xl text-[#1A1A1A]" data-testid="workshop-booking-bank-reference">{b.bank_reference}</p>
+            </div>
+            <button type="button" onClick={() => onCopy(b.bank_reference, "Reference")} className="text-[#7A7A7A] hover:text-[#1A1A1A]" aria-label="Copy reference">
+              <Copy size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white border border-[#E5E5E5] p-4 mb-5 text-sm">
+        <Row label={`${b.guests} × guest @ £${Number(b.price_per_guest || 0).toFixed(2)}`} value={`£${Number(b.subtotal || 0).toFixed(2)}`} />
+        <div className="border-t border-[#E5E5E5] mt-2 pt-2">
+          <Row label="Transfer now" value={`£${Number(b.amount_due_now || 0).toFixed(2)}`} bold />
+          {Number(b.balance_due_on_day) > 0 && <Row label="Balance — collected on the day" value={`£${Number(b.balance_due_on_day).toFixed(2)}`} />}
+        </div>
+      </div>
+
+      {b.email && (
+        <p className="font-body text-xs text-[#7A7A7A] text-center mb-5">A confirmation has been sent to <strong className="text-[#1A1A1A]">{b.email}</strong>.</p>
+      )}
+      <div className="flex justify-center">
+        <Button type="button" onClick={onClose} className="btn-dark rounded-none" data-testid="workshop-booking-done">Done</Button>
       </div>
     </div>
   );

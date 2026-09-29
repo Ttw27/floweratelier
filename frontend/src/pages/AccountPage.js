@@ -8,6 +8,32 @@ import { Package, User, Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const fmt = (n) => `£${(Number(n) || 0).toFixed(2)}`;
+const safeFormat = (iso, pattern) => { try { return format(new Date(iso), pattern); } catch { return iso || "—"; } };
+
+const STATUS_LABELS = {
+  pending: "Received",
+  confirmed: "Confirmed",
+  processing: "In the atelier",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+// Customer-facing badges: unpaid orders only ever show "Awaiting payment".
+const orderBadges = (order) => {
+  if (order.status === "cancelled") return [{ label: "Cancelled", tone: "cancelled" }];
+  if (order.payment_status === "paid") {
+    return [
+      { label: "Paid", tone: "paid" },
+      { label: STATUS_LABELS[order.status] || order.status, tone: order.status },
+    ];
+  }
+  if (["expired", "failed", "unpaid"].includes(order.payment_status)) {
+    return [{ label: "Payment not completed", tone: "unpaid" }];
+  }
+  return [{ label: "Awaiting payment", tone: "unpaid" }];
+};
 
 export default function AccountPage() {
   const navigate = useNavigate();
@@ -33,6 +59,7 @@ export default function AccountPage() {
       case "delivered": return "bg-[#1A1A1A] text-white";
       case "cancelled": return "bg-red-100 text-red-700";
       case "paid": return "bg-[#C4CFC0] text-[#1A1A1A]";
+      case "unpaid": return "bg-amber-50 text-amber-800 border border-amber-200";
       default: return "bg-[#F2EFEB] text-[#7A7A7A]";
     }
   };
@@ -78,12 +105,13 @@ export default function AccountPage() {
                   <div key={order.id} className="bg-white border border-[#E5E5E5] p-8" data-testid={`order-${order.id}`}>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                       <div>
-                        <p className="accent-label">{format(new Date(order.created_at), "MMM d, yyyy")}</p>
+                        <p className="accent-label">{safeFormat(order.created_at, "MMM d, yyyy")}</p>
                         <p className="font-body text-[11px] text-[#B3A89B] mt-1">ID · {order.id.slice(0, 8)}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-3 md:mt-0">
-                        <span className={`px-3 py-1.5 text-[10px] uppercase tracking-wider font-body ${getStatusColor(order.status)}`}>{order.status}</span>
-                        <span className={`px-3 py-1.5 text-[10px] uppercase tracking-wider font-body ${getStatusColor(order.payment_status)}`}>{order.payment_status}</span>
+                        {orderBadges(order).map((b) => (
+                          <span key={b.label} className={`px-3 py-1.5 text-[10px] uppercase tracking-wider font-body ${getStatusColor(b.tone)}`}>{b.label}</span>
+                        ))}
                       </div>
                     </div>
 
@@ -97,13 +125,13 @@ export default function AccountPage() {
                         )}
                       </div>
                       <div className="flex-1 space-y-2">
-                        <div className="flex items-start gap-2"><Calendar size={14} strokeWidth={1.3} className="text-[#1A1A1A] mt-0.5" /><span className="font-body text-sm text-[#1A1A1A]">{format(new Date(order.delivery_date), "EEEE, MMMM d")}</span></div>
-                        <div className="flex items-start gap-2"><MapPin size={14} strokeWidth={1.3} className="text-[#1A1A1A] mt-0.5" /><span className="font-body text-sm text-[#1A1A1A]">{order.delivery_address.line1}, {order.delivery_address.city}</span></div>
+                        <div className="flex items-start gap-2"><Calendar size={14} strokeWidth={1.3} className="text-[#1A1A1A] mt-0.5" /><span className="font-body text-sm text-[#1A1A1A]">{safeFormat(`${order.delivery_date}T12:00:00`, "EEEE, MMMM d")}</span></div>
+                        <div className="flex items-start gap-2"><MapPin size={14} strokeWidth={1.3} className="text-[#1A1A1A] mt-0.5" /><span className="font-body text-sm text-[#1A1A1A]">{order.delivery_address?.line1}, {order.delivery_address?.city}</span></div>
                         <div className="flex items-start gap-2"><User size={14} strokeWidth={1.3} className="text-[#1A1A1A] mt-0.5" /><span className="font-body text-sm text-[#1A1A1A]">{order.recipient_name}</span></div>
                       </div>
                       <div className="text-right">
                         <p className="accent-label">Total</p>
-                        <p className="font-heading text-3xl font-light text-[#1A1A1A] mt-1">£{order.total.toFixed(0)}</p>
+                        <p className="font-heading text-3xl font-light text-[#1A1A1A] mt-1">{fmt(order.total)}</p>
                       </div>
                     </div>
                   </div>

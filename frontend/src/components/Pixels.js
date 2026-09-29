@@ -45,32 +45,46 @@ export default function Pixels() {
   const { settings } = useSettings();
   const location = useLocation();
   const installedRef = useRef(false);
+  const lastTrackedRef = useRef(null);
+  const currentPathRef = useRef("");
+  currentPathRef.current = location.pathname + location.search;
 
-  // Install scripts once consent is granted (and pixel IDs are present).
+  const firePageView = (path) => {
+    if (typeof window === "undefined" || lastTrackedRef.current === path) return;
+    lastTrackedRef.current = path;
+    if (window.fbq) window.fbq("track", "PageView");
+    if (window.gtag && settings?.ga4_id) {
+      window.gtag("event", "page_view", {
+        page_path: path,
+        page_location: window.location.href,
+        page_title: document.title,
+      });
+    }
+  };
+
+  // Install scripts once consent is granted (and pixel IDs are present),
+  // then fire the first PageView for the page the visitor landed on.
   useEffect(() => {
     if (!settings) return;
     const consent = getConsent();
     const required = settings.cookie_consent_required !== false;
     const accepted = !required || (consent && consent.analytics === true);
     if (!accepted) return;
+    if (!settings.meta_pixel_id && !settings.ga4_id && !settings.gtm_id) return;
 
     if (settings.meta_pixel_id) installPixel(settings.meta_pixel_id);
     if (settings.ga4_id) installGA4(settings.ga4_id);
     if (settings.gtm_id) installGTM(settings.gtm_id);
     installedRef.current = true;
+    firePageView(currentPathRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, settings?.meta_pixel_id, settings?.ga4_id, settings?.gtm_id]);
 
-  // Fire page_view on route changes.
+  // Fire page_view on SPA route changes.
   useEffect(() => {
-    if (!installedRef.current || typeof window === "undefined") return;
-    if (window.fbq) window.fbq("track", "PageView");
-    if (window.gtag && settings?.ga4_id) {
-      window.gtag("event", "page_view", {
-        page_path: location.pathname + location.search,
-        page_location: window.location.href,
-        page_title: document.title,
-      });
-    }
+    if (!installedRef.current) return;
+    firePageView(location.pathname + location.search);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, settings?.ga4_id]);
 
   return null;

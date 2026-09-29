@@ -1,65 +1,78 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 
 const AuthContext = createContext(null);
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Set the Authorization header synchronously at module load, so the very first
+// requests (e.g. the cart fetch) already carry the token.
+const readStoredToken = () => {
+  try { return localStorage.getItem("token"); } catch { return null; }
+};
+const initialToken = readStoredToken();
+if (initialToken) {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${initialToken}`;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("token"));
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(initialToken);
+  const [loading, setLoading] = useState(!!initialToken);
 
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchUser = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/auth/me`);
-      setUser(response.data);
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
-      logout();
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (email, password) => {
-    const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
-    const { access_token, user: userData } = response.data;
-    localStorage.setItem("token", access_token);
-    setToken(access_token);
-    setUser(userData);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
-    return userData;
-  };
-
-  const register = async (email, password, name) => {
-    const response = await axios.post(`${API_URL}/api/auth/register`, { email, password, name });
-    const { access_token, user: userData } = response.data;
-    localStorage.setItem("token", access_token);
-    setToken(access_token);
-    setUser(userData);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
-    return userData;
-  };
-
-  const logout = () => {
-    localStorage.removeItem("token");
+  const logout = useCallback(() => {
+    try { localStorage.removeItem("token"); } catch {}
+    delete axios.defaults.headers.common["Authorization"];
     setToken(null);
     setUser(null);
-    delete axios.defaults.headers.common["Authorization"];
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!token) { setLoading(false); return; }
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/auth/me`);
+        if (!cancelled) setUser(response.data);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        if (!cancelled) logout();
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token, logout]);
+
+  const applyAuth = useCallback((access_token, userData) => {
+    try { localStorage.setItem("token", access_token); } catch {}
+    axios.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+    setUser(userData);
+    setToken(access_token);
+  }, []);
+
+  const login = useCallback(async (email, password) => {
+    const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+    const { access_token, user: userData } = response.data;
+    applyAuth(access_token, userData);
+    return userData;
+  }, [applyAuth]);
+
+  const register = useCallback(async (email, password, name) => {
+    const response = await axios.post(`${API_URL}/api/auth/register`, { email, password, name });
+    const { access_token, user: userData } = response.data;
+    applyAuth(access_token, userData);
+    return userData;
+  }, [applyAuth]);
+
+  const value = useMemo(
+    () => ({ user, token, loading, login, register, logout, applyAuth }),
+    [user, token, loading, login, register, logout, applyAuth]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

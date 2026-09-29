@@ -61,6 +61,7 @@ export default function SympathyPage() {
       {/* Tributes — pricing editable in admin / Page Content */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Tributes"
         heading={<>Forms of<br /><span className="italic">remembrance.</span></>}

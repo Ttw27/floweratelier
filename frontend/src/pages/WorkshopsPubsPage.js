@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Beer, TrendingUp, Users, Camera, MessageCircle, CheckCircle } from "lucide-react";
 import MiniPortfolio from "../components/MiniPortfolio";
 import { useSettings } from "../context/SettingsContext";
+import { getContact } from "../lib/contact";
 import { usePageContent } from "../hooks/usePageContent";
 
 const HERO = "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=1800";
@@ -37,7 +38,7 @@ export default function WorkshopsPubsPage() {
   const { settings } = useSettings();
   const { content, loading } = usePageContent("workshops-pubs");
 
-  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const waNumber = getContact(settings).whatsapp;
   const waHref = `https://wa.me/${waNumber}?text=${encodeURIComponent("Hello Flower Atelier — I'd like to host a workshop night at our venue.")}`;
 
   return (

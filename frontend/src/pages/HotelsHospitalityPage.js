@@ -71,6 +71,7 @@ export default function HotelsHospitalityPage() {
       {/* Offerings */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Programmes"
         heading={<>Every space,<br /><span className="italic">considered.</span></>}

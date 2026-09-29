@@ -60,9 +60,11 @@ export default function TemplatesAdmin() {
 
   const removeTemplate = async (id) => {
     if (!window.confirm("Delete this template?")) return;
-    await axios.delete(`${API_URL}/api/admin/templates/${id}`);
-    await loadTpls();
-    toast.success("Removed");
+    try {
+      await axios.delete(`${API_URL}/api/admin/templates/${id}`);
+      await loadTpls();
+      toast.success("Removed");
+    } catch (e) { toast.error(e.response?.data?.detail || "Delete failed"); }
   };
 
   const openNew = () => {
@@ -71,7 +73,7 @@ export default function TemplatesAdmin() {
     setDesignerOpen(true);
   };
   const openEdit = (t) => {
-    setEditingTpl({ id: t.id, name: t.name, category_id: t.category_id, layers: t.layers || [] });
+    setEditingTpl({ id: t.id, name: t.name, category_id: t.category_id, layers: t.layers || [], sort_order: t.sort_order, active: t.active });
     setDesignerOpen(true);
   };
 
@@ -79,7 +81,12 @@ export default function TemplatesAdmin() {
     // payload: { name, category_id, thumbnail_url, layers }
     try {
       if (editingTpl?.id) {
-        await axios.put(`${API_URL}/api/admin/templates/${editingTpl.id}`, { ...payload, sort_order: 0, active: true });
+        // Keep the template's existing sort order & visibility — only send what was edited
+        await axios.put(`${API_URL}/api/admin/templates/${editingTpl.id}`, {
+          ...payload,
+          sort_order: typeof editingTpl.sort_order === "number" ? editingTpl.sort_order : 0,
+          active: editingTpl.active !== false,
+        });
       } else {
         await axios.post(`${API_URL}/api/admin/templates`, { ...payload, sort_order: 0, active: true });
       }

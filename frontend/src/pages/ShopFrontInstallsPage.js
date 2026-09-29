@@ -53,7 +53,7 @@ export default function ShopFrontInstallsPage() {
         </div>
       </section>
 
-      <ServiceTiers content={content} defaultTiers={defaultTiers} eyebrow="Programmes" heading={<>Three cadences.<br /><span className="italic">One standard.</span></>} testId="shop-front-tiers" />
+      <ServiceTiers content={content} loading={loading} defaultTiers={defaultTiers} eyebrow="Programmes" heading={<>Three cadences.<br /><span className="italic">One standard.</span></>} testId="shop-front-tiers" />
       {/* Ideal for */}
       <section className="py-24 md:py-32 px-6 md:px-12 paper-accent">
         <div className="max-w-[1400px] mx-auto">
