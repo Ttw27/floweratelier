@@ -141,6 +141,9 @@ async def _send_email(to, subject: str, html_body: str) -> None:
             logger.info(f"RESEND_API_KEY not set — skipping email '{subject}' to {recipients}")
             return
         payload = {"from": EMAIL_FROM, "to": recipients, "subject": subject, "html": html_body}
+        reply_to = await _reply_to_email()
+        if reply_to:
+            payload["reply_to"] = reply_to  # customer replies reach the shop's real inbox
         status = await asyncio.to_thread(_post_resend, api_key, payload)
         logger.info(f"Email '{subject}' sent to {recipients} (status {status})")
     except Exception as e:  # noqa: BLE001 — email must never break a request
@@ -155,6 +158,14 @@ def _fire(coro) -> None:
         task.add_done_callback(_background_tasks.discard)
     except Exception as e:  # noqa: BLE001
         logger.error(f"Could not schedule background task: {e}")
+
+
+async def _reply_to_email() -> Optional[str]:
+    try:
+        s = await _get_settings_dict()
+        return (s.get("contact_email") or "").strip() or None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 async def _admin_email() -> Optional[str]:
@@ -501,6 +512,34 @@ async def login(data: UserLogin):
 @api_router.get("/auth/me", response_model=UserResponse)
 async def get_me(user = Depends(require_user)):
     return UserResponse(**user)
+
+
+@api_router.post("/admin/test-email")
+async def send_test_email(admin = Depends(require_admin)):
+    """Send a test email to the admin notification address and report the real result."""
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        raise HTTPException(400, "Emails are not switched on yet — RESEND_API_KEY is not set on Railway")
+    to = await _admin_email()
+    if not to:
+        raise HTTPException(400, "No contact email set in Settings")
+    payload = {"from": EMAIL_FROM, "to": [to], "subject": "Flower Atelier — test email",
+               "html": "<p>Emails from your website are working.</p>"}
+    reply_to = await _reply_to_email()
+    if reply_to:
+        payload["reply_to"] = reply_to
+    try:
+        await asyncio.to_thread(_post_resend, api_key, payload)
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = json.loads(e.read().decode("utf-8")).get("message", "")
+        except Exception:  # noqa: BLE001
+            pass
+        raise HTTPException(400, f"Resend refused the email: {detail or e.reason}")
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, f"Could not reach Resend: {e}")
+    return {"ok": True, "to": to, "from": EMAIL_FROM}
 
 
 class CredentialsUpdate(BaseModel):

@@ -706,7 +706,23 @@ export default function AdminPage() {
                           className="light-input rounded-none mt-2"
                           data-testid="settings-contact-email"
                         />
-                        <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for mailto: links.</p>
+                        <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for mailto: links. Order/booking alerts are sent here, and customer replies to site emails come here.</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-none mt-3 text-xs"
+                          data-testid="settings-test-email"
+                          onClick={async () => {
+                            try {
+                              const r = await axios.post(`${API_URL}/api/admin/test-email`);
+                              toast.success(`Test email sent to ${r.data.to} — check your inbox (and spam)`);
+                            } catch (err) {
+                              toast.error(err.response?.data?.detail || "Test email failed");
+                            }
+                          }}
+                        >
+                          Send test email
+                        </Button>
                       </div>
                       <div>
                         <Label className="text-[#1A1A1A] text-sm">Instagram link</Label>
