@@ -7,6 +7,14 @@ import { useSettings } from "../context/SettingsContext";
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 const cache = new Map();
 
+// Private / transactional routes that must never be indexed.
+const NOINDEX_PREFIXES = [
+  "/admin", "/cart", "/checkout", "/account", "/order-success",
+  "/login", "/register", "/workshops/book/", "/workshops/booking-success",
+];
+export const isNoIndexPath = (path) =>
+  NOINDEX_PREFIXES.some((p) => path === p || path.startsWith(p.endsWith("/") ? p : `${p}/`));
+
 /**
  * Drops the proper <title>, meta tags and OG/Twitter cards on every route change.
  * Per-route data is fetched from /api/seo?path=<pathname> and merged with admin defaults.
@@ -41,16 +49,19 @@ export default function SEOHead() {
   }, [location.pathname, settings]);
 
   if (!meta) return null;
-  const url = typeof window !== "undefined" ? window.location.href : "";
-  const canonical = meta.canonical || url;
+  // Canonical never includes the query string or hash
+  const url = typeof window !== "undefined" ? `${window.location.origin}${location.pathname}` : location.pathname;
+  const canonical = (meta.canonical || url).split(/[?#]/)[0];
+  const noindex = isNoIndexPath(location.pathname);
+  const robots = noindex ? "noindex,nofollow" : (meta.robots || "index,follow");
 
   return (
     <Helmet prioritizeSeoTags>
       <title>{meta.title}</title>
       <meta name="description" content={meta.description || ""} />
       {meta.keywords ? <meta name="keywords" content={meta.keywords} /> : null}
-      <meta name="robots" content={meta.robots || "index,follow"} />
-      <link rel="canonical" href={canonical} />
+      <meta name="robots" content={robots} />
+      {!noindex && <link rel="canonical" href={canonical} />}
       {settings?.favicon_url && <link rel="icon" href={settings.favicon_url} />}
       {/* Open Graph */}
       <meta property="og:title" content={meta.title} />

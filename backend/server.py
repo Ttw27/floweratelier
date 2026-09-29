@@ -1,18 +1,26 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, UploadFile, File
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import re
+import time
+import html
 import logging
 import asyncio
 import json
+import threading
+import urllib.request
+import urllib.error
+from collections import defaultdict, deque
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date as date_cls
+from zoneinfo import ZoneInfo
 import jwt
 import bcrypt
 import stripe as stripe_lib
@@ -47,12 +55,151 @@ security = HTTPBearer(auto_error=False)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+SITE_URL = (os.environ.get("SITE_URL") or "https://www.floweratelier.co.uk").rstrip("/")
+LONDON_TZ = ZoneInfo("Europe/London")
+MAX_TEXT = 5000
+
+
+def _london_today() -> date_cls:
+    return datetime.now(LONDON_TZ).date()
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+# ==================== RATE LIMITING ====================
+# Simple in-memory sliding-window limiter (per process). Good enough to stop
+# casual brute-forcing / spam on a single Railway instance.
+
+_rate_buckets: Dict[str, deque] = defaultdict(deque)
+_rate_lock = threading.Lock()
+
+
+def _client_ip(request: Request) -> str:
+    # The FIRST X-Forwarded-For entry is set by the browser and can be faked; Railway's
+    # proxy sets X-Real-IP and appends the real client IP to the END of X-Forwarded-For.
+    real = (request.headers.get("x-real-ip") or "").strip()
+    if real:
+        return real
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        last = fwd.split(",")[-1].strip()
+        if last:
+            return last
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate_limit(request: Request, name: str, limit: int, window: float = 60.0) -> None:
+    key = f"{name}:{_client_ip(request)}"
+    now = time.monotonic()
+    with _rate_lock:
+        bucket = _rate_buckets[key]
+        while bucket and now - bucket[0] > window:
+            bucket.popleft()
+        if len(bucket) >= limit:
+            raise HTTPException(status_code=429, detail="Too many requests — please wait a minute and try again.")
+        bucket.append(now)
+        # Opportunistic cleanup so the dict can't grow forever
+        if len(_rate_buckets) > 10000:
+            for k in [k for k, v in _rate_buckets.items() if not v or now - v[-1] > window]:
+                _rate_buckets.pop(k, None)
+
+
+def rate_limit(name: str, limit: int, window: float = 60.0):
+    async def _dep(request: Request):
+        _check_rate_limit(request, name, limit, window)
+    return _dep
+
+
+# ==================== EMAIL (Resend) ====================
+
+EMAIL_FROM = os.environ.get("EMAIL_FROM") or "Flower Atelier <hello@floweratelier.co.uk>"
+_background_tasks: set = set()
+
+
+def _post_resend(api_key: str, payload: dict) -> int:
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return resp.status
+
+
+async def _send_email(to, subject: str, html_body: str) -> None:
+    """Send an email via Resend. Never raises; logs and returns if not configured."""
+    try:
+        recipients = [to] if isinstance(to, str) else [t for t in (to or []) if t]
+        recipients = [r for r in recipients if r]
+        if not recipients:
+            return
+        api_key = os.environ.get("RESEND_API_KEY")
+        if not api_key:
+            logger.info(f"RESEND_API_KEY not set — skipping email '{subject}' to {recipients}")
+            return
+        payload = {"from": EMAIL_FROM, "to": recipients, "subject": subject, "html": html_body}
+        status = await asyncio.to_thread(_post_resend, api_key, payload)
+        logger.info(f"Email '{subject}' sent to {recipients} (status {status})")
+    except Exception as e:  # noqa: BLE001 — email must never break a request
+        logger.error(f"Email send failed ('{subject}'): {e}")
+
+
+def _fire(coro) -> None:
+    """Run a coroutine in the background without blocking the request."""
+    try:
+        task = asyncio.create_task(coro)
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Could not schedule background task: {e}")
+
+
+async def _admin_email() -> Optional[str]:
+    env = os.environ.get("ADMIN_NOTIFY_EMAIL")
+    if env:
+        return env
+    try:
+        s = await _get_settings_dict()
+        return s.get("contact_email") or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _e(v) -> str:
+    return html.escape("" if v is None else str(v))
+
+
+def _money(v) -> str:
+    try:
+        return f"£{float(v):.2f}"
+    except (TypeError, ValueError):
+        return "£0.00"
+
+
+def _email_wrap(title: str, body: str) -> str:
+    return (
+        "<div style=\"font-family:Georgia,serif;max-width:620px;margin:0 auto;color:#1A1A1A\">"
+        f"<h2 style=\"font-weight:normal\">{_e(title)}</h2>{body}"
+        "<p style=\"color:#7A7A7A;font-size:12px;margin-top:32px\">Flower Atelier</p></div>"
+    )
+
+
 # ==================== MODELS ====================
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _norm_email(e: str) -> str:
+    return (e or "").strip().lower()
+
 
 class UserRegister(BaseModel):
     email: EmailStr
-    password: str
-    name: str
+    password: str = Field(max_length=200)
+    name: str = Field(max_length=200)
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -73,8 +220,8 @@ class TokenResponse(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     description: str
-    price: float
-    original_price: Optional[float] = None
+    price: float = Field(ge=0)
+    original_price: Optional[float] = Field(default=None, ge=0)
     category_id: str
     images: List[str]
     media: Optional[List[Dict]] = None
@@ -117,9 +264,16 @@ class CategoryResponse(BaseModel):
 
 class CartItem(BaseModel):
     product_id: str
-    quantity: int = 1
+    quantity: int = Field(default=1, ge=1, le=20)
     size: Optional[str] = None
-    box_personalization: Optional[Dict] = None  # {box_color, ribbon_color, box_message}
+    box_personalization: Optional[Dict] = None  # {box_color, ribbon_color, box_message, send_flow}
+
+class CartUpdate(BaseModel):
+    line_id: Optional[str] = None
+    quantity: int = Field(ge=0, le=20)
+    # Legacy clients (pre line_id) identify a line by product_id + size
+    product_id: Optional[str] = None
+    size: Optional[str] = None
 
 class CartResponse(BaseModel):
     id: str
@@ -131,17 +285,18 @@ class CartResponse(BaseModel):
     created_at: str
 
 class OrderCreate(BaseModel):
-    delivery_date: str
+    delivery_date: str = Field(max_length=20)
     delivery_address: Dict
-    gift_message: Optional[str] = None
-    recipient_name: str
-    recipient_phone: str
+    gift_message: Optional[str] = Field(default=None, max_length=1000)
+    recipient_name: str = Field(max_length=200)
+    recipient_phone: str = Field(max_length=50)
+    customer_email: Optional[str] = Field(default=None, max_length=320)
     box_personalization: Optional[Dict] = None  # {color, ribbon_color, custom_message}
     # Bloom & Wild send-flow extras (all optional, populated by PDP stepper)
-    card_id: Optional[str] = None
-    card_message: Optional[str] = None
-    box_choice: Optional[str] = None              # "kraft" | "vase" | "personalised"
-    box_design_url: Optional[str] = None          # rendered preview from Phase 3 designer
+    card_id: Optional[str] = Field(default=None, max_length=100)
+    card_message: Optional[str] = Field(default=None, max_length=1000)
+    box_choice: Optional[str] = Field(default=None, max_length=100)   # "kraft" | "vase" | "personalised"
+    box_design_url: Optional[str] = Field(default=None, max_length=2000)  # rendered preview from Phase 3 designer
     addon_ids: Optional[List[str]] = None
 
 class BoxPersonalizationOptions(BaseModel):
@@ -159,6 +314,12 @@ class OrderResponse(BaseModel):
     recipient_name: str
     recipient_phone: str
     box_personalization: Optional[Dict] = None
+    customer_email: Optional[str] = None
+    card_id: Optional[str] = None
+    card_message: Optional[str] = None
+    box_choice: Optional[str] = None
+    box_design_url: Optional[str] = None
+    addon_ids: Optional[List[str]] = None
     subtotal: float
     delivery_fee: float
     total: float
@@ -187,7 +348,7 @@ class SubscriptionResponse(BaseModel):
 
 class CheckoutRequest(BaseModel):
     order_id: str
-    origin_url: str
+    origin_url: Optional[str] = None   # accepted for backwards compatibility but ignored (SITE_URL is used)
 
 class PortfolioItemResponse(BaseModel):
     id: str
@@ -202,14 +363,17 @@ class PortfolioItemResponse(BaseModel):
     created_at: str
 
 class PortfolioInquiry(BaseModel):
-    portfolio_item_id: Optional[str] = None
-    name: str
+    portfolio_item_id: Optional[str] = Field(default=None, max_length=100)
+    name: str = Field(max_length=200)
     email: EmailStr
-    phone: str
-    event_date: Optional[str] = None
-    budget: Optional[str] = None
-    message: str
-    service_type: Optional[str] = None
+    phone: str = Field(max_length=50)
+    event_date: Optional[str] = Field(default=None, max_length=100)
+    budget: Optional[str] = Field(default=None, max_length=200)
+    message: str = Field(max_length=MAX_TEXT)
+    service_type: Optional[str] = Field(default=None, max_length=200)
+
+class NewsletterSignup(BaseModel):
+    email: EmailStr
 
 # ==================== AUTH HELPERS ====================
 
@@ -258,41 +422,68 @@ async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(secu
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
+async def optional_user_lenient(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Like get_current_user but treats an invalid/expired token as anonymous instead of 401."""
+    if not credentials:
+        return None
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.InvalidTokenError:
+        return None
+    return await db.users.find_one({"id": payload.get("user_id")}, {"_id": 0, "password": 0})
+
+async def _find_user_by_email(email: str, projection: Optional[dict] = None):
+    """Exact lower-case match first, then a case-insensitive exact match for legacy mixed-case records."""
+    email = _norm_email(email)
+    user = await db.users.find_one({"email": email}, projection)
+    if user:
+        return user
+    return await db.users.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}}, projection)
+
 # ==================== AUTH ENDPOINTS ====================
 
-@api_router.post("/auth/register", response_model=TokenResponse)
+@api_router.post("/auth/register", response_model=TokenResponse, dependencies=[Depends(rate_limit("register", 5))])
 async def register(data: UserRegister):
-    existing = await db.users.find_one({"email": data.email})
+    email = _norm_email(data.email)
+    if len(data.password or "") < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if not (data.name or "").strip():
+        raise HTTPException(status_code=400, detail="Name is required")
+    existing = await _find_user_by_email(email, {"_id": 1})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     user_id = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
-        "email": data.email,
+        "email": email,
         "password": hash_password(data.password),
-        "name": data.name,
+        "name": data.name.strip(),
         "is_admin": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    await db.users.insert_one(user_doc)
+    try:
+        await db.users.insert_one(user_doc)
+    except Exception as e:  # unique index race
+        logger.warning(f"Register insert failed for {email}: {e}")
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    token = create_token(user_id, data.email)
+    token = create_token(user_id, email)
     return TokenResponse(
         access_token=token,
         user=UserResponse(
             id=user_id,
-            email=data.email,
-            name=data.name,
+            email=email,
+            name=user_doc["name"],
             is_admin=False,
             created_at=user_doc["created_at"]
         )
     )
 
-@api_router.post("/auth/login", response_model=TokenResponse)
+@api_router.post("/auth/login", response_model=TokenResponse, dependencies=[Depends(rate_limit("login", 10))])
 async def login(data: UserLogin):
-    user = await db.users.find_one({"email": data.email})
-    if not user or not verify_password(data.password, user["password"]):
+    user = await _find_user_by_email(data.email)
+    if not user or not user.get("password") or not verify_password(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     token = create_token(user["id"], user["email"], user.get("is_admin", False))
@@ -367,9 +558,10 @@ async def get_products(
     if max_price is not None:
         query.setdefault("price", {})["$lte"] = max_price
     if search:
+        pattern = re.escape(search[:100])
         query["$or"] = [
-            {"name": {"$regex": search, "$options": "i"}},
-            {"description": {"$regex": search, "$options": "i"}}
+            {"name": {"$regex": pattern, "$options": "i"}},
+            {"description": {"$regex": pattern, "$options": "i"}}
         ]
     
     products = await db.products.find(query, {"_id": 0}).to_list(100)
@@ -407,7 +599,9 @@ async def create_product(data: ProductCreate, admin = Depends(require_admin)):
 
 @api_router.put("/products/{product_id}", response_model=ProductResponse)
 async def update_product(product_id: str, data: ProductCreate, admin = Depends(require_admin)):
-    result = await db.products.update_one({"id": product_id}, {"$set": data.model_dump()})
+    patch = data.model_dump(exclude_unset=True)
+    patch.pop("id", None)
+    result = await db.products.update_one({"id": product_id}, {"$set": patch})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")
     product = await db.products.find_one({"id": product_id}, {"_id": 0})
@@ -424,122 +618,306 @@ async def delete_product(product_id: str, admin = Depends(require_admin)):
 
 # ==================== CART ENDPOINTS ====================
 
+MAX_LINE_QTY = 20
+EMPTY_CART = {"id": "", "items": [], "subtotal": 0, "gift_message": None}
+
+
+def _cart_query(user, session_id: Optional[str]) -> Optional[dict]:
+    """Cart lookup key. None when there is neither a user nor a usable session id —
+    callers must never query {"session_id": None} (that would match every user cart)."""
+    if user and user.get("id"):
+        return {"user_id": user["id"]}
+    sid = (session_id or "").strip()
+    if sid:
+        return {"session_id": sid}
+    return None
+
+
+def _require_cart_query(user, session_id: Optional[str]) -> dict:
+    q = _cart_query(user, session_id)
+    if q is None:
+        raise HTTPException(status_code=400, detail="session_id is required for guest carts")
+    return q
+
+
+def _to_float(v, default: float = 0.0) -> float:
+    try:
+        f = float(v)
+        if f != f:  # NaN
+            return default
+        return f
+    except (TypeError, ValueError):
+        return default
+
+
+async def _price_cart_items(items: List[dict]) -> tuple:
+    """Server-side pricing used by BOTH get_cart and create_order.
+    Client-sent prices (e.g. in send_flow) are ignored; box / add-on / card prices
+    are looked up by id from the database. Returns (priced_items, subtotal)."""
+    product_cache: Dict[str, Optional[dict]] = {}
+    price_cache: Dict[tuple, float] = {}
+
+    async def _extra_price(coll: str, oid) -> float:
+        if not oid or not isinstance(oid, str):
+            return 0.0
+        key = (coll, oid)
+        if key not in price_cache:
+            doc = await db[coll].find_one({"id": oid}, {"_id": 0, "price": 1})
+            price_cache[key] = max(0.0, _to_float(doc.get("price"))) if doc else 0.0
+        return price_cache[key]
+
+    priced = []
+    subtotal = 0.0
+    for item in items or []:
+        pid = item.get("product_id")
+        if pid not in product_cache:
+            product_cache[pid] = await db.products.find_one({"id": pid}, {"_id": 0})
+        product = product_cache[pid]
+        if not product:
+            continue
+        qty = int(item.get("quantity") or 1)
+        qty = max(1, min(MAX_LINE_QTY, qty))
+        base = max(0.0, _to_float(product.get("price")))
+        size_modifier = 0.0
+        size = item.get("size")
+        if size:
+            for s in product.get("sizes") or []:
+                if isinstance(s, dict) and s.get("name") == size:
+                    size_modifier = _to_float(s.get("price_modifier"))
+                    break
+        extras = 0.0
+        bp = item.get("box_personalization") or {}
+        sf = bp.get("send_flow") if isinstance(bp, dict) else None
+        if isinstance(sf, dict):
+            box = sf.get("box")
+            if isinstance(box, dict):
+                extras += await _extra_price("boxes", box.get("id"))
+            for a in sf.get("addons") or []:
+                if isinstance(a, dict):
+                    extras += await _extra_price("addons", a.get("id"))
+            card = sf.get("card")
+            if isinstance(card, dict):
+                extras += await _extra_price("cards", card.get("id"))
+        unit_price = round(max(0.0, base + size_modifier + extras), 2)
+        item_total = round(unit_price * qty, 2)
+        subtotal += item_total
+        images = product.get("images") or []
+        priced.append({
+            **item,
+            "quantity": qty,
+            "name": product.get("name", ""),
+            "image": images[0] if images else "",
+            "price": base,
+            "size_modifier": round(size_modifier, 2),
+            "extras_price": round(extras, 2),
+            "unit_price": unit_price,
+            "item_total": item_total,
+            "box_personalization": item.get("box_personalization"),
+        })
+    return priced, round(subtotal, 2)
+
+
+def _same_line(a: dict, b: dict) -> bool:
+    return (a.get("product_id") == b.get("product_id")
+            and a.get("size") == b.get("size")
+            and a.get("box_personalization") == b.get("box_personalization"))
+
+
+def _merge_line(items: List[dict], new_line: dict) -> None:
+    for existing in items:
+        if _same_line(existing, new_line):
+            existing["quantity"] = min(MAX_LINE_QTY, int(existing.get("quantity") or 0) + int(new_line.get("quantity") or 1))
+            if not existing.get("line_id"):
+                existing["line_id"] = new_line.get("line_id") or str(uuid.uuid4())
+            return
+    if not new_line.get("line_id"):
+        new_line["line_id"] = str(uuid.uuid4())
+    items.append(new_line)
+
+
+async def _save_cart_items(query: dict, items: List[dict], extra_insert: Optional[dict] = None) -> None:
+    on_insert = {
+        "id": str(uuid.uuid4()),
+        "user_id": None,
+        "session_id": None,
+        "gift_message": None,
+        "created_at": _now_iso(),
+        **(extra_insert or {}),
+    }
+    for k in query:
+        on_insert.pop(k, None)
+    await db.carts.update_one(query, {"$set": {"items": items}, "$setOnInsert": on_insert}, upsert=True)
+
+
 @api_router.get("/cart")
 async def get_cart(session_id: Optional[str] = None, user = Depends(get_current_user)):
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
-    if not query.get("user_id") and not query.get("session_id"):
-        return {"id": "", "items": [], "subtotal": 0, "gift_message": None}
-    
+    query = _cart_query(user, session_id)
+    if query is None:
+        return dict(EMPTY_CART)
     cart = await db.carts.find_one(query, {"_id": 0})
     if not cart:
-        return {"id": "", "items": [], "subtotal": 0, "gift_message": None}
-    
-    # Enrich cart items with product details
-    enriched_items = []
-    subtotal = 0
-    for item in cart.get("items", []):
-        product = await db.products.find_one({"id": item["product_id"]}, {"_id": 0})
-        if product:
-            item_total = product["price"] * item["quantity"]
-            subtotal += item_total
-            enriched_items.append({
-                **item,
-                "name": product["name"],
-                "price": product["price"],
-                "image": product["images"][0] if product["images"] else "",
-                "item_total": item_total,
-                "box_personalization": item.get("box_personalization")
-            })
-    
-    cart["items"] = enriched_items
-    cart["subtotal"] = round(subtotal, 2)
+        return dict(EMPTY_CART)
+
+    raw_items = cart.get("items", []) or []
+    # Legacy lines without a line_id get one assigned (and saved)
+    if any(not i.get("line_id") for i in raw_items):
+        original = [dict(i) for i in raw_items]
+        for i in raw_items:
+            if not i.get("line_id"):
+                i["line_id"] = str(uuid.uuid4())
+        # Only save if the basket hasn't changed since we read it (never lose a concurrent add)
+        await db.carts.update_one({**query, "items": original}, {"$set": {"items": raw_items}})
+
+    priced, subtotal = await _price_cart_items(raw_items)
+    cart["items"] = priced
+    cart["subtotal"] = subtotal
     return cart
 
 @api_router.post("/cart/add")
 async def add_to_cart(item: CartItem, session_id: Optional[str] = None, user = Depends(get_current_user)):
+    query = _require_cart_query(user, session_id)
     product = await db.products.find_one({"id": item.product_id}, {"_id": 0})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
+
+    sizes = [s for s in (product.get("sizes") or []) if isinstance(s, dict) and s.get("name")]
+    size = item.size
+    if size:
+        if not any(s["name"] == size for s in sizes):
+            raise HTTPException(status_code=400, detail="Invalid size for this product")
+    elif sizes:
+        size = sizes[0]["name"]
+
     cart = await db.carts.find_one(query, {"_id": 0})
-    
-    if not cart:
-        cart_id = str(uuid.uuid4())
-        cart = {
-            "id": cart_id,
-            "user_id": user["id"] if user else None,
-            "session_id": session_id if not user else None,
-            "items": [],
-            "gift_message": None,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-    
-    # Check if item already exists (same product, size, and box personalization)
-    existing_idx = None
-    for idx, existing in enumerate(cart["items"]):
-        if (existing["product_id"] == item.product_id and 
-            existing.get("size") == item.size and
-            existing.get("box_personalization") == item.box_personalization):
-            existing_idx = idx
-            break
-    
-    if existing_idx is not None:
-        cart["items"][existing_idx]["quantity"] += item.quantity
-    else:
-        cart["items"].append(item.model_dump())
-    
-    await db.carts.update_one(query, {"$set": cart}, upsert=True)
+    items = list((cart or {}).get("items") or [])
+    new_line = {
+        "product_id": item.product_id,
+        "quantity": item.quantity,
+        "size": size,
+        "box_personalization": item.box_personalization,
+        "line_id": str(uuid.uuid4()),
+    }
+    _merge_line(items, new_line)
+    extra = {"user_id": user["id"]} if user else {"session_id": query["session_id"]}
+    await _save_cart_items(query, items, extra)
     return {"message": "Item added to cart"}
 
 @api_router.put("/cart/update")
-async def update_cart_item(item: CartItem, session_id: Optional[str] = None, user = Depends(get_current_user)):
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
+async def update_cart_item(item: CartUpdate, session_id: Optional[str] = None, user = Depends(get_current_user)):
+    query = _require_cart_query(user, session_id)
     cart = await db.carts.find_one(query, {"_id": 0})
-    
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
-    
-    for existing in cart["items"]:
-        if existing["product_id"] == item.product_id and existing.get("size") == item.size:
-            if item.quantity <= 0:
-                cart["items"].remove(existing)
-            else:
-                existing["quantity"] = item.quantity
-            break
-    
-    await db.carts.update_one(query, {"$set": {"items": cart["items"]}})
+    items = cart.get("items") or []
+
+    target = None
+    if item.line_id:
+        target = next((i for i in items if i.get("line_id") == item.line_id), None)
+    if target is None and item.product_id:
+        target = next((i for i in items if i.get("product_id") == item.product_id
+                       and (item.size is None or i.get("size") == item.size)), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Cart line not found")
+
+    if item.quantity <= 0:
+        items.remove(target)
+    else:
+        target["quantity"] = item.quantity
+    await db.carts.update_one(query, {"$set": {"items": items}})
     return {"message": "Cart updated"}
 
-@api_router.delete("/cart/remove/{product_id}")
-async def remove_from_cart(product_id: str, session_id: Optional[str] = None, user = Depends(get_current_user)):
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
+@api_router.delete("/cart/remove/{line_id}")
+async def remove_from_cart(line_id: str, session_id: Optional[str] = None, user = Depends(get_current_user)):
+    query = _require_cart_query(user, session_id)
     cart = await db.carts.find_one(query, {"_id": 0})
-    
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
-    
-    cart["items"] = [i for i in cart["items"] if i["product_id"] != product_id]
-    await db.carts.update_one(query, {"$set": {"items": cart["items"]}})
+    items = cart.get("items") or []
+    remaining = [i for i in items if i.get("line_id") != line_id]
+    if len(remaining) == len(items):
+        # Legacy fallback: treat the path param as a product_id
+        remaining = [i for i in items if i.get("product_id") != line_id]
+    await db.carts.update_one(query, {"$set": {"items": remaining}})
     return {"message": "Item removed"}
+
+@api_router.post("/cart/merge")
+async def merge_cart(session_id: Optional[str] = None, user = Depends(require_user)):
+    """Move a guest cart's lines into the logged-in user's cart, then remove the guest cart."""
+    sid = (session_id or "").strip()
+    if not sid:
+        raise HTTPException(status_code=400, detail="session_id is required")
+    guest = await db.carts.find_one({"session_id": sid, "user_id": None})
+    if not guest:
+        return {"message": "Nothing to merge", "merged": 0}
+    user_q = {"user_id": user["id"]}
+    user_cart = await db.carts.find_one(user_q, {"_id": 0})
+    items = list((user_cart or {}).get("items") or [])
+    merged = 0
+    for line in guest.get("items") or []:
+        line = dict(line)
+        line.setdefault("line_id", str(uuid.uuid4()))
+        _merge_line(items, line)
+        merged += 1
+    await _save_cart_items(user_q, items, {"user_id": user["id"]})
+    if guest.get("gift_message") and not (user_cart or {}).get("gift_message"):
+        await db.carts.update_one(user_q, {"$set": {"gift_message": guest["gift_message"]}})
+    await db.carts.delete_one({"_id": guest["_id"]})
+    return {"message": "Cart merged", "merged": merged}
 
 @api_router.put("/cart/gift-message")
 async def update_gift_message(message: dict, session_id: Optional[str] = None, user = Depends(get_current_user)):
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
-    await db.carts.update_one(query, {"$set": {"gift_message": message.get("message", "")}})
+    query = _require_cart_query(user, session_id)
+    msg = str(message.get("message", "") or "")[:1000]
+    await db.carts.update_one(query, {"$set": {"gift_message": msg}})
     return {"message": "Gift message updated"}
 
 @api_router.delete("/cart/clear")
 async def clear_cart(session_id: Optional[str] = None, user = Depends(get_current_user)):
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
+    query = _require_cart_query(user, session_id)
     await db.carts.delete_one(query)
     return {"message": "Cart cleared"}
 
 # ==================== DELIVERY & BOX PERSONALIZATION ====================
 
-STANDARD_DELIVERY_FEE = 5.99
-SATURDAY_DELIVERY_FEE = 8.99
-FREE_DELIVERY_THRESHOLD = 50.0
+DEFAULT_DELIVERY_FEE_STANDARD = 9.99
+DEFAULT_DELIVERY_FEE_SATURDAY = 9.99
+DEFAULT_FREE_DELIVERY_THRESHOLD = 100.0
+
+
+def _delivery_fees(settings: dict) -> Dict[str, float]:
+    def _f(key, default):
+        v = _to_float(settings.get(key), default)
+        return v if v >= 0 else default
+    return {
+        "standard": _f("delivery_fee_standard", DEFAULT_DELIVERY_FEE_STANDARD),
+        "saturday": _f("delivery_fee_saturday", DEFAULT_DELIVERY_FEE_SATURDAY),
+        "free_threshold": _f("free_delivery_threshold", DEFAULT_FREE_DELIVERY_THRESHOLD),
+    }
+
+
+def _delivery_rules(settings: dict) -> dict:
+    def _int(v, default):
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return default
+    min_lead = max(0, _int(settings.get("delivery_min_lead_days", 4), 4))
+    blocked_wkd = set()
+    for d in settings.get("delivery_blocked_weekdays", [6]) or []:
+        try:
+            blocked_wkd.add(int(d))
+        except (TypeError, ValueError):
+            pass
+    blocked_dates = set(str(d) for d in (settings.get("delivery_blocked_dates", []) or []))
+    window = max(7, _int(settings.get("delivery_window_days", 28), 28))
+    return {"min_lead": min_lead, "blocked_wkd": blocked_wkd, "blocked_dates": blocked_dates, "window": window}
+
+
+def _delivery_fee_for(subtotal: float, is_saturday: bool, fees: Dict[str, float]) -> float:
+    if subtotal >= fees["free_threshold"]:
+        return 0.0
+    return fees["saturday"] if is_saturday else fees["standard"]
+
 
 @api_router.get("/delivery/options")
 async def get_delivery_options():
@@ -549,29 +927,28 @@ async def get_delivery_options():
       - delivery_blocked_weekdays (0=Mon..6=Sun)
       - delivery_blocked_dates (YYYY-MM-DD list)
       - delivery_window_days
+      - delivery_fee_standard / delivery_fee_saturday / free_delivery_threshold
+    Dates are computed in Europe/London time.
     """
-    from datetime import date
     settings = await _get_settings_dict()
-    min_lead = max(0, int(settings.get("delivery_min_lead_days", 4)))
-    blocked_wkd = set(int(d) for d in settings.get("delivery_blocked_weekdays", [6]))
-    blocked_dates = set(settings.get("delivery_blocked_dates", []))
-    window = max(7, int(settings.get("delivery_window_days", 28)))
+    rules = _delivery_rules(settings)
+    fees = _delivery_fees(settings)
 
-    today = date.today()
+    today = _london_today()
     available_dates = []
-    check_date = today + timedelta(days=min_lead)
+    check_date = today + timedelta(days=rules["min_lead"])
 
-    end_date = today + timedelta(days=min_lead + window)
+    end_date = today + timedelta(days=rules["min_lead"] + rules["window"])
     while check_date <= end_date:
         iso = check_date.isoformat()
-        if check_date.weekday() not in blocked_wkd and iso not in blocked_dates:
+        if check_date.weekday() not in rules["blocked_wkd"] and iso not in rules["blocked_dates"]:
             is_saturday = check_date.weekday() == 5
             available_dates.append({
                 "date": iso,
                 "day_name": check_date.strftime("%A"),
                 "formatted": check_date.strftime("%B %d, %Y"),
                 "is_saturday": is_saturday,
-                "delivery_fee": SATURDAY_DELIVERY_FEE if is_saturday else STANDARD_DELIVERY_FEE
+                "delivery_fee": fees["saturday"] if is_saturday else fees["standard"]
             })
         check_date += timedelta(days=1)
 
@@ -598,83 +975,68 @@ async def get_delivery_options():
     return {
         "available_dates": available_dates,
         "rules": {
-            "min_lead_days": min_lead,
-            "blocked_weekdays": sorted(list(blocked_wkd)),
-            "blocked_dates": sorted(list(blocked_dates)),
+            "min_lead_days": rules["min_lead"],
+            "blocked_weekdays": sorted(list(rules["blocked_wkd"])),
+            "blocked_dates": sorted(list(rules["blocked_dates"])),
         },
         "box_personalization": box_options,
-        "delivery_fees": {
-            "standard": STANDARD_DELIVERY_FEE,
-            "saturday": SATURDAY_DELIVERY_FEE,
-            "free_threshold": FREE_DELIVERY_THRESHOLD
-        }
+        "delivery_fees": fees,
     }
 
 # ==================== ORDER ENDPOINTS ====================
 
 @api_router.post("/orders", response_model=OrderResponse)
 async def create_order(data: OrderCreate, session_id: Optional[str] = None, user = Depends(get_current_user)):
-    query = {"user_id": user["id"]} if user else {"session_id": session_id}
+    # Card payments are the only way to pay for an order — don't create orphan orders when Stripe is off.
+    if not os.environ.get("STRIPE_API_KEY"):
+        raise HTTPException(status_code=503, detail="Online card payments are currently unavailable")
+
+    query = _require_cart_query(user, session_id)
     cart = await db.carts.find_one(query, {"_id": 0})
-    
     if not cart or not cart.get("items"):
         raise HTTPException(status_code=400, detail="Cart is empty")
-    
-    # Validate delivery date
-    from datetime import date
+
+    customer_email = _norm_email(data.customer_email or "") or (_norm_email(user.get("email", "")) if user else "")
+    if customer_email and not _EMAIL_RE.match(customer_email):
+        raise HTTPException(status_code=400, detail="Please enter a valid email address")
+
+    # Validate delivery date (Europe/London calendar)
     try:
         delivery_date = datetime.strptime(data.delivery_date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-    
-    today = date.today()
+
+    today = _london_today()
     settings = await _get_settings_dict()
-    min_lead = max(0, int(settings.get("delivery_min_lead_days", 4)))
-    blocked_wkd = set(int(d) for d in settings.get("delivery_blocked_weekdays", [6]))
-    blocked_dates = set(settings.get("delivery_blocked_dates", []))
-    min_delivery_date = today + timedelta(days=min_lead)
+    rules = _delivery_rules(settings)
+    min_delivery_date = today + timedelta(days=rules["min_lead"])
+    max_delivery_date = today + timedelta(days=rules["min_lead"] + rules["window"])
 
     if delivery_date < min_delivery_date:
-        raise HTTPException(status_code=400, detail=f"Delivery date must be at least {min_lead} days from today")
-
-    if delivery_date.weekday() in blocked_wkd:
+        raise HTTPException(status_code=400, detail=f"Delivery date must be at least {rules['min_lead']} days from today")
+    if delivery_date > max_delivery_date:
+        raise HTTPException(status_code=400, detail="That delivery date is too far ahead — please choose an earlier date")
+    if delivery_date.weekday() in rules["blocked_wkd"]:
         raise HTTPException(status_code=400, detail="Delivery is unavailable on this weekday")
-
-    if delivery_date.isoformat() in blocked_dates:
+    if delivery_date.isoformat() in rules["blocked_dates"]:
         raise HTTPException(status_code=400, detail="Delivery is unavailable on this date")
 
     is_saturday = delivery_date.weekday() == 5
-    
-    # Calculate totals
-    subtotal = 0
-    order_items = []
-    for item in cart["items"]:
-        product = await db.products.find_one({"id": item["product_id"]}, {"_id": 0})
-        if product:
-            item_total = product["price"] * item["quantity"]
-            subtotal += item_total
-            order_items.append({
-                **item,
-                "name": product["name"],
-                "price": product["price"],
-                "image": product["images"][0] if product["images"] else "",
-                "item_total": item_total
-            })
-    
-    # Calculate delivery fee
-    if subtotal >= FREE_DELIVERY_THRESHOLD:
-        delivery_fee = 0
-    elif is_saturday:
-        delivery_fee = SATURDAY_DELIVERY_FEE
-    else:
-        delivery_fee = STANDARD_DELIVERY_FEE
-    
+
+    order_items, subtotal = await _price_cart_items(cart["items"])
+    if not order_items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    fees = _delivery_fees(settings)
+    delivery_fee = _delivery_fee_for(subtotal, is_saturday, fees)
     total = round(subtotal + delivery_fee, 2)
-    
+
     order_id = str(uuid.uuid4())
     order_doc = {
         "id": order_id,
         "user_id": user["id"] if user else None,
+        "session_id": None if user else query.get("session_id"),
+        "customer_email": customer_email or None,
         "items": order_items,
         "delivery_date": data.delivery_date,
         "delivery_address": data.delivery_address,
@@ -682,16 +1044,21 @@ async def create_order(data: OrderCreate, session_id: Optional[str] = None, user
         "recipient_name": data.recipient_name,
         "recipient_phone": data.recipient_phone,
         "box_personalization": data.box_personalization,
-        "subtotal": round(subtotal, 2),
+        "subtotal": subtotal,
         "delivery_fee": delivery_fee,
         "total": total,
         "is_saturday_delivery": is_saturday,
         "status": "pending",
         "payment_status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": _now_iso(),
     }
-    
+    for f in ("card_id", "card_message", "box_choice", "box_design_url", "addon_ids"):
+        v = getattr(data, f)
+        if v is not None:
+            order_doc[f] = v
+
     await db.orders.insert_one(order_doc)
+    order_doc.pop("_id", None)
     return OrderResponse(**order_doc)
 
 @api_router.get("/orders", response_model=List[OrderResponse])
@@ -700,19 +1067,22 @@ async def get_orders(user = Depends(require_user)):
     return orders
 
 @api_router.get("/orders/{order_id}", response_model=OrderResponse)
-async def get_order(order_id: str, user = Depends(get_current_user)):
-    query = {"id": order_id}
-    if user:
-        query["user_id"] = user["id"]
-    order = await db.orders.find_one(query, {"_id": 0})
-    if not order:
+async def get_order(order_id: str, user = Depends(require_user)):
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not order or (order.get("user_id") != user["id"] and not user.get("is_admin")):
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
 # ==================== ADMIN ORDER ENDPOINTS ====================
 
-@api_router.get("/admin/orders", response_model=List[OrderResponse])
+ALLOWED_ORDER_STATUSES = {
+    "pending", "confirmed", "processing", "preparing", "ready", "dispatched",
+    "out_for_delivery", "shipped", "delivered", "completed", "cancelled", "refunded",
+}
+
+@api_router.get("/admin/orders")
 async def get_all_orders(status: Optional[str] = None, admin = Depends(require_admin)):
+    """Full order documents (items incl. send_flow, address, recipient, customer email...)."""
     query = {}
     if status:
         query["status"] = status
@@ -721,7 +1091,12 @@ async def get_all_orders(status: Optional[str] = None, admin = Depends(require_a
 
 @api_router.put("/admin/orders/{order_id}/status")
 async def update_order_status(order_id: str, status_data: dict, admin = Depends(require_admin)):
-    result = await db.orders.update_one({"id": order_id}, {"$set": {"status": status_data["status"]}})
+    status = status_data.get("status") if isinstance(status_data, dict) else None
+    if not status or not isinstance(status, str):
+        raise HTTPException(status_code=400, detail="status is required")
+    if status not in ALLOWED_ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Allowed: {', '.join(sorted(ALLOWED_ORDER_STATUSES))}")
+    result = await db.orders.update_one({"id": order_id}, {"$set": {"status": status, "status_updated_at": _now_iso()}})
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
     return {"message": "Order status updated"}
@@ -780,17 +1155,27 @@ async def cancel_subscription(sub_id: str, user = Depends(require_user)):
 
 # ==================== PAYMENT ENDPOINTS ====================
 
+def _bank_transfer_enabled(settings: dict) -> bool:
+    return bool(str(settings.get("bank_account_number") or "").strip() and str(settings.get("bank_sort_code") or "").strip())
+
+
 @api_router.get("/payment-methods")
 async def get_payment_methods():
-    """Public — tells the frontend whether card payments are currently usable (Stripe key configured)."""
-    return {"card_enabled": bool(os.environ.get("STRIPE_API_KEY"))}
+    """Public — tells the frontend which payment methods are currently usable."""
+    settings = await _get_settings_dict()
+    return {
+        "card_enabled": bool(os.environ.get("STRIPE_API_KEY")),
+        "bank_transfer_enabled": _bank_transfer_enabled(settings),
+    }
 
 
 async def _stripe_create_checkout_session(amount: float, currency: str, success_url: str, cancel_url: str, metadata: dict, description: str = "Flower Atelier"):
     """Create a real Stripe Checkout Session (runs the sync Stripe SDK call in a thread)."""
     api_key = os.environ.get('STRIPE_API_KEY')
     if not api_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured on this server")
+        raise HTTPException(status_code=503, detail="Online card payments are currently unavailable")
+    if amount is None or amount <= 0:
+        raise HTTPException(status_code=400, detail="Nothing to pay")
     stripe_lib.api_key = api_key
 
     def _create():
@@ -816,7 +1201,7 @@ async def _stripe_get_checkout_session(session_id: str):
     """Retrieve a Stripe Checkout Session by id."""
     api_key = os.environ.get('STRIPE_API_KEY')
     if not api_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured on this server")
+        raise HTTPException(status_code=503, detail="Online card payments are currently unavailable")
     stripe_lib.api_key = api_key
 
     def _retrieve():
@@ -824,14 +1209,155 @@ async def _stripe_get_checkout_session(session_id: str):
     return await asyncio.to_thread(_retrieve)
 
 
+def _stripe_metadata(obj) -> dict:
+    md = obj.get("metadata") if isinstance(obj, dict) else getattr(obj, "metadata", None)
+    if not md:
+        return {}
+    try:
+        return dict(md)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+# ---------- Order confirmation emails ----------
+
+def _order_items_html(order: dict) -> str:
+    rows = []
+    for it in order.get("items") or []:
+        bp = it.get("box_personalization") or {}
+        sf = bp.get("send_flow") if isinstance(bp, dict) else None
+        details = []
+        if it.get("size"):
+            details.append(f"Size: {_e(it.get('size'))}")
+        if isinstance(sf, dict):
+            card = sf.get("card") or {}
+            if isinstance(card, dict) and card.get("name"):
+                details.append(f"Card: {_e(card.get('name'))}")
+            if sf.get("card_message"):
+                details.append(f"Card message: “{_e(sf.get('card_message'))}”")
+            box = sf.get("box") or {}
+            if isinstance(box, dict) and box.get("name"):
+                details.append(f"Box: {_e(box.get('name'))}")
+            if sf.get("box_design"):
+                bd = sf.get("box_design")
+                bd_url = bd.get("preview_url") or bd.get("url") if isinstance(bd, dict) else bd
+                if isinstance(bd_url, str) and bd_url.startswith("http"):
+                    details.append(f"Box design: <a href=\"{_e(bd_url)}\">view</a>")
+                else:
+                    details.append("Box design: personalised (see admin)")
+            addons = [a.get("name") for a in (sf.get("addons") or []) if isinstance(a, dict) and a.get("name")]
+            if addons:
+                details.append("Add-ons: " + ", ".join(_e(a) for a in addons))
+            if sf.get("delivery_date"):
+                details.append(f"Requested date: {_e(sf.get('delivery_date'))}")
+        elif isinstance(bp, dict) and bp:
+            details.append("Personalisation: " + _e(", ".join(f"{k}: {v}" for k, v in bp.items() if not isinstance(v, (dict, list)))))
+        rows.append(
+            f"<tr><td style=\"padding:8px 0;border-bottom:1px solid #eee\"><strong>{_e(it.get('name'))}</strong> × {_e(it.get('quantity'))}"
+            f"<br><span style=\"color:#555;font-size:13px\">{'<br>'.join(details)}</span></td>"
+            f"<td style=\"padding:8px 0;border-bottom:1px solid #eee;text-align:right;vertical-align:top\">{_money(it.get('item_total'))}</td></tr>"
+        )
+    return "<table style=\"width:100%;border-collapse:collapse\">" + "".join(rows) + "</table>"
+
+
+def _address_html(addr) -> str:
+    if not isinstance(addr, dict):
+        return _e(addr)
+    parts = [addr.get(k) for k in ("line1", "address_line1", "street", "line2", "address_line2", "city", "county", "postcode", "postal_code", "country")]
+    parts = [p for p in parts if p]
+    if not parts:
+        parts = [f"{k}: {v}" for k, v in addr.items() if v and not isinstance(v, (dict, list))]
+    return "<br>".join(_e(p) for p in parts)
+
+
+def _order_summary_html(order: dict, for_admin: bool) -> str:
+    body = [
+        f"<p>Order reference: <strong>{_e(str(order.get('id', ''))[:8].upper())}</strong></p>",
+        _order_items_html(order),
+        f"<p>Subtotal: {_money(order.get('subtotal'))}<br>Delivery: {_money(order.get('delivery_fee'))}<br><strong>Total paid: {_money(order.get('total'))}</strong></p>",
+        f"<p><strong>Delivery date:</strong> {_e(order.get('delivery_date'))}{' (Saturday)' if order.get('is_saturday_delivery') else ''}</p>",
+        f"<p><strong>Recipient:</strong> {_e(order.get('recipient_name'))}"
+        + (f" — {_e(order.get('recipient_phone'))}" if for_admin else "") + "</p>",
+        f"<p><strong>Delivery address:</strong><br>{_address_html(order.get('delivery_address'))}</p>",
+    ]
+    if order.get("gift_message"):
+        body.append(f"<p><strong>Gift message:</strong> “{_e(order.get('gift_message'))}”</p>")
+    if for_admin:
+        extras = []
+        for f in ("card_id", "card_message", "box_choice", "box_design_url"):
+            if order.get(f):
+                extras.append(f"{f}: {_e(order.get(f))}")
+        if order.get("addon_ids"):
+            extras.append("addon_ids: " + _e(", ".join(map(str, order.get("addon_ids")))))
+        if order.get("box_personalization"):
+            extras.append("box_personalization: " + _e(json.dumps(order.get("box_personalization"), default=str)[:2000]))
+        if extras:
+            body.append("<p style=\"font-size:13px;color:#555\">" + "<br>".join(extras) + "</p>")
+        body.append(f"<p><strong>Customer email:</strong> {_e(order.get('customer_email') or '—')}</p>")
+    return "".join(body)
+
+
+async def _send_order_paid_emails(order_id: str) -> None:
+    try:
+        order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+        if not order:
+            return
+        if order.get("customer_email"):
+            await _send_email(
+                order["customer_email"],
+                "Your Flower Atelier order is confirmed",
+                _email_wrap("Thank you — your order is confirmed", "<p>We've received your payment and will start preparing your flowers.</p>" + _order_summary_html(order, False)),
+            )
+        admin_to = await _admin_email()
+        if admin_to:
+            await _send_email(
+                admin_to,
+                f"New paid order {str(order_id)[:8].upper()} — {_money(order.get('total'))} for {order.get('delivery_date')}",
+                _email_wrap("New paid order", _order_summary_html(order, True)),
+            )
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Order email error for {order_id}: {e}")
+
+
+async def _mark_order_paid(order_id: str, stripe_session_id: Optional[str] = None, source: str = "") -> bool:
+    """Idempotent paid transition. Side effects (cart clearing, emails) only run for the
+    single caller that actually flipped the order to paid."""
+    now = _now_iso()
+    if stripe_session_id:
+        await db.payment_transactions.update_one(
+            {"session_id": stripe_session_id},
+            {"$set": {"payment_status": "paid", "updated_at": now}},
+        )
+    res = await db.orders.update_one(
+        {"id": order_id, "payment_status": {"$ne": "paid"}},
+        {"$set": {"payment_status": "paid", "status": "confirmed", "paid_at": now,
+                  "stripe_session_id": stripe_session_id}},
+    )
+    if res.modified_count != 1:
+        return False
+    logger.info(f"Order {order_id} marked paid via {source or 'unknown'}")
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0, "user_id": 1, "session_id": 1})
+    if order:
+        if order.get("user_id"):
+            await db.carts.delete_one({"user_id": order["user_id"]})
+        sid = (order.get("session_id") or "").strip()
+        if sid:
+            await db.carts.delete_one({"session_id": sid, "user_id": None})
+    _fire(_send_order_paid_emails(order_id))
+    return True
+
+
 @api_router.post("/checkout/session")
 async def create_checkout_session(request: Request, checkout_data: CheckoutRequest):
     order = await db.orders.find_one({"id": checkout_data.order_id}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="This order has already been paid")
 
-    success_url = f"{checkout_data.origin_url}/order-success?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{checkout_data.origin_url}/checkout"
+    # origin_url is ignored: redirect targets come from SITE_URL so they can't be pointed elsewhere.
+    success_url = f"{SITE_URL}/order-success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{SITE_URL}/cart"
 
     session = await _stripe_create_checkout_session(
         amount=float(order["total"]),
@@ -840,7 +1366,7 @@ async def create_checkout_session(request: Request, checkout_data: CheckoutReque
         cancel_url=cancel_url,
         metadata={
             "order_id": checkout_data.order_id,
-            "user_id": order.get("user_id", "guest"),
+            "user_id": order.get("user_id") or "guest",
         },
         description=f"Flower Atelier order {checkout_data.order_id[:8]}",
     )
@@ -854,7 +1380,7 @@ async def create_checkout_session(request: Request, checkout_data: CheckoutReque
         "amount": order["total"],
         "currency": "gbp",
         "payment_status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": _now_iso()
     })
 
     return {"url": session.url, "session_id": session.id}
@@ -863,22 +1389,11 @@ async def create_checkout_session(request: Request, checkout_data: CheckoutReque
 async def get_checkout_status(session_id: str):
     session = await _stripe_get_checkout_session(session_id)
 
-    # Update payment transaction
-    transaction = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
-    if transaction:
-        if session.payment_status == "paid" and transaction["payment_status"] != "paid":
-            await db.payment_transactions.update_one(
-                {"session_id": session_id},
-                {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            # Update order status
-            await db.orders.update_one(
-                {"id": transaction["order_id"]},
-                {"$set": {"payment_status": "paid", "status": "confirmed"}}
-            )
-            # Clear cart
-            if transaction.get("user_id"):
-                await db.carts.delete_one({"user_id": transaction["user_id"]})
+    if session.payment_status == "paid":
+        transaction = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+        order_id = (transaction or {}).get("order_id") or _stripe_metadata(session).get("order_id")
+        if order_id:
+            await _mark_order_paid(order_id, session_id, "status-poll")
 
     return {
         "status": session.status,
@@ -895,20 +1410,26 @@ async def stripe_webhook(request: Request):
     api_key = os.environ.get('STRIPE_API_KEY')
     stripe_lib.api_key = api_key
 
-    try:
-        if not webhook_secret:
-            # Unverified events could be forged to mark orders/bookings as paid, so ignore them.
-            # Payment confirmation still works via the /checkout/status polling on the success page.
-            logger.warning("Stripe webhook received but STRIPE_WEBHOOK_SECRET is not set — ignored")
-            return {"status": "ignored"}
-        event = stripe_lib.Webhook.construct_event(body, signature, webhook_secret)
+    if not webhook_secret:
+        # Unverified events could be forged to mark orders/bookings as paid, so ignore them.
+        # Payment confirmation still works via the /checkout/status polling on the success page.
+        logger.warning("Stripe webhook received but STRIPE_WEBHOOK_SECRET is not set — ignored")
+        return {"status": "ignored"}
 
+    try:
+        event = stripe_lib.Webhook.construct_event(body, signature, webhook_secret)
+    except Exception as e:  # bad signature / payload — Stripe retrying won't help
+        logger.warning(f"Stripe webhook rejected: {e}")
+        return JSONResponse(status_code=400, content={"status": "invalid"})
+
+    try:
         event_type = event["type"] if isinstance(event, dict) else event.type
         obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
 
-        if event_type == "checkout.session.completed":
-            metadata = dict(obj.get("metadata") or {})
+        if event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
+            metadata = _stripe_metadata(obj)
             payment_status = obj.get("payment_status")
+            stripe_session_id = obj.get("id")
             order_id = metadata.get("order_id")
             kind = metadata.get("kind")
 
@@ -916,62 +1437,61 @@ async def stripe_webhook(request: Request):
                 if kind == "workshop_booking":
                     booking_id = metadata.get("booking_id")
                     if booking_id:
-                        booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
-                        if booking and booking.get("payment_status") != "paid":
-                            await db.workshop_bookings.update_one(
-                                {"id": booking_id},
-                                {"$set": {
-                                    "payment_status": "paid",
-                                    "status": "confirmed",
-                                    "amount_paid": booking.get("amount_due_now", 0),
-                                    "paid_at": datetime.now(timezone.utc).isoformat(),
-                                }},
-                            )
-                            await db.workshop_sessions.update_one(
-                                {"id": booking["session_id"]},
-                                {"$inc": {"spots_booked": booking.get("guests", 1)}},
-                            )
-                            await db.payment_transactions.update_one(
-                                {"booking_id": booking_id},
-                                {"$set": {"payment_status": "paid"}}
-                            )
+                        await _mark_booking_paid(booking_id, stripe_session_id=stripe_session_id, source="webhook")
                 elif order_id:
-                    await db.orders.update_one(
-                        {"id": order_id},
-                        {"$set": {"payment_status": "paid", "status": "confirmed"}}
-                    )
-                    await db.payment_transactions.update_one(
-                        {"order_id": order_id},
-                        {"$set": {"payment_status": "paid"}}
-                    )
+                    await _mark_order_paid(order_id, stripe_session_id, "webhook")
 
         return {"status": "success"}
     except Exception as e:
-        logger.error(f"Webhook error: {e}")
-        return {"status": "error"}
+        # Return 500 so Stripe retries the event later — never silently drop a payment.
+        logger.exception(f"Webhook processing error: {e}")
+        return JSONResponse(status_code=500, content={"status": "error"})
 
 # ==================== ADMIN DASHBOARD ENDPOINTS ====================
 
 @api_router.get("/admin/stats")
 async def get_admin_stats(admin = Depends(require_admin)):
-    total_orders = await db.orders.count_documents({})
+    paid_q = {"payment_status": "paid"}
+    total_orders = await db.orders.count_documents(paid_q)
+    unpaid_orders = await db.orders.count_documents({"payment_status": {"$ne": "paid"}})
     total_products = await db.products.count_documents({})
     total_users = await db.users.count_documents({})
-    
-    # Revenue calculation
-    paid_orders = await db.orders.find({"payment_status": "paid"}, {"_id": 0, "total": 1}).to_list(1000)
-    total_revenue = sum(o["total"] for o in paid_orders)
-    
-    # Recent orders
-    recent_orders = await db.orders.find({}, {"_id": 0}).sort("created_at", -1).to_list(5)
-    
+
+    # Revenue calculation — paid orders only
+    paid_orders = await db.orders.find(paid_q, {"_id": 0, "total": 1}).to_list(100000)
+    total_revenue = sum(_to_float(o.get("total")) for o in paid_orders)
+
+    # Recent (paid) orders
+    recent_orders = await db.orders.find(paid_q, {"_id": 0}).sort("created_at", -1).to_list(5)
+
     return {
         "total_orders": total_orders,
+        "unpaid_orders": unpaid_orders,
         "total_products": total_products,
         "total_users": total_users,
         "total_revenue": round(total_revenue, 2),
         "recent_orders": recent_orders
     }
+
+# ==================== NEWSLETTER ====================
+
+@api_router.post("/newsletter", dependencies=[Depends(rate_limit("newsletter", 5))])
+async def newsletter_signup(data: NewsletterSignup):
+    email = _norm_email(data.email)
+    try:
+        await db.newsletter_subscribers.update_one(
+            {"email": email},
+            {"$setOnInsert": {"created_at": _now_iso()}},
+            upsert=True,
+        )
+    except Exception as e:  # duplicate-key race on the unique index is fine
+        logger.info(f"Newsletter upsert note for {email}: {e}")
+    return {"ok": True}
+
+@api_router.get("/admin/newsletter")
+async def admin_list_newsletter(admin = Depends(require_admin)):
+    docs = await db.newsletter_subscribers.find({}, {"_id": 0, "email": 1, "created_at": 1}).sort("created_at", -1).to_list(100000)
+    return docs
 
 # ==================== PORTFOLIO & INQUIRY ENDPOINTS ====================
 
@@ -992,7 +1512,18 @@ async def get_portfolio_item(item_id: str):
         raise HTTPException(status_code=404, detail="Portfolio item not found")
     return item
 
-@api_router.post("/inquiries")
+async def _send_inquiry_email(doc: dict) -> None:
+    admin_to = await _admin_email()
+    if not admin_to:
+        return
+    fields = [("Name", "name"), ("Email", "email"), ("Phone", "phone"), ("Service", "service_type"),
+              ("Event date", "event_date"), ("Budget", "budget"), ("Portfolio item", "portfolio_item_id")]
+    rows = "".join(f"<p><strong>{label}:</strong> {_e(doc.get(k))}</p>" for label, k in fields if doc.get(k))
+    body = rows + f"<p><strong>Message:</strong><br>{_e(doc.get('message')).replace(chr(10), '<br>')}</p>"
+    await _send_email(admin_to, f"New enquiry from {doc.get('name', '')}", _email_wrap("New website enquiry", body))
+
+
+@api_router.post("/inquiries", dependencies=[Depends(rate_limit("inquiries", 5))])
 async def create_inquiry(data: PortfolioInquiry):
     inquiry_id = str(uuid.uuid4())
     inquiry_doc = {
@@ -1001,8 +1532,11 @@ async def create_inquiry(data: PortfolioInquiry):
         "status": "new",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
+    inquiry_doc["email"] = _norm_email(inquiry_doc.get("email", ""))
     await db.inquiries.insert_one(inquiry_doc)
+    inquiry_doc.pop("_id", None)
     logger.info(f"New inquiry received: {inquiry_id} from {data.email}")
+    _fire(_send_inquiry_email(inquiry_doc))
     return {"id": inquiry_id, "message": "Inquiry received. We will be in touch within 24 hours."}
 
 @api_router.get("/admin/inquiries")
@@ -1019,7 +1553,7 @@ class PortfolioItemCreate(BaseModel):
     description: str = ""
     image: str
     location: Optional[str] = None
-    price_from: Optional[float] = None
+    price_from: Optional[float] = Field(default=None, ge=0)
     tags: List[str] = []
     featured: bool = False
 
@@ -1043,7 +1577,8 @@ async def admin_update_portfolio(item_id: str, data: PortfolioItemCreate, admin 
     existing = await db.portfolio.find_one({"id": item_id}, {"_id": 0})
     if not existing:
         raise HTTPException(404, "Portfolio item not found")
-    patch = data.model_dump()
+    patch = data.model_dump(exclude_unset=True)
+    patch.pop("id", None)
     await db.portfolio.update_one({"id": item_id}, {"$set": patch})
     return {**existing, **patch}
 
@@ -1804,12 +2339,13 @@ class TestimonialItem(BaseModel):
 class SiteSettings(BaseModel):
     utility_bar_text: str = ""
     utility_bar_enabled: bool = True
-    whatsapp_number: str = ""  # E.164 digits-only, e.g. "447123456789"
+    whatsapp_number: str = ""  # E.164 digits-only, e.g. "447773683630"
     whatsapp_enabled: bool = True
     whatsapp_default_message: str = "Hello Flower Atelier — I'd like to enquire about your floristry."
     # Contact
-    phone_number: str = "0116 212 3456"
+    phone_number: str = "07773 683 630"
     contact_email: str = "info@floweratelier.co.uk"
+    instagram_url: str = ""
     # Tracking pixels
     meta_pixel_id: str = ""
     ga4_id: str = ""           # e.g. G-XXXXXXX
@@ -1820,9 +2356,12 @@ class SiteSettings(BaseModel):
     delivery_blocked_weekdays: List[int] = [6]   # 0=Mon..6=Sun, default Sun blocked
     delivery_blocked_dates: List[str] = []       # ["2026-12-24", "2026-12-25"]
     delivery_window_days: int = 28               # how many days ahead to surface
+    delivery_fee_standard: float = 9.99
+    delivery_fee_saturday: float = 9.99
+    free_delivery_threshold: float = 100.0
     # Default SEO fallbacks (used when a route has no per-page override)
     seo_default_title: str = "Flower Atelier — Leicester & Midlands Luxury Floristry"
-    seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in Leicester and across the Midlands. Editorial design, dignified service, delivered nationwide."
+    seo_default_description: str = "Bespoke wedding, sympathy and corporate floristry in Leicester and across the Midlands. Editorial design, dignified service, delivered across Leicester and the Midlands."
     seo_default_og_image: str = ""
     seo_site_name: str = "Flower Atelier"
     # Branding
@@ -1855,9 +2394,9 @@ class SiteSettings(BaseModel):
 
 DEFAULT_SETTINGS = SiteSettings(
     utility_bar_text="",
-    whatsapp_number="447123456789",
+    whatsapp_number="447773683630",
     whatsapp_default_message="Hello Flower Atelier — I'd like to enquire about your floristry.",
-    phone_number="0116 212 3456",
+    phone_number="07773 683 630",
     contact_email="info@floweratelier.co.uk",
 ).model_dump()
 
@@ -1883,14 +2422,86 @@ async def get_settings():
         doc.update(missing)
     return doc
 
+_INT_SETTINGS = ("delivery_min_lead_days", "delivery_window_days")
+_FEE_SETTINGS = ("delivery_fee_standard", "delivery_fee_saturday", "free_delivery_threshold")
+
+
+def _validate_settings_patch(data: dict) -> dict:
+    """Coerce/validate typed settings keys. Raises 400 on bad values. Never allows _id."""
+    if not isinstance(data, dict):
+        raise HTTPException(400, "Settings must be an object")
+    patch = {k: v for k, v in data.items() if isinstance(k, str) and k != "_id" and not k.startswith("$") and "." not in k}
+    for k in _INT_SETTINGS:
+        if k in patch:
+            v = patch[k]
+            try:
+                if isinstance(v, bool):
+                    raise ValueError
+                f = float(v)
+                if f != int(f):
+                    raise ValueError
+                iv = int(f)
+            except (TypeError, ValueError):
+                raise HTTPException(400, f"{k} must be a whole number")
+            if iv < 0:
+                raise HTTPException(400, f"{k} must be 0 or more")
+            patch[k] = iv
+    for k in _FEE_SETTINGS:
+        if k in patch:
+            v = patch[k]
+            try:
+                if isinstance(v, bool):
+                    raise ValueError
+                fv = float(v)
+                if fv != fv or fv in (float("inf"), float("-inf")):
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise HTTPException(400, f"{k} must be a number")
+            if fv < 0:
+                raise HTTPException(400, f"{k} must be 0 or more")
+            patch[k] = round(fv, 2)
+    if "delivery_blocked_weekdays" in patch:
+        v = patch["delivery_blocked_weekdays"]
+        if not isinstance(v, list):
+            raise HTTPException(400, "delivery_blocked_weekdays must be a list of numbers 0-6")
+        out = []
+        for d in v:
+            try:
+                if isinstance(d, bool):
+                    raise ValueError
+                di = int(d)
+                if float(d) != di:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise HTTPException(400, "delivery_blocked_weekdays must be a list of numbers 0-6")
+            if di < 0 or di > 6:
+                raise HTTPException(400, "delivery_blocked_weekdays must be a list of numbers 0-6")
+            if di not in out:
+                out.append(di)
+        patch["delivery_blocked_weekdays"] = sorted(out)
+    if "delivery_blocked_dates" in patch:
+        v = patch["delivery_blocked_dates"]
+        if not isinstance(v, list):
+            raise HTTPException(400, "delivery_blocked_dates must be a list of YYYY-MM-DD dates")
+        for d in v:
+            try:
+                datetime.strptime(str(d), "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(400, f"Invalid blocked date: {d}")
+        patch["delivery_blocked_dates"] = [str(d) for d in v]
+    return patch
+
+
 @api_router.put("/settings")
 async def update_settings(data: dict, admin=Depends(require_admin)):
     # Only update fields that are explicitly provided, preserving all others
-    await db.site_settings.update_one(
-        {"_id": "global"},
-        {"$set": data},
-        upsert=True,
-    )
+    patch = _validate_settings_patch(data)
+    if patch:
+        await db.site_settings.update_one(
+            {"_id": "global"},
+            {"$set": patch},
+            upsert=True,
+        )
     return await get_settings()
 
 async def _get_settings_dict() -> dict:
@@ -1903,20 +2514,50 @@ async def _get_settings_dict() -> dict:
 # ==================== UPLOADS ====================
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+CUSTOMER_UPLOAD_FOLDER = "customer-designs"
+# Folders the admin UI uploads into (see frontend/src: ?folder=... and <ImageUpload folder=...>)
+ALLOWED_UPLOAD_FOLDERS = {
+    "misc", "homepage", "products", "portfolio", "services", "workshops", "cards", "addons",
+    "boxes", "templates", "settings", "seo", "branding", CUSTOMER_UPLOAD_FOLDER,
+}
+
+_r2_client = None
+_r2_client_lock = threading.Lock()
+
 
 def _get_r2_client():
-    import boto3
-    return boto3.client(
-        "s3",
-        endpoint_url=os.environ.get("R2_ENDPOINT", ""),
-        aws_access_key_id=os.environ.get("R2_ACCESS_KEY", ""),
-        aws_secret_access_key=os.environ.get("R2_SECRET_KEY", ""),
-        region_name="auto",
-    )
+    """Create the boto3 S3 client once (lazily) and reuse it."""
+    global _r2_client
+    if _r2_client is None:
+        with _r2_client_lock:
+            if _r2_client is None:
+                import boto3
+                _r2_client = boto3.client(
+                    "s3",
+                    endpoint_url=os.environ.get("R2_ENDPOINT", ""),
+                    aws_access_key_id=os.environ.get("R2_ACCESS_KEY", ""),
+                    aws_secret_access_key=os.environ.get("R2_SECRET_KEY", ""),
+                    region_name="auto",
+                )
+    return _r2_client
+
+
+def _sanitize_folder(folder: Optional[str]) -> str:
+    return re.sub(r"[^a-z0-9_-]", "", (folder or "").strip().lower())[:40]
+
 
 @api_router.post("/uploads/image")
-async def upload_image(file: UploadFile = File(...), folder: str = "misc"):
-    """Upload an image to Cloudflare R2. Returns a public URL."""
+async def upload_image(request: Request, file: UploadFile = File(...), folder: str = "misc", user = Depends(optional_user_lenient)):
+    """Upload an image to Cloudflare R2. Returns an absolute public URL."""
+    is_admin = bool(user and user.get("is_admin"))
+    if is_admin:
+        folder = _sanitize_folder(folder)
+        if folder not in ALLOWED_UPLOAD_FOLDERS:
+            logger.info(f"Upload folder '{folder}' not allow-listed — using 'misc'")
+            folder = "misc"
+    else:
+        _check_rate_limit(request, "uploads", 20)
+        folder = CUSTOMER_UPLOAD_FOLDER
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(400, f"Unsupported type: {file.content_type}")
     contents = await file.read()
@@ -1928,7 +2569,8 @@ async def upload_image(file: UploadFile = File(...), folder: str = "misc"):
     public_url = os.environ.get("R2_PUBLIC_URL", "").rstrip("/")
     try:
         s3 = _get_r2_client()
-        s3.put_object(
+        await asyncio.to_thread(
+            s3.put_object,
             Bucket=bucket,
             Key=name,
             Body=contents,
@@ -1947,7 +2589,7 @@ class CardCreate(BaseModel):
     name: str
     image_url: str
     description: Optional[str] = ""
-    price: float = 0.0
+    price: float = Field(default=0.0, ge=0)
     category: Optional[str] = "general"   # birthday | thank-you | sympathy | wedding | general
     sort_order: int = 0
     active: bool = True
@@ -1959,7 +2601,7 @@ class AddonCreate(BaseModel):
     name: str
     image_url: str
     description: Optional[str] = ""
-    price: float
+    price: float = Field(ge=0)
     sub_type: str   # "treat" | "candle" | "jewellery_box"
     sort_order: int = 0
     active: bool = True
@@ -1985,11 +2627,13 @@ async def create_card(data: CardCreate, admin=Depends(require_admin)):
 
 @api_router.put("/admin/cards/{card_id}", response_model=CardResponse)
 async def update_card(card_id: str, data: CardCreate, admin=Depends(require_admin)):
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
     res = await db.cards.update_one({"id": card_id}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Card not found")
-    return CardResponse(id=card_id, **payload)
+    doc = await db.cards.find_one({"id": card_id}, {"_id": 0})
+    return CardResponse(**doc)
 
 @api_router.delete("/admin/cards/{card_id}")
 async def delete_card(card_id: str, admin=Depends(require_admin)):
@@ -2024,11 +2668,13 @@ async def create_addon(data: AddonCreate, admin=Depends(require_admin)):
 async def update_addon(addon_id: str, data: AddonCreate, admin=Depends(require_admin)):
     if data.sub_type not in ALLOWED_ADDON_SUBTYPES:
         raise HTTPException(400, "sub_type must be treat | candle | jewellery_box")
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
     res = await db.addons.update_one({"id": addon_id}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Addon not found")
-    return AddonResponse(id=addon_id, **payload)
+    doc = await db.addons.find_one({"id": addon_id}, {"_id": 0})
+    return AddonResponse(**doc)
 
 @api_router.delete("/admin/addons/{addon_id}")
 async def delete_addon(addon_id: str, admin=Depends(require_admin)):
@@ -2044,7 +2690,7 @@ class BoxCreate(BaseModel):
     name: str
     description: Optional[str] = ""
     image_url: str = ""
-    price: float = 0.0
+    price: float = Field(default=0.0, ge=0)
     bg_color: str = "#F2EFEB"     # canvas background when personalised
     is_personalised: bool = False  # opens the designer when chosen
     sort_order: int = 0
@@ -2068,11 +2714,13 @@ async def create_box(data: BoxCreate, admin=Depends(require_admin)):
 
 @api_router.put("/admin/boxes/{box_id}", response_model=BoxResponse)
 async def update_box(box_id: str, data: BoxCreate, admin=Depends(require_admin)):
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
     res = await db.boxes.update_one({"id": box_id}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Box not found")
-    return BoxResponse(id=box_id, **payload)
+    doc = await db.boxes.find_one({"id": box_id}, {"_id": 0})
+    return BoxResponse(**doc)
 
 @api_router.delete("/admin/boxes/{box_id}")
 async def delete_box(box_id: str, admin=Depends(require_admin)):
@@ -2119,11 +2767,13 @@ async def create_template_category(data: TemplateCategoryCreate, admin=Depends(r
 
 @api_router.put("/admin/template-categories/{cid}", response_model=TemplateCategoryResponse)
 async def update_template_category(cid: str, data: TemplateCategoryCreate, admin=Depends(require_admin)):
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
     res = await db.template_categories.update_one({"id": cid}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Category not found")
-    return TemplateCategoryResponse(id=cid, **payload)
+    doc = await db.template_categories.find_one({"id": cid}, {"_id": 0})
+    return TemplateCategoryResponse(**doc)
 
 @api_router.delete("/admin/template-categories/{cid}")
 async def delete_template_category(cid: str, admin=Depends(require_admin)):
@@ -2153,11 +2803,13 @@ async def create_template(data: DesignTemplateCreate, admin=Depends(require_admi
 
 @api_router.put("/admin/templates/{tid}", response_model=DesignTemplateResponse)
 async def update_template(tid: str, data: DesignTemplateCreate, admin=Depends(require_admin)):
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
     res = await db.design_templates.update_one({"id": tid}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Template not found")
-    return DesignTemplateResponse(id=tid, **payload)
+    doc = await db.design_templates.find_one({"id": tid}, {"_id": 0})
+    return DesignTemplateResponse(**doc)
 
 @api_router.delete("/admin/templates/{tid}")
 async def delete_template(tid: str, admin=Depends(require_admin)):
@@ -2351,8 +3003,9 @@ class PageContentResponse(PageContentCreate):
 
 @api_router.get("/page-content/list")
 async def list_page_content():
-    """Public endpoint — returns all active page content entries (slug, label, active only)."""
-    docs = await db.page_content.find({}, {"_id": 0, "slug": 1, "label": 1, "active": 1}).to_list(100)
+    """Public endpoint — returns active page content entries only (slug, label, active).
+    The admin UI uses /admin/page-content, which still lists inactive pages."""
+    docs = await db.page_content.find({"active": {"$ne": False}}, {"_id": 0, "slug": 1, "label": 1, "active": 1}).to_list(200)
     return docs
 
 @api_router.get("/page-content/{slug}", response_model=PageContentResponse)
@@ -2373,6 +3026,8 @@ async def admin_create_page_content(data: PageContentCreate, admin=Depends(requi
         raise HTTPException(400, "Slug already exists")
     doc = {**data.model_dump(), "id": str(uuid.uuid4())}
     await db.page_content.insert_one(doc)
+    doc.pop("_id", None)
+    await _undelete_page_slug(data.slug)
     return PageContentResponse(**doc)
 
 @api_router.put("/admin/page-content/{slug}", response_model=PageContentResponse)
@@ -2382,17 +3037,31 @@ async def admin_update_page_content(slug: str, data: PageContentCreate, admin=De
         # upsert allows admin to "create by editing"
         doc = {**data.model_dump(), "id": str(uuid.uuid4()), "slug": slug}
         await db.page_content.insert_one(doc)
+        doc.pop("_id", None)
+        await _undelete_page_slug(slug)
         return PageContentResponse(**doc)
-    payload = data.model_dump()
-    payload["slug"] = slug  # don't let slug change via PUT
-    await db.page_content.update_one({"slug": slug}, {"$set": payload})
-    return PageContentResponse(id=existing["id"], **payload)
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("slug", None)  # don't let slug change via PUT
+    payload.pop("id", None)
+    if payload:
+        await db.page_content.update_one({"slug": slug}, {"$set": payload})
+    doc = await db.page_content.find_one({"slug": slug}, {"_id": 0})
+    return PageContentResponse(**doc)
+
+async def _undelete_page_slug(slug: str) -> None:
+    await db.system.update_one({"key": "deleted_page_slugs"}, {"$pull": {"slugs": slug}})
 
 @api_router.delete("/admin/page-content/{slug}")
 async def admin_delete_page_content(slug: str, admin=Depends(require_admin)):
     res = await db.page_content.delete_one({"slug": slug})
     if res.deleted_count == 0:
         raise HTTPException(404, "Page content not found")
+    # Remember the deletion so the startup seeder doesn't recreate it
+    await db.system.update_one(
+        {"key": "deleted_page_slugs"},
+        {"$addToSet": {"slugs": slug}, "$setOnInsert": {"created_at": _now_iso()}},
+        upsert=True,
+    )
     return {"deleted": slug}
 
 
@@ -2698,9 +3367,9 @@ class WorkshopCreate(BaseModel):
     location_default: str = ""
     image_url: str = ""
     gallery_images: List[str] = []
-    price_per_guest: float = 0.0        # default price; sessions can override
-    deposit_amount: float = 0.0         # default deposit; sessions can override
-    full_payment_discount_pct: float = 5.0  # 5% off if paid in full at booking
+    price_per_guest: float = Field(default=0.0, ge=0)        # default price; sessions can override
+    deposit_amount: float = Field(default=0.0, ge=0)         # default deposit; sessions can override
+    full_payment_discount_pct: float = Field(default=5.0, ge=0, le=100)  # % off if paid in full at booking
     cancellation_policy: str = "Deposits are non-refundable. Balance is collected on the day."
     booking_mode: str = "direct"        # "direct" = Stripe pay-as-you-book | "enquire" = WhatsApp / lead form
     enquire_pitch: str = ""             # sales pitch shown on the card / detail page when mode = enquire
@@ -2713,31 +3382,48 @@ class WorkshopCreate(BaseModel):
 class WorkshopResponse(WorkshopCreate):
     id: str
 
+def _validate_iso_date(v: str) -> str:
+    try:
+        datetime.strptime(v, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        raise ValueError("date must be YYYY-MM-DD")
+    return v
+
 class WorkshopSessionCreate(BaseModel):
     workshop_id: str
     date: str                       # ISO date e.g. "2026-03-12"
     start_time: str = ""            # "18:30"
     end_time: str = ""              # "21:00"
     location: str = ""              # override
-    capacity: int = 14
-    spots_booked: int = 0
-    price_per_guest: Optional[float] = None    # override
-    deposit_amount: Optional[float] = None     # override
+    capacity: int = Field(default=14, ge=1)
+    spots_booked: int = Field(default=0, ge=0)   # only honoured on create; edits never change it
+    price_per_guest: Optional[float] = Field(default=None, ge=0)    # override
+    deposit_amount: Optional[float] = Field(default=None, ge=0)     # override
     notes: str = ""
     private: bool = False            # True = hidden from public /workshops/{slug}/sessions, bookable only via direct link
     active: bool = True
 
+    @field_validator("date")
+    @classmethod
+    def _check_date(cls, v):
+        return _validate_iso_date(v)
+
 class WorkshopSessionResponse(WorkshopSessionCreate):
     id: str
 
+    @field_validator("date")
+    @classmethod
+    def _check_date(cls, v):
+        return v  # don't fail reads on legacy data
+
 class WorkshopBookingCreate(BaseModel):
     session_id: str
-    name: str
+    name: str = Field(max_length=200)
     email: EmailStr
-    phone: str
-    guests: int = 1
-    dietary_requirements: str = ""
-    notes: str = ""
+    phone: str = Field(max_length=50)
+    guests: int = Field(default=1, ge=1)
+    dietary_requirements: str = Field(default="", max_length=MAX_TEXT)
+    notes: str = Field(default="", max_length=MAX_TEXT)
     payment_choice: str = "deposit"   # "deposit" | "full"
     payment_method: str = "stripe"    # "stripe" | "bank_transfer"
 
@@ -2746,6 +3432,11 @@ class WorkshopBookingResponse(BaseModel):
     session_id: str
     workshop_id: str
     workshop_name: str
+    workshop_title: str = ""
+    session_date: str = ""
+    session_start_time: str = ""
+    session_end_time: str = ""
+    session_location: str = ""
     name: str
     email: str
     phone: str
@@ -2765,35 +3456,58 @@ class WorkshopBookingResponse(BaseModel):
     amount_paid: float
     status: str
     payment_status: str
+    spots_reserved: bool = False
+    overbooked: bool = False
+    refund_needed: bool = False
     stripe_session_id: Optional[str] = None
     created_at: str
 
 class WorkshopCheckoutRequest(BaseModel):
     booking_id: str
-    origin_url: str
+    origin_url: Optional[str] = None   # accepted but ignored — SITE_URL is used
 
 
 def _ws_calc_amounts(workshop: dict, session: dict, guests: int, payment_choice: str):
     """Returns (price_per_guest, deposit_per_guest, subtotal, discount_amount, amount_due_now, balance_due_on_day, discount_pct)."""
-    price = float(session.get("price_per_guest") or workshop.get("price_per_guest") or 0.0)
-    deposit = float(session.get("deposit_amount") or workshop.get("deposit_amount") or (price * 0.5))
-    discount_pct = float(workshop.get("full_payment_discount_pct") or 0.0)
-    subtotal = round(price * max(guests, 1), 2)
+    guests = max(int(guests or 1), 1)
+    # A session price of blank/0 means "use the workshop price" (as before)
+    if _to_float(session.get("price_per_guest")) > 0:
+        price = _to_float(session.get("price_per_guest"))
+    else:
+        price = _to_float(workshop.get("price_per_guest"))
+    price = max(0.0, price)
+    # A blank OR zero deposit means "not set" and falls back to 50% of the price —
+    # this matches how existing workshops were saved ("Blank = 50% of price" stored 0).
+    if _to_float(session.get("deposit_amount")) > 0:
+        deposit = _to_float(session.get("deposit_amount"))
+    elif _to_float(workshop.get("deposit_amount")) > 0:
+        deposit = _to_float(workshop.get("deposit_amount"))
+    else:
+        deposit = price * 0.5
+    deposit = min(max(0.0, deposit), price)
+    discount_pct = min(max(0.0, _to_float(workshop.get("full_payment_discount_pct"))), 100.0)
+    subtotal = round(price * guests, 2)
     if payment_choice == "full":
         discount_amount = round(subtotal * (discount_pct / 100.0), 2)
-        amount_due_now = round(subtotal - discount_amount, 2)
+        amount_due_now = round(max(0.0, subtotal - discount_amount), 2)
         balance_due_on_day = 0.0
     else:
         discount_amount = 0.0
-        amount_due_now = round(deposit * max(guests, 1), 2)
-        balance_due_on_day = round(subtotal - amount_due_now, 2)
+        amount_due_now = round(min(deposit * guests, subtotal), 2)
+        balance_due_on_day = round(max(0.0, subtotal - amount_due_now), 2)
     return price, deposit, subtotal, discount_amount, amount_due_now, balance_due_on_day, discount_pct
 
 
 def _ws_serialise_booking(b: dict, workshop_name: str = "") -> WorkshopBookingResponse:
+    wname = workshop_name or b.get("workshop_name", "")
     return WorkshopBookingResponse(
         id=b["id"], session_id=b["session_id"], workshop_id=b["workshop_id"],
-        workshop_name=workshop_name or b.get("workshop_name", ""),
+        workshop_name=wname,
+        workshop_title=wname,
+        session_date=b.get("session_date") or "",
+        session_start_time=b.get("session_start_time") or "",
+        session_end_time=b.get("session_end_time") or "",
+        session_location=b.get("session_location") or "",
         name=b["name"], email=b["email"], phone=b["phone"],
         guests=b.get("guests", 1),
         dietary_requirements=b.get("dietary_requirements", ""),
@@ -2811,9 +3525,155 @@ def _ws_serialise_booking(b: dict, workshop_name: str = "") -> WorkshopBookingRe
         amount_paid=b.get("amount_paid", 0.0),
         status=b.get("status", "pending"),
         payment_status=b.get("payment_status", "pending"),
+        spots_reserved=bool(b.get("spots_reserved", False)),
+        overbooked=bool(b.get("overbooked", False)),
+        refund_needed=bool(b.get("refund_needed", False)),
         stripe_session_id=b.get("stripe_session_id"),
         created_at=b.get("created_at", ""),
     )
+
+
+async def _reserve_spots(session_id: str, guests: int) -> bool:
+    """Atomically add `guests` to spots_booked only if capacity allows."""
+    res = await db.workshop_sessions.update_one(
+        {"id": session_id,
+         "$expr": {"$lte": [{"$add": [{"$ifNull": ["$spots_booked", 0]}, guests]}, "$capacity"]}},
+        {"$inc": {"spots_booked": guests}},
+    )
+    return res.modified_count == 1
+
+
+async def _release_spots(session_id: str, guests: int) -> None:
+    await db.workshop_sessions.update_one({"id": session_id}, {"$inc": {"spots_booked": -int(guests)}})
+    await db.workshop_sessions.update_one({"id": session_id, "spots_booked": {"$lt": 0}}, {"$set": {"spots_booked": 0}})
+
+
+async def _reserve_for_booking(booking: dict) -> bool:
+    """Reserve spots for a booking exactly once (guarded by the spots_reserved flag).
+    Returns True if the booking now holds its spots."""
+    claim = await db.workshop_bookings.update_one(
+        {"id": booking["id"], "spots_reserved": {"$ne": True}},
+        {"$set": {"spots_reserved": True}},
+    )
+    if claim.modified_count != 1:
+        return True  # already reserved
+    guests = int(booking.get("guests", 1) or 1)
+    if await _reserve_spots(booking["session_id"], guests):
+        return True
+    await db.workshop_bookings.update_one({"id": booking["id"]}, {"$set": {"spots_reserved": False}})
+    return False
+
+
+# ---------- Workshop emails ----------
+
+def _booking_summary_html(b: dict, for_admin: bool) -> str:
+    when = " ".join(x for x in [b.get("session_date"), b.get("session_start_time")] if x)
+    if b.get("session_end_time"):
+        when += f"–{b.get('session_end_time')}"
+    parts = [
+        f"<p><strong>{_e(b.get('workshop_name'))}</strong><br>{_e(when)}<br>{_e(b.get('session_location'))}</p>",
+        f"<p>Guests: {_e(b.get('guests'))}<br>Total: {_money(b.get('subtotal'))}"
+        + (f"<br>Discount: −{_money(b.get('discount_amount'))}" if b.get("discount_amount") else "")
+        + f"<br>Due now: {_money(b.get('amount_due_now'))}<br>Balance on the day: {_money(b.get('balance_due_on_day'))}</p>",
+    ]
+    if for_admin:
+        parts.append(
+            f"<p>Name: {_e(b.get('name'))}<br>Email: {_e(b.get('email'))}<br>Phone: {_e(b.get('phone'))}<br>"
+            f"Payment: {_e(b.get('payment_method'))} / {_e(b.get('payment_choice'))} — status {_e(b.get('payment_status'))}"
+            + (f"<br>Reference: {_e(b.get('bank_reference'))}" if b.get("bank_reference") else "")
+            + ("<br><strong style=\"color:#b00\">OVERBOOKED — session was full when payment arrived</strong>" if b.get("overbooked") else "")
+            + "</p>"
+        )
+        if b.get("dietary_requirements"):
+            parts.append(f"<p>Dietary: {_e(b.get('dietary_requirements'))}</p>")
+        if b.get("notes"):
+            parts.append(f"<p>Notes: {_e(b.get('notes'))}</p>")
+    return "".join(parts)
+
+
+async def _send_booking_bank_transfer_emails(booking_id: str) -> None:
+    try:
+        b = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not b:
+            return
+        s = await _get_settings_dict()
+        bank = (
+            f"<p><strong>Please pay {_money(b.get('amount_due_now'))} by bank transfer to:</strong><br>"
+            f"Account name: {_e(s.get('bank_account_name'))}<br>"
+            f"Sort code: {_e(s.get('bank_sort_code'))}<br>"
+            f"Account number: {_e(s.get('bank_account_number'))}<br>"
+            + (f"Bank: {_e(s.get('bank_name'))}<br>" if s.get("bank_name") else "")
+            + f"Reference: <strong>{_e(b.get('bank_reference'))}</strong></p>"
+            "<p>Your places are held for you — we'll confirm as soon as the payment arrives.</p>"
+        )
+        await _send_email(b.get("email"), f"Your workshop booking — payment details ({b.get('bank_reference')})",
+                          _email_wrap("Thank you for booking", _booking_summary_html(b, False) + bank))
+        admin_to = await _admin_email()
+        if admin_to:
+            await _send_email(admin_to, f"New workshop booking (bank transfer) {b.get('bank_reference')}",
+                              _email_wrap("New workshop booking — awaiting bank transfer", _booking_summary_html(b, True)))
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Booking email error for {booking_id}: {e}")
+
+
+async def _send_booking_paid_emails(booking_id: str) -> None:
+    try:
+        b = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not b:
+            return
+        await _send_email(b.get("email"), "Your workshop booking is confirmed",
+                          _email_wrap("You're booked in", "<p>We've received your payment — see you there!</p>" + _booking_summary_html(b, False)))
+        admin_to = await _admin_email()
+        if admin_to:
+            await _send_email(admin_to, f"Workshop booking paid — {b.get('name')} ×{b.get('guests')}",
+                              _email_wrap("Workshop booking paid", _booking_summary_html(b, True)))
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Booking paid email error for {booking_id}: {e}")
+
+
+async def _mark_booking_paid(booking_id: str, stripe_session_id: Optional[str] = None, source: str = "") -> bool:
+    """Idempotent paid transition for a workshop booking. Reserves spots (once) if not
+    already held; if the session filled up meanwhile the booking is still marked paid
+    (never lose a payment) but flagged overbooked for the admin."""
+    booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        logger.error(f"_mark_booking_paid: booking {booking_id} not found ({source})")
+        return False
+    now = _now_iso()
+    if stripe_session_id:
+        await db.payment_transactions.update_one(
+            {"session_id": stripe_session_id},
+            {"$set": {"payment_status": "paid", "updated_at": now}},
+        )
+    if booking.get("status") == "cancelled":
+        # Admin already cancelled this booking: record the money but keep it cancelled
+        # (no places re-reserved) and flag it so the admin can refund.
+        res = await db.workshop_bookings.update_one(
+            {"id": booking_id, "payment_status": {"$ne": "paid"}},
+            {"$set": {"payment_status": "paid", "amount_paid": booking.get("amount_due_now", 0),
+                      "paid_at": now, "paid_via": source, "refund_needed": True}},
+        )
+        if res.modified_count == 1:
+            logger.warning(f"Payment arrived for cancelled booking {booking_id} ({source}) — flagged refund_needed")
+        return False
+    res = await db.workshop_bookings.update_one(
+        {"id": booking_id, "payment_status": {"$ne": "paid"}},
+        {"$set": {
+            "payment_status": "paid",
+            "status": "confirmed",
+            "amount_paid": booking.get("amount_due_now", 0),
+            "paid_at": now,
+            "paid_via": source,
+        }},
+    )
+    if res.modified_count != 1:
+        return False
+    if not await _reserve_for_booking(booking):
+        await db.workshop_bookings.update_one({"id": booking_id}, {"$set": {"overbooked": True}})
+        logger.error(f"OVERBOOKED: booking {booking_id} paid via {source} but session {booking.get('session_id')} was full")
+    logger.info(f"Workshop booking {booking_id} marked paid via {source}")
+    _fire(_send_booking_paid_emails(booking_id))
+    return True
 
 
 # ---- Public workshop listing ----
@@ -2832,11 +3692,11 @@ async def get_workshop_by_slug(slug: str):
 
 @api_router.get("/workshops/{slug}/sessions", response_model=List[WorkshopSessionResponse])
 async def list_workshop_sessions_by_slug(slug: str):
-    """Public — upcoming, active, not sold out, non-private sessions for a workshop."""
+    """Public — upcoming, active, non-private sessions for a workshop."""
     w = await db.workshops.find_one({"slug": slug, "active": True}, {"_id": 0})
     if not w:
         raise HTTPException(404, "Workshop not found")
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = _london_today().isoformat()
     docs = await db.workshop_sessions.find({
         "workshop_id": w["id"],
         "active": True,
@@ -2873,18 +3733,22 @@ async def admin_create_workshop(data: WorkshopCreate, admin=Depends(require_admi
         raise HTTPException(400, "Slug already exists")
     doc = {**data.model_dump(), "id": str(uuid.uuid4())}
     await db.workshops.insert_one(doc)
+    doc.pop("_id", None)
     return WorkshopResponse(**doc)
 
 @api_router.put("/admin/workshops/{wid}", response_model=WorkshopResponse)
 async def admin_update_workshop(wid: str, data: WorkshopCreate, admin=Depends(require_admin)):
-    payload = data.model_dump()
-    other = await db.workshops.find_one({"slug": payload["slug"], "id": {"$ne": wid}})
-    if other:
-        raise HTTPException(400, "Slug already in use")
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
+    if "slug" in payload:
+        other = await db.workshops.find_one({"slug": payload["slug"], "id": {"$ne": wid}})
+        if other:
+            raise HTTPException(400, "Slug already in use")
     res = await db.workshops.update_one({"id": wid}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Workshop not found")
-    return WorkshopResponse(id=wid, **payload)
+    doc = await db.workshops.find_one({"id": wid}, {"_id": 0})
+    return WorkshopResponse(**doc)
 
 @api_router.delete("/admin/workshops/{wid}")
 async def admin_delete_workshop(wid: str, admin=Depends(require_admin)):
@@ -2911,20 +3775,31 @@ async def admin_create_session(data: WorkshopSessionCreate, admin=Depends(requir
         raise HTTPException(400, "Parent workshop not found")
     doc = {**data.model_dump(), "id": str(uuid.uuid4())}
     await db.workshop_sessions.insert_one(doc)
+    doc.pop("_id", None)
     return WorkshopSessionResponse(**doc)
 
 @api_router.put("/admin/workshop-sessions/{sid}", response_model=WorkshopSessionResponse)
 async def admin_update_session(sid: str, data: WorkshopSessionCreate, admin=Depends(require_admin)):
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("id", None)
+    payload.pop("spots_booked", None)  # spots_booked is only ever changed by bookings
+    if "workshop_id" in payload and not await db.workshops.find_one({"id": payload["workshop_id"]}):
+        raise HTTPException(400, "Parent workshop not found")
     res = await db.workshop_sessions.update_one({"id": sid}, {"$set": payload})
     if res.matched_count == 0:
         raise HTTPException(404, "Session not found")
-    return WorkshopSessionResponse(id=sid, **payload)
+    doc = await db.workshop_sessions.find_one({"id": sid}, {"_id": 0})
+    return WorkshopSessionResponse(**doc)
 
 @api_router.delete("/admin/workshop-sessions/{sid}")
 async def admin_delete_session(sid: str, admin=Depends(require_admin)):
-    if await db.workshop_bookings.count_documents({"session_id": sid, "payment_status": "paid"}) > 0:
-        raise HTTPException(400, "Session has paid bookings; cancel them first")
+    live = await db.workshop_bookings.count_documents({
+        "session_id": sid,
+        "status": {"$ne": "cancelled"},
+        "payment_status": {"$in": ["paid", "awaiting_bank_transfer"]},
+    })
+    if live > 0:
+        raise HTTPException(400, "Session has paid or awaiting-payment bookings; cancel them first")
     res = await db.workshop_sessions.delete_one({"id": sid})
     if res.deleted_count == 0:
         raise HTTPException(404, "Session not found")
@@ -2932,7 +3807,8 @@ async def admin_delete_session(sid: str, admin=Depends(require_admin)):
 
 
 # ---- Customer booking flow ----
-@api_router.post("/workshop-bookings", response_model=WorkshopBookingResponse)
+@api_router.post("/workshop-bookings", response_model=WorkshopBookingResponse,
+                 dependencies=[Depends(rate_limit("workshop_bookings", 10))])
 async def create_workshop_booking(data: WorkshopBookingCreate):
     session = await db.workshop_sessions.find_one({"id": data.session_id, "active": True}, {"_id": 0})
     if not session:
@@ -2940,24 +3816,45 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
     workshop = await db.workshops.find_one({"id": session["workshop_id"]}, {"_id": 0})
     if not workshop:
         raise HTTPException(404, "Workshop not found")
+    if workshop.get("active") is False:
+        raise HTTPException(400, "This workshop is not currently taking bookings")
+    if (workshop.get("booking_mode") or "direct") != "direct" and not session.get("private"):
+        raise HTTPException(400, "This workshop is booked by enquiry — please contact us")
+    if str(session.get("date") or "") < _london_today().isoformat():
+        raise HTTPException(400, "This session has already taken place")
     if data.payment_choice not in ("deposit", "full"):
         raise HTTPException(400, "payment_choice must be 'deposit' or 'full'")
     if data.payment_method not in ("stripe", "bank_transfer"):
         raise HTTPException(400, "payment_method must be 'stripe' or 'bank_transfer'")
+    capacity = int(session.get("capacity", 0) or 0)
     if data.guests < 1:
         raise HTTPException(400, "At least 1 guest required")
-    spots_remaining = max(0, session.get("capacity", 0) - session.get("spots_booked", 0))
+    if data.guests > capacity:
+        raise HTTPException(400, f"This session has a maximum of {capacity} guest(s)")
+    spots_remaining = max(0, capacity - int(session.get("spots_booked", 0) or 0))
     if data.guests > spots_remaining:
         raise HTTPException(400, f"Only {spots_remaining} spot(s) remaining for this session")
+
+    is_bank_transfer = data.payment_method == "bank_transfer"
+    if is_bank_transfer and not _bank_transfer_enabled(await _get_settings_dict()):
+        raise HTTPException(400, "Bank transfer is not available — please pay by card")
 
     price, deposit, subtotal, discount_amount, amount_due_now, balance_due, discount_pct = _ws_calc_amounts(
         workshop, session, data.guests, data.payment_choice
     )
+    if amount_due_now <= 0:
+        if subtotal <= 0:
+            raise HTTPException(400, "This session has no price set — please contact us to book")
+        raise HTTPException(400, "No deposit is set for this session — please choose to pay in full")
 
     booking_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    is_bank_transfer = data.payment_method == "bank_transfer"
+    now = _now_iso()
     bank_reference = f"FA-{booking_id[:8].upper()}" if is_bank_transfer else None
+
+    # Bank transfer holds the places immediately (atomic, capacity-checked).
+    if is_bank_transfer and not await _reserve_spots(data.session_id, data.guests):
+        raise HTTPException(400, "Session is full")
+
     doc = {
         "id": booking_id,
         "session_id": data.session_id,
@@ -2966,9 +3863,10 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         "workshop_slug": workshop["slug"],
         "session_date": session["date"],
         "session_start_time": session.get("start_time", ""),
+        "session_end_time": session.get("end_time", ""),
         "session_location": session.get("location") or workshop.get("location_default", ""),
         "name": data.name,
-        "email": data.email,
+        "email": _norm_email(data.email),
         "phone": data.phone,
         "guests": data.guests,
         "dietary_requirements": data.dietary_requirements,
@@ -2986,10 +3884,20 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         "amount_paid": 0.0,
         "status": "awaiting_bank_transfer" if is_bank_transfer else "pending",
         "payment_status": "awaiting_bank_transfer" if is_bank_transfer else "pending",
+        "spots_reserved": bool(is_bank_transfer),
         "stripe_session_id": None,
+        "stripe_session_ids": [],
         "created_at": now,
     }
-    await db.workshop_bookings.insert_one(doc)
+    try:
+        await db.workshop_bookings.insert_one(doc)
+    except Exception:
+        if is_bank_transfer:
+            await _release_spots(data.session_id, data.guests)
+        raise
+    doc.pop("_id", None)
+    if is_bank_transfer:
+        _fire(_send_booking_bank_transfer_emails(booking_id))
     return _ws_serialise_booking(doc, workshop["name"])
 
 
@@ -3000,11 +3908,13 @@ async def create_workshop_checkout_session(request: Request, data: WorkshopCheck
         raise HTTPException(404, "Booking not found")
     if booking.get("payment_status") == "paid":
         raise HTTPException(400, "Booking already paid")
+    if booking.get("status") == "cancelled":
+        raise HTTPException(400, "This booking has been cancelled")
     if booking.get("amount_due_now", 0) <= 0:
         raise HTTPException(400, "No amount due for this booking")
 
-    success_url = f"{data.origin_url}/workshops/booking-success?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{data.origin_url}/workshops"
+    success_url = f"{SITE_URL}/workshops/booking-success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{SITE_URL}/workshops"
 
     session = await _stripe_create_checkout_session(
         amount=float(booking["amount_due_now"]),
@@ -3023,7 +3933,7 @@ async def create_workshop_checkout_session(request: Request, data: WorkshopCheck
 
     await db.workshop_bookings.update_one(
         {"id": booking["id"]},
-        {"$set": {"stripe_session_id": session.id}}
+        {"$set": {"stripe_session_id": session.id}, "$addToSet": {"stripe_session_ids": session.id}}
     )
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
@@ -3033,38 +3943,32 @@ async def create_workshop_checkout_session(request: Request, data: WorkshopCheck
         "amount": booking["amount_due_now"],
         "currency": "gbp",
         "payment_status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": _now_iso(),
     })
     return {"url": session.url, "session_id": session.id, "amount": booking["amount_due_now"]}
 
 
 @api_router.get("/workshop-checkout/status/{session_id}")
 async def get_workshop_checkout_status(session_id: str):
-    booking = await db.workshop_bookings.find_one({"stripe_session_id": session_id}, {"_id": 0})
+    # Older checkout tabs: the booking's stripe_session_id may have been replaced by a newer
+    # checkout attempt, so also look in stripe_session_ids and the payment_transactions record.
+    booking = await db.workshop_bookings.find_one(
+        {"$or": [{"stripe_session_id": session_id}, {"stripe_session_ids": session_id}]}, {"_id": 0}
+    )
+    if not booking:
+        tx = await db.payment_transactions.find_one({"session_id": session_id, "kind": "workshop_booking"}, {"_id": 0})
+        if tx and tx.get("booking_id"):
+            booking = await db.workshop_bookings.find_one({"id": tx["booking_id"]}, {"_id": 0})
     if not booking:
         raise HTTPException(404, "Booking not found for session")
 
     session = await _stripe_get_checkout_session(session_id)
+    md_booking = _stripe_metadata(session).get("booking_id")
+    if md_booking and md_booking != booking["id"]:
+        raise HTTPException(404, "Booking not found for session")
 
-    if session.payment_status == "paid" and booking.get("payment_status") != "paid":
-        await db.workshop_bookings.update_one(
-            {"id": booking["id"]},
-            {"$set": {
-                "payment_status": "paid",
-                "status": "confirmed",
-                "amount_paid": booking.get("amount_due_now", 0),
-                "paid_at": datetime.now(timezone.utc).isoformat(),
-            }},
-        )
-        # Increase the booked spots count
-        await db.workshop_sessions.update_one(
-            {"id": booking["session_id"]},
-            {"$inc": {"spots_booked": booking.get("guests", 1)}},
-        )
-        await db.payment_transactions.update_one(
-            {"session_id": session_id},
-            {"$set": {"payment_status": "paid", "updated_at": datetime.now(timezone.utc).isoformat()}},
-        )
+    if session.payment_status == "paid":
+        await _mark_booking_paid(booking["id"], stripe_session_id=session_id, source="status-poll")
         booking = await db.workshop_bookings.find_one({"id": booking["id"]}, {"_id": 0})
 
     return {
@@ -3088,21 +3992,34 @@ async def admin_mark_booking_paid(booking_id: str, admin=Depends(require_admin))
     booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(404, "Booking not found")
-    if booking.get("payment_status") == "paid":
-        return _ws_serialise_booking(booking, booking.get("workshop_name", ""))
+    if booking.get("status") == "cancelled" and booking.get("payment_status") != "paid":
+        raise HTTPException(400, "This booking has been cancelled")
+    # Idempotent; spots are only reserved if this booking doesn't already hold them.
+    await _mark_booking_paid(booking_id, source="admin-mark-paid")
+    updated = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+    return _ws_serialise_booking(updated, updated.get("workshop_name", ""))
+
+
+@api_router.put("/admin/workshop-bookings/{booking_id}/cancel", response_model=WorkshopBookingResponse)
+async def admin_cancel_booking(booking_id: str, admin=Depends(require_admin)):
+    """Cancel a booking and release its reserved spots (exactly once). Refunds, if any, are handled manually in Stripe."""
+    booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Booking not found")
     await db.workshop_bookings.update_one(
-        {"id": booking_id},
-        {"$set": {
-            "payment_status": "paid",
-            "status": "confirmed",
-            "amount_paid": booking.get("amount_due_now", 0),
-            "paid_at": datetime.now(timezone.utc).isoformat(),
-        }},
+        {"id": booking_id, "status": {"$ne": "cancelled"}},
+        {"$set": {"status": "cancelled", "cancelled_at": _now_iso()}},
     )
-    await db.workshop_sessions.update_one(
-        {"id": booking["session_id"]},
-        {"$inc": {"spots_booked": booking.get("guests", 1)}},
+    release = await db.workshop_bookings.update_one(
+        {"id": booking_id, "$or": [
+            {"spots_reserved": True},
+            # Legacy paid bookings (before the spots_reserved flag existed) did hold spots
+            {"spots_reserved": {"$exists": False}, "payment_status": "paid"},
+        ]},
+        {"$set": {"spots_reserved": False}},
     )
+    if release.modified_count == 1:
+        await _release_spots(booking["session_id"], int(booking.get("guests", 1) or 1))
     updated = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
     return _ws_serialise_booking(updated, updated.get("workshop_name", ""))
 
@@ -3295,7 +4212,8 @@ async def list_seo_pages(admin=Depends(require_admin)):
 
 @api_router.put("/admin/seo")
 async def upsert_seo_page(data: SEOPage, admin=Depends(require_admin)):
-    payload = data.model_dump()
+    payload = data.model_dump(exclude_unset=True)
+    payload["path"] = data.path
     await db.seo_pages.update_one(
         {"path": payload["path"]},
         {"$set": payload},
@@ -3320,23 +4238,56 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=[o.strip() for o in os.environ.get('CORS_ORIGINS', '*').split(',') if o.strip()] or ['*'],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.on_event("startup")
 async def ensure_page_content():
-    """Ensure all page content records exist in the database on startup."""
-    for page in PAGE_CONTENT_SEED:
-        existing = await db.page_content.find_one({"slug": page["slug"]})
-        if not existing:
-            await db.page_content.insert_one({
-                **page,
-                "id": str(__import__("uuid").uuid4()),
-                "active": True,
-                "seeded": True,
-            })
+    """Ensure all page content records exist in the database on startup (insert-missing only).
+    Slugs the admin deliberately deleted are recorded in db.system and never recreated."""
+    try:
+        rec = await db.system.find_one({"key": "deleted_page_slugs"}, {"_id": 0})
+        deleted = set((rec or {}).get("slugs") or [])
+        for page in PAGE_CONTENT_SEED:
+            if page["slug"] in deleted:
+                continue
+            existing = await db.page_content.find_one({"slug": page["slug"]})
+            if not existing:
+                await db.page_content.insert_one({
+                    **page,
+                    "id": str(uuid.uuid4()),
+                    "active": True,
+                    "seeded": True,
+                })
+    except Exception as e:  # never block boot
+        logger.error(f"ensure_page_content failed: {e}")
+
+
+@app.on_event("startup")
+async def ensure_indexes():
+    """Create indexes. Each is independent and failures (e.g. duplicate legacy data
+    blocking a unique index) are logged, never fatal."""
+    specs = [
+        ("users", "email", {"unique": True}),
+        ("orders", "id", {}),
+        ("orders", "user_id", {}),
+        ("carts", "user_id", {}),
+        ("carts", "session_id", {}),
+        ("payment_transactions", "session_id", {}),
+        ("workshop_bookings", "id", {}),
+        ("workshop_bookings", "stripe_session_id", {}),
+        ("workshop_bookings", "stripe_session_ids", {}),
+        ("workshop_sessions", "id", {}),
+        ("products", "id", {}),
+        ("newsletter_subscribers", "email", {"unique": True}),
+    ]
+    for coll, field, opts in specs:
+        try:
+            await db[coll].create_index(field, **opts)
+        except Exception as e:
+            logger.warning(f"Could not create index {coll}.{field} {opts}: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

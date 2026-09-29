@@ -6,15 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2, Calendar, X, ChevronRight } from "lucide-react";
+import { workshopPricePerGuest } from "../../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+// Blank deposit = 50% of the price (sent explicitly, so what the admin sees is what customers pay).
+const depositOrHalf = (deposit, price) => {
+  if (deposit === "" || deposit === null || deposit === undefined) {
+    return Math.round((parseFloat(price) || 0) * 50) / 100;
+  }
+  return parseFloat(deposit) || 0;
+};
 
 const emptyWorkshop = () => ({
   slug: "", name: "", tag: "", season: "",
   short_description: "", description: "", includes: "",
   duration: "", group_size: "", location_default: "",
   image_url: "",
-  price_per_guest: 0, deposit_amount: 0, full_payment_discount_pct: 5,
+  price_per_guest: 0, deposit_amount: "", full_payment_discount_pct: 5,
   cancellation_policy: "Deposits are non-refundable. Balance is collected on the day.",
   booking_mode: "direct",
   enquire_pitch: "", enquire_venues: "", enquire_bullets: "",
@@ -24,7 +33,7 @@ const emptyWorkshop = () => ({
 
 const emptySession = (workshop_id) => ({
   workshop_id, date: "", start_time: "", end_time: "", location: "",
-  capacity: 14, spots_booked: 0,
+  capacity: 14,
   price_per_guest: "", deposit_amount: "",
   notes: "", private: false, active: true,
 });
@@ -57,18 +66,21 @@ export default function WorkshopsAdmin() {
 
   const loadWorkshops = async () => {
     const r = await axios.get(`${API_URL}/api/admin/workshops`);
-    setWorkshops(r.data || []);
+    setWorkshops(Array.isArray(r.data) ? r.data : []);
   };
   const loadSessions = async () => {
     const r = await axios.get(`${API_URL}/api/admin/workshop-sessions`);
-    setSessions(r.data || []);
+    setSessions(Array.isArray(r.data) ? r.data : []);
   };
   const loadBookings = async () => {
     const r = await axios.get(`${API_URL}/api/admin/workshop-bookings`);
-    setBookings(r.data || []);
+    setBookings(Array.isArray(r.data) ? r.data : []);
   };
 
-  useEffect(() => { loadWorkshops(); loadSessions(); loadBookings(); }, []);
+  useEffect(() => {
+    const safe = (fn, what) => fn().catch(() => toast.error(`Could not load ${what}`));
+    safe(loadWorkshops, "workshops"); safe(loadSessions, "sessions"); safe(loadBookings, "bookings");
+  }, []);
 
   const seedWorkshops = async () => {
     if (!window.confirm("Seed starter workshops + 2 upcoming dates each? (skipped if already present)")) return;
@@ -94,8 +106,9 @@ export default function WorkshopsAdmin() {
           : (w.includes || []),
         duration: w.duration || "", group_size: w.group_size || "",
         location_default: w.location_default || "", image_url: w.image_url || "",
-        gallery_images: [], price_per_guest: parseFloat(w.price_per_guest) || 0,
-        deposit_amount: parseFloat(w.deposit_amount) || 0,
+        gallery_images: Array.isArray(w.gallery_images) ? w.gallery_images : [],
+        price_per_guest: parseFloat(w.price_per_guest) || 0,
+        deposit_amount: depositOrHalf(w.deposit_amount, w.price_per_guest),
         full_payment_discount_pct: parseFloat(w.full_payment_discount_pct) || 0,
         cancellation_policy: w.cancellation_policy || "",
         booking_mode: w.booking_mode === "enquire" ? "enquire" : "direct",
@@ -150,7 +163,7 @@ export default function WorkshopsAdmin() {
         location_default: q.location_default || "",
         image_url: "", gallery_images: [],
         price_per_guest: parseFloat(q.price_per_guest) || 0,
-        deposit_amount: parseFloat(q.deposit_amount) || 0,
+        deposit_amount: depositOrHalf(q.deposit_amount, q.price_per_guest),
         full_payment_discount_pct: 5,
         cancellation_policy: "Deposits are non-refundable. Balance is collected on the day.",
         booking_mode: "direct",
@@ -165,7 +178,7 @@ export default function WorkshopsAdmin() {
       const sessionPayload = {
         workshop_id: workshopId,
         date: q.date, start_time: q.start_time || "", end_time: q.end_time || "",
-        location: "", capacity: parseInt(q.capacity) || 14, spots_booked: 0,
+        location: "", capacity: parseInt(q.capacity) || 14,
         price_per_guest: null, deposit_amount: null,
         notes: "", private: !!q.private, active: true,
       };
@@ -196,7 +209,7 @@ export default function WorkshopsAdmin() {
         workshop_id: s.workshop_id, date: s.date,
         start_time: s.start_time || "", end_time: s.end_time || "",
         location: s.location || "", capacity: parseInt(s.capacity) || 14,
-        spots_booked: parseInt(s.spots_booked) || 0,
+        // spots_booked is never sent — the server maintains it from real bookings
         price_per_guest: s.price_per_guest === "" || s.price_per_guest === null ? null : parseFloat(s.price_per_guest),
         deposit_amount: s.deposit_amount === "" || s.deposit_amount === null ? null : parseFloat(s.deposit_amount),
         notes: s.notes || "", private: !!s.private, active: !!s.active,
@@ -230,6 +243,15 @@ export default function WorkshopsAdmin() {
       toast.success("Booking marked as paid");
       await loadBookings();
     } catch (err) { toast.error(err.response?.data?.detail || "Failed to update"); }
+  };
+
+  const cancelBooking = async (b) => {
+    if (!window.confirm(`Cancel the booking for ${b.name || "this customer"} (${b.guests} guest${b.guests === 1 ? "" : "s"})? Their places will be released. This does not issue a refund — do that in Stripe or by bank transfer.`)) return;
+    try {
+      await axios.put(`${API_URL}/api/admin/workshop-bookings/${b.id}/cancel`);
+      toast.success("Booking cancelled");
+      await Promise.all([loadBookings(), loadSessions()]);
+    } catch (err) { toast.error(err.response?.data?.detail || "Failed to cancel booking"); }
   };
 
   const wMap = Object.fromEntries(workshops.map((w) => [w.id, w]));
@@ -333,8 +355,13 @@ export default function WorkshopsAdmin() {
                       <td className="px-3 py-2 text-sm">{s.start_time}{s.end_time ? `–${s.end_time}` : ""}</td>
                       <td className="px-3 py-2 text-sm">{s.location || w?.location_default || "—"}</td>
                       <td className="px-3 py-2 text-sm">{s.capacity}</td>
-                      <td className="px-3 py-2 text-sm">{s.spots_booked}</td>
-                      <td className="px-3 py-2 text-sm">£{Number(s.price_per_guest ?? w?.price_per_guest ?? 0).toFixed(0)}</td>
+                      <td className="px-3 py-2 text-sm">
+                        {s.spots_booked ?? 0}
+                        {(s.overbooked || (Number(s.spots_booked) > Number(s.capacity))) && (
+                          <span className="ml-2 px-2 py-0.5 text-[10px] uppercase tracking-wider bg-red-100 text-red-700" data-testid={`sessions-overbooked-${s.id}`}>Overbooked</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-sm">£{workshopPricePerGuest(w, s).toFixed(0)}</td>
                       <td className="px-3 py-2 text-sm">{s.private ? <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-[#F2EFEB] text-[#7A7A7A]">Private</span> : "—"}</td>
                       <td className="px-3 py-2 text-sm">{s.active ? "Yes" : "No"}</td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -367,8 +394,8 @@ export default function WorkshopsAdmin() {
               {bookings.map((b) => (
                 <tr key={b.id} className="border-t border-[#E5E5E5]" data-testid={`bookings-row-${b.id}`}>
                   <td className="px-3 py-2 text-xs text-[#7A7A7A]">{b.created_at?.slice(0, 10)}</td>
-                  <td className="px-3 py-2 text-sm">{b.workshop_name}</td>
-                  <td className="px-3 py-2 text-sm">{(b.session_id && sessions.find((s) => s.id === b.session_id)?.date) || "—"}</td>
+                  <td className="px-3 py-2 text-sm">{b.workshop_title || b.workshop_name}</td>
+                  <td className="px-3 py-2 text-sm whitespace-nowrap">{fmtDate(b.session_date || (b.session_id && sessions.find((s) => s.id === b.session_id)?.date)) || "—"}</td>
                   <td className="px-3 py-2 text-sm">{b.name}</td>
                   <td className="px-3 py-2 text-sm">{b.email}</td>
                   <td className="px-3 py-2 text-sm">{b.phone}</td>
@@ -383,12 +410,27 @@ export default function WorkshopsAdmin() {
                   <td className="px-3 py-2 text-sm">£{Number(b.amount_paid).toFixed(2)}</td>
                   <td className="px-3 py-2 text-sm">£{Number(b.balance_due_on_day).toFixed(2)}</td>
                   <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider ${b.payment_status === "paid" ? "bg-[#C4CFC0]" : "bg-[#F2EFEB] text-[#7A7A7A]"}`}>{b.payment_status}</span>
+                    {b.status === "cancelled" ? (
+                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-red-50 text-red-700" data-testid={`bookings-status-cancelled-${b.id}`}>cancelled</span>
+                    ) : (
+                      <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider ${b.payment_status === "paid" ? "bg-[#C4CFC0]" : "bg-[#F2EFEB] text-[#7A7A7A]"}`}>{String(b.payment_status || "").replace(/_/g, " ")}</span>
+                    )}
+                    {b.overbooked && (
+                      <span className="ml-1 px-2 py-0.5 text-[10px] uppercase tracking-wider bg-red-100 text-red-700" data-testid={`bookings-overbooked-${b.id}`}>Overbooked</span>
+                    )}
+                    {b.refund_needed && (
+                      <span className="ml-1 px-2 py-0.5 text-[10px] uppercase tracking-wider bg-red-100 text-red-700" title="Paid after being cancelled — refund in Stripe" data-testid={`bookings-refund-${b.id}`}>Refund needed</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap">
-                    {b.payment_method === "bank_transfer" && b.payment_status !== "paid" && (
-                      <button onClick={() => markBookingPaid(b.id)} className="text-[11px] uppercase tracking-wider underline text-[#1A1A1A] hover:text-[#5C7A3F]" data-testid={`bookings-mark-paid-${b.id}`}>
+                    {b.payment_method === "bank_transfer" && b.payment_status !== "paid" && b.status !== "cancelled" && (
+                      <button onClick={() => markBookingPaid(b.id)} className="text-[11px] uppercase tracking-wider underline text-[#1A1A1A] hover:text-[#5C7A3F] mr-3" data-testid={`bookings-mark-paid-${b.id}`}>
                         Mark paid
+                      </button>
+                    )}
+                    {b.status !== "cancelled" && (
+                      <button onClick={() => cancelBooking(b)} className="text-[11px] uppercase tracking-wider underline text-[#7A7A7A] hover:text-red-600" data-testid={`bookings-cancel-${b.id}`}>
+                        Cancel booking
                       </button>
                     )}
                   </td>
@@ -420,7 +462,7 @@ export default function WorkshopsAdmin() {
               <div className="md:col-span-2"><Field label="Default location"><Input value={editingWorkshop.location_default} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, location_default: e.target.value })} className="light-input rounded-none" /></Field></div>
               <div className="md:col-span-2"><Field label="Hero image URL"><Input value={editingWorkshop.image_url} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, image_url: e.target.value })} className="light-input rounded-none" /></Field></div>
               <Field label="Price per guest (£)"><Input type="number" step="0.01" value={editingWorkshop.price_per_guest} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, price_per_guest: e.target.value })} className="light-input rounded-none" data-testid="workshops-form-price" /></Field>
-              <Field label="Deposit per guest (£)"><Input type="number" step="0.01" value={editingWorkshop.deposit_amount} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, deposit_amount: e.target.value })} className="light-input rounded-none" data-testid="workshops-form-deposit" /></Field>
+              <Field label="Deposit per guest (£)"><Input type="number" step="0.01" value={editingWorkshop.deposit_amount ?? ""} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, deposit_amount: e.target.value })} placeholder="Blank = 50% of price" className="light-input rounded-none" data-testid="workshops-form-deposit" /><p className="text-[11px] text-[#7A7A7A] mt-1">Blank or 0 = 50% of price.</p></Field>
               <Field label="Full-pay discount %"><Input type="number" step="0.1" value={editingWorkshop.full_payment_discount_pct} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, full_payment_discount_pct: e.target.value })} className="light-input rounded-none" /></Field>
               <Field label="Sort order"><Input type="number" value={editingWorkshop.sort_order} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, sort_order: e.target.value })} className="light-input rounded-none" /></Field>
               <div className="md:col-span-2"><Field label="Cancellation policy"><Textarea rows={2} value={editingWorkshop.cancellation_policy} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, cancellation_policy: e.target.value })} className="light-input rounded-none" /></Field></div>
@@ -486,7 +528,10 @@ export default function WorkshopsAdmin() {
               <Field label="Location (override)"><Input value={editingSession.location} onChange={(e) => setEditingSession({ ...editingSession, location: e.target.value })} placeholder="Leave blank to use workshop default" className="light-input rounded-none" /></Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Capacity"><Input type="number" value={editingSession.capacity} onChange={(e) => setEditingSession({ ...editingSession, capacity: e.target.value })} className="light-input rounded-none" data-testid="sessions-form-capacity" /></Field>
-                <Field label="Already booked"><Input type="number" value={editingSession.spots_booked} onChange={(e) => setEditingSession({ ...editingSession, spots_booked: e.target.value })} className="light-input rounded-none" /></Field>
+                <Field label="Already booked">
+                  <p className="h-10 flex items-center text-sm text-[#1A1A1A]" data-testid="sessions-form-spots-booked">{editingSession.spots_booked ?? 0}</p>
+                  <p className="text-[11px] text-[#7A7A7A]">Updated automatically from bookings.</p>
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Price override (£)"><Input type="number" step="0.01" value={editingSession.price_per_guest ?? ""} onChange={(e) => setEditingSession({ ...editingSession, price_per_guest: e.target.value })} placeholder="Blank = use workshop default" className="light-input rounded-none" /></Field>

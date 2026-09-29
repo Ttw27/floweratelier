@@ -11,27 +11,44 @@ export function clearAllPageCache() {
   } catch {} 
 }
 
-export function usePageContent(slug) {
-  const cacheKey = getCacheKey(slug);
-  const cached = (() => { try { return JSON.parse(sessionStorage.getItem(cacheKey)); } catch { return null; } })();
+const readCache = (slug) => {
+  if (!slug) return null;
+  try { return JSON.parse(sessionStorage.getItem(getCacheKey(slug))); } catch { return null; }
+};
 
-  const [content, setContent] = useState(cached);
-  const [loading, setLoading] = useState(!cached);
+export function usePageContent(slug) {
+  const [state, setState] = useState(() => {
+    const cached = readCache(slug);
+    return { slug, content: cached, loading: !!slug && !cached, notFound: false };
+  });
+
+  // If the slug changes (e.g. navigating between generic pages), reset from cache for the new slug.
+  if (state.slug !== slug) {
+    const cached = readCache(slug);
+    setState({ slug, content: cached, loading: !!slug && !cached, notFound: false });
+  }
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      setState({ slug, content: null, loading: false, notFound: false });
+      return;
+    }
     let alive = true;
     axios
       .get(`${API_URL}/api/page-content/${slug}`)
       .then((r) => {
         if (!alive) return;
-        setContent(r.data);
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(r.data)); } catch {}
+        setState({ slug, content: r.data, loading: false, notFound: false });
+        try { sessionStorage.setItem(getCacheKey(slug), JSON.stringify(r.data)); } catch {}
       })
-      .catch(() => { if (alive) setContent(null); })
-      .finally(() => { if (alive) setLoading(false); });
+      .catch((err) => {
+        if (!alive) return;
+        const notFound = err?.response?.status === 404;
+        if (notFound) clearPageCache(slug);
+        setState({ slug, content: null, loading: false, notFound });
+      });
     return () => { alive = false; };
   }, [slug]);
 
-  return { content, loading };
+  return { content: state.content, loading: state.loading, notFound: state.notFound };
 }

@@ -10,6 +10,7 @@ import SendFlow from "../components/SendFlow";
 import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const fmt = (n) => `£${(Number(n) || 0).toFixed(2)}`;
 
 export default function ProductDetailPage() {
   const { productId } = useParams();
@@ -20,6 +21,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [delivery, setDelivery] = useState(null);
   const [sendOpen, setSendOpen] = useState(false);
+  const [sizeName, setSizeName] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -29,6 +31,7 @@ export default function ProductDetailPage() {
           axios.get(`${API_URL}/api/delivery/options`),
         ]);
         setProduct(p.data);
+        setSizeName(p.data?.sizes?.[0]?.name || null);
         setDelivery(d.data);
       } catch {
         toast.error("Product not found");
@@ -46,9 +49,17 @@ export default function ProductDetailPage() {
     ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hi Flower Atelier — I have a question about "${product?.name || "this bouquet"}".`)}`
     : null;
 
+  const sizes = Array.isArray(product?.sizes) ? product.sizes.filter((sz) => sz && sz.name) : [];
+  const chosenSize = sizes.find((sz) => sz.name === sizeName) || sizes[0] || null;
+  const sizeModifier = Number(chosenSize?.price_modifier) || 0;
+  const displayPrice = (Number(product?.price) || 0) + sizeModifier;
+  const inStock = product?.in_stock !== false;
+  const freeThreshold = delivery?.delivery_fees?.free_threshold;
+
   const handleQuickAdd = async () => {
+    if (!inStock) return;
     try {
-      await addToCart(product.id, 1, null, null);
+      await addToCart(product.id, 1, chosenSize?.name || null, null);
       toast.success("Added to your basket");
     } catch {
       toast.error("Could not add to basket");
@@ -94,14 +105,39 @@ export default function ProductDetailPage() {
             </h1>
 
             <div className="flex items-baseline gap-3 mb-8 pb-8 border-b border-[#E5E5E5]">
-              <span className="accent-label">From</span>
+              {sizes.length <= 1 && <span className="accent-label">From</span>}
               <span className="font-heading text-3xl text-[#1A1A1A] font-light" data-testid="product-detail-price">
-                £{product.price.toFixed(0)}
+                {fmt(displayPrice)}
               </span>
-              {product.original_price && product.original_price > product.price && (
-                <span className="font-body text-sm text-[#B3A89B] line-through ml-1">£{product.original_price.toFixed(0)}</span>
+              {sizeModifier === 0 && product.original_price && product.original_price > product.price && (
+                <span className="font-body text-sm text-[#B3A89B] line-through ml-1">{fmt(product.original_price)}</span>
               )}
             </div>
+
+            {sizes.length > 1 && (
+              <div className="mb-8" data-testid="size-picker">
+                <p className="accent-label mb-3">Size</p>
+                <div className="flex flex-wrap gap-2">
+                  {sizes.map((sz) => {
+                    const selected = chosenSize?.name === sz.name;
+                    const price = (Number(product.price) || 0) + (Number(sz.price_modifier) || 0);
+                    return (
+                      <button
+                        key={sz.name}
+                        type="button"
+                        onClick={() => setSizeName(sz.name)}
+                        className={`px-4 py-3 border text-left transition-colors ${selected ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" : "bg-white text-[#1A1A1A] border-[#E5E5E5] hover:border-[#1A1A1A]"}`}
+                        aria-pressed={selected}
+                        data-testid={`size-option-${sz.name}`}
+                      >
+                        <span className="block font-body text-[12px] uppercase tracking-[0.18em]">{sz.name}</span>
+                        <span className="block font-body text-[13px] mt-0.5 opacity-80">{fmt(price)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <p className="font-body text-[15px] text-[#5A5A5A] leading-relaxed mb-8" data-testid="product-detail-description">
               {product.description}
@@ -123,20 +159,20 @@ export default function ProductDetailPage() {
             {isBouquet ? (
               <Button
                 onClick={() => setSendOpen(true)}
-                disabled={!product.in_stock}
+                disabled={!inStock}
                 className="btn-dark w-full py-6 text-xs rounded-none"
                 data-testid="send-flow-open-btn"
               >
-                {product.in_stock ? "Send this bouquet →" : "Currently unavailable"}
+                {inStock ? "Send this bouquet →" : "Currently unavailable"}
               </Button>
             ) : (
               <Button
                 onClick={handleQuickAdd}
-                disabled={!product.in_stock}
+                disabled={!inStock}
                 className="btn-dark w-full py-6 text-xs rounded-none"
                 data-testid="add-to-cart-button"
               >
-                {product.in_stock ? "Add to basket" : "Currently unavailable"}
+                {inStock ? "Add to basket" : "Currently unavailable"}
               </Button>
             )}
 
@@ -157,7 +193,12 @@ export default function ProductDetailPage() {
             {/* Features */}
             <div className="pt-8 mt-8 border-t border-[#E5E5E5] space-y-4">
               <Feature icon={Award} text="Hand-tied by the atelier's lead florists" />
-              <Feature icon={Truck} text={`Complimentary Midlands delivery over £100 · Saturday service available`} />
+              <Feature
+                icon={Truck}
+                text={freeThreshold != null && Number(freeThreshold) > 0
+                  ? `Complimentary Midlands delivery over ${fmt(freeThreshold)} · Saturday service available`
+                  : "Midlands delivery · Saturday service available"}
+              />
               <Feature icon={Leaf} text="7-day freshness guarantee" />
               <Feature icon={Gift} text="Presented in our signature ivory atelier box" />
             </div>
@@ -165,7 +206,7 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
-      <SendFlow product={product} open={sendOpen} onClose={() => setSendOpen(false)} />
+      <SendFlow product={product} size={chosenSize} open={sendOpen && inStock} onClose={() => setSendOpen(false)} />
     </div>
   );
 }

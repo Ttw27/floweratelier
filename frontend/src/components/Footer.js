@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
 import { Instagram, Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
+import { getContact, whatsappHref } from "../lib/contact";
 
 export default function Footer() {
   const { settings } = useSettings();
-  const waDigits = (settings?.whatsapp_number || "").replace(/\D/g, "");
-  const waMsg = encodeURIComponent(settings?.whatsapp_default_message || "Hello");
-  const waHref = waDigits ? `https://wa.me/${waDigits}?text=${waMsg}` : null;
+  const contact = getContact(settings);
+  const waHref = whatsappHref(settings, settings?.whatsapp_default_message || "Hello Flower Atelier");
+  const instagramUrl = (settings?.instagram_url || "").trim();
+  const year = new Date().getFullYear();
 
   return (
     <footer className="bg-[#FAFAF7] border-t border-[#E5E5E5]" data-testid="footer">
@@ -24,15 +26,15 @@ export default function Footer() {
               tributes, corporate programmes and private residence installations.
             </p>
             <div className="space-y-3">
-              <a href={`tel:${(settings?.phone_number || "0116 212 3456").replace(/\s/g, "")}`} className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
+              <a href={contact.telHref} className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="footer-phone">
                 <Phone size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">{settings?.phone_number || "0116 212 3456"}</span>
+                <span className="font-body text-sm">{contact.phone}</span>
               </a>
-              <a href={`mailto:${settings?.contact_email || "info@floweratelier.co.uk"}`} className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors">
+              <a href={`mailto:${contact.email}`} className="flex items-center gap-3 text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="footer-email">
                 <Mail size={15} strokeWidth={1.3} />
-                <span className="font-body text-sm">{settings?.contact_email || "info@floweratelier.co.uk"}</span>
+                <span className="font-body text-sm">{contact.email}</span>
               </a>
-              {waHref && settings?.whatsapp_enabled !== false && (
+              {settings?.whatsapp_enabled !== false && (
                 <a
                   href={waHref}
                   target="_blank"
@@ -86,15 +88,17 @@ export default function Footer() {
             <h4 className="accent-label mb-6 text-[#1A1A1A]">The Atelier</h4>
             <ul className="space-y-3 mb-8">
               <li><Link to="/consultation" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-consultation">Book a Consultation</Link></li>
-              <li><a href="#" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">Delivery & Care</a></li>
-              <li><a href="#" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">Privacy</a></li>
-              <li><a href="#" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">Terms</a></li>
+              <li><Link to="/delivery" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-delivery">Delivery &amp; Care</Link></li>
+              <li><Link to="/privacy" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-privacy">Privacy</Link></li>
+              {/* Terms link hidden until the owner supplies terms & conditions */}
             </ul>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="social-instagram">
-                <Instagram size={18} strokeWidth={1.3} />
-              </a>
-            </div>
+            {instagramUrl && (
+              <div className="flex items-center gap-4">
+                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Flower Atelier on Instagram" className="text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="social-instagram">
+                  <Instagram size={18} strokeWidth={1.3} />
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -103,7 +107,7 @@ export default function Footer() {
       <div className="border-t border-[#E5E5E5]">
         <div className="px-6 md:px-12 max-w-[1400px] mx-auto py-6 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide">
-            © 2026 Flower Atelier — Leicester. All rights reserved.
+            © {year} Flower Atelier — Leicester. All rights reserved.
           </p>
           <p className="font-body text-[11px] text-[#B3A89B] tracking-wide italic">
             Website by <a href="https://www.weavixstudio.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#1A1A1A] transition-colors">Weavix Studio</a>

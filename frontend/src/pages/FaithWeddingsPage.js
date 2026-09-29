@@ -69,7 +69,7 @@ export default function FaithWeddingsPage() {
                 className={`nav-link font-body text-[11px] uppercase tracking-[0.22em] transition-colors pb-3 ${active === t.id ? "text-[#1A1A1A] active" : "text-[#7A7A7A] hover:text-[#1A1A1A]"}`}
                 data-testid={`faith-tab-${t.id}`}
               >
-                {t.name.split(" — ")[0]}
+                {String(t.name || "").split(" — ")[0]}
               </button>
             ))}
           </div>
@@ -78,9 +78,14 @@ export default function FaithWeddingsPage() {
           {current && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start" data-testid={`faith-content-${current.id}`}>
               <div className="lg:col-span-6">
-                <img src={current.image} alt={current.name} className="w-full aspect-[4/5] object-cover" />
+                {/* Don't flash the stock tradition image before the admin's content has loaded */}
+                {current.image && (content || !loading) ? (
+                  <img src={current.image} alt={current.name} className="w-full aspect-[4/5] object-cover" />
+                ) : (
+                  <div className="w-full aspect-[4/5] bg-[#F2EFEB]" />
+                )}
                 <div className="flex gap-2 mt-5">
-                  {current.palette.map((c) => (
+                  {(current.palette || []).map((c) => (
                     <span key={c} title={c} className="block w-8 h-8 border border-[#E5E5E5]" style={{ background: c }} />
                   ))}
                 </div>
@@ -89,7 +94,7 @@ export default function FaithWeddingsPage() {
                 <p className="accent-label mb-4">{current.name}</p>
                 <h3 className="font-heading text-3xl md:text-5xl font-light text-[#1A1A1A] leading-[1.05] mb-6">{current.intro}</h3>
                 <ul className="space-y-3 mb-10">
-                  {current.details.map((d, i) => (
+                  {(current.details || []).map((d, i) => (
                     <li key={i} className="flex items-start gap-3 font-body text-base text-[#7A7A7A] leading-relaxed">
                       <span className="w-1 h-1 rounded-full bg-[#1A1A1A] mt-3 flex-shrink-0" />
                       {d}

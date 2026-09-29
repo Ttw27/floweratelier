@@ -48,6 +48,7 @@ export default function CorporatePage() {
       {/* Offerings — pricing editable in admin / Page Content */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Offerings"
         heading={<>Programmes &amp;<br /><span className="italic">productions.</span></>}

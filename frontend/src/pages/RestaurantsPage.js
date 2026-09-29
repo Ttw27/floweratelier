@@ -71,6 +71,7 @@ export default function RestaurantsPage() {
       {/* Offerings */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Programmes"
         heading={<>The table,<br /><span className="italic">set beautifully.</span></>}

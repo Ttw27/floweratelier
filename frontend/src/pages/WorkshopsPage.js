@@ -7,6 +7,8 @@ import MiniPortfolio from "../components/MiniPortfolio";
 import WorkshopBookingModal from "../components/WorkshopBookingModal";
 import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
 import { useSettings } from "../context/SettingsContext";
+import { getContact } from "../lib/contact";
+import { workshopPricePerGuest } from "../lib/workshopPricing";
 import { usePageContent } from "../hooks/usePageContent";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -22,7 +24,7 @@ export default function WorkshopsPage() {
   const [enquireFor, setEnquireFor] = useState(null);
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/workshops`).then((r) => setWorkshops(r.data || [])).catch(() => {});
+    axios.get(`${API_URL}/api/workshops`).then((r) => setWorkshops(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
 
   const directWorkshops  = useMemo(() => workshops.filter((w) => w.booking_mode !== "enquire"), [workshops]);
@@ -30,7 +32,7 @@ export default function WorkshopsPage() {
 
   const openCTA = (w) => (w.booking_mode === "enquire" ? setEnquireFor(w) : setBookingFor(w));
 
-  const waNumber = (settings?.whatsapp_number || "447123456789").replace(/\D/g, "");
+  const waNumber = getContact(settings).whatsapp;
   const waHref = `https://wa.me/${waNumber}?text=${encodeURIComponent("Hello Flower Atelier — I'd like to host a workshop at our venue.")}`;
 
   return (
@@ -211,7 +213,7 @@ function WorkshopCard({ w, onCTA, large = false }) {
             <p>{w.duration}</p>
             <p>{w.group_size}</p>
           </div>
-          <p className="font-heading text-base text-[#1A1A1A]">{isEnquire ? "Bespoke pricing" : `from £${Number(w.price_per_guest).toFixed(0)}`}</p>
+          <p className="font-heading text-base text-[#1A1A1A]">{isEnquire ? "Bespoke pricing" : `from £${workshopPricePerGuest(w, null).toFixed(0)}`}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">

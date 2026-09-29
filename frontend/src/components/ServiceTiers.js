@@ -3,9 +3,14 @@
  * available, otherwise falls back to the hardcoded `defaultTiers` array passed in.
  *
  * Tier shape: { title, description, price_label, image_url }
+ * Pass `loading` from usePageContent so default images aren't shown before CMS content arrives.
  */
-export default function ServiceTiers({ content, defaultTiers, eyebrow = "Services", heading, testId = "service-tiers" }) {
-  const tiers = (content?.tiers && content.tiers.length > 0) ? content.tiers : (defaultTiers || []);
+export default function ServiceTiers({ content, defaultTiers, eyebrow = "Services", heading, testId = "service-tiers", loading = false }) {
+  const hasCmsTiers = Array.isArray(content?.tiers) && content.tiers.length > 0;
+  const tiers = hasCmsTiers ? content.tiers : (defaultTiers || []);
+  // While page content is still loading, never show the stock default images
+  // (they'd flash and then be replaced by the admin's own photos).
+  const showImages = hasCmsTiers || !loading;
   if (tiers.length === 0) return null;
 
   return (
@@ -21,7 +26,7 @@ export default function ServiceTiers({ content, defaultTiers, eyebrow = "Service
           {tiers.map((t, idx) => (
             <div key={`${t.title}-${idx}`} className="group" data-testid={`${testId}-tier-${idx}`}>
               <div className="aspect-[4/3] image-hover-container mb-6 bg-white overflow-hidden">
-                {t.image_url && <img src={t.image_url} alt={t.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />}
+                {showImages && t.image_url && <img src={t.image_url} alt={t.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />}
               </div>
               <h3 className="font-heading text-2xl md:text-3xl font-light text-[#1A1A1A] mb-3 group-hover:italic transition-all">{t.title}</h3>
               {t.description && <p className="font-body text-sm text-[#7A7A7A] leading-relaxed mb-3">{t.description}</p>}

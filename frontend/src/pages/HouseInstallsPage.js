@@ -46,6 +46,7 @@ export default function HouseInstallsPage() {
       {/* Programmes — editable in admin / Page Content */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Programmes"
         heading={<>Three rhythms.<br /><span className="italic">One standard.</span></>}

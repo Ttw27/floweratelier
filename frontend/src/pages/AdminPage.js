@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2, Home, MessageSquare, Layers, Box, LayoutTemplate, Sparkles, Image, FileText, Search, Settings2, Calendar } from "lucide-react";
+import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2, Home, MessageSquare, Layers, Box, LayoutTemplate, Sparkles, Image, FileText, Search, Settings2, Calendar, Mail, ChevronDown, ChevronRight } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
+import { clearSEOCache } from "../components/SEOHead";
 import SEOAdmin from "../components/admin/SEOAdmin";
 import CardsAdmin from "../components/admin/CardsAdmin";
 import AddonsAdmin from "../components/admin/AddonsAdmin";
@@ -21,8 +22,29 @@ import WorkshopsAdmin from "../components/admin/WorkshopsAdmin";
 import PortfolioAdmin from "../components/admin/PortfolioAdmin";
 import PageContentAdmin from "../components/admin/PageContentAdmin";
 import HomepageAdmin from "../components/admin/HomepageAdmin";
+import OrdersAdmin from "../components/admin/OrdersAdmin";
+import NewsletterAdmin from "../components/admin/NewsletterAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+const fmt = (n) => `£${(Number(n) || 0).toFixed(2)}`;
+const fmtDateSafe = (iso, pattern) => { try { return format(new Date(iso), pattern); } catch { return iso || "—"; } };
+
+const EMPTY_PRODUCT_FORM = {
+  name: "", description: "", price: "", original_price: "", category_id: "",
+  images: "", in_stock: true, featured: false, occasion_tags: "",
+  is_bouquet: true, sizes: [], media: undefined,
+};
+
+// Size rows are edited as strings; keep any extra keys the size objects already had.
+const sizesToForm = (sizes) => (Array.isArray(sizes) ? sizes : []).map((sz) => ({
+  ...sz,
+  name: sz?.name || "",
+  price_modifier: sz?.price_modifier != null ? String(sz.price_modifier) : "0",
+}));
+const sizesFromForm = (rows) => rows
+  .filter((r) => (r.name || "").trim())
+  .map((r) => ({ ...r, name: r.name.trim(), price_modifier: parseFloat(r.price_modifier) || 0 }));
 
 function sidebarTrigger(value, Icon, label, testId) {
   return (
@@ -42,17 +64,14 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [stats, setStats] = useState(null);
-  const [orders, setOrders] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [productForm, setProductForm] = useState({
-    name: "", description: "", price: "", original_price: "", category_id: "",
-    images: "", in_stock: true, featured: false, occasion_tags: "",
-  });
+  const [productForm, setProductForm] = useState(EMPTY_PRODUCT_FORM);
+  const [expandedInquiries, setExpandedInquiries] = useState(() => new Set());
 
   const { settings, fresh: settingsFresh, refresh: refreshSettings } = useSettings();
   const [settingsForm, setSettingsForm] = useState(null);
@@ -66,8 +85,9 @@ export default function AdminPage() {
         whatsapp_number: settings.whatsapp_number || "",
         whatsapp_enabled: settings.whatsapp_enabled !== false,
         whatsapp_default_message: settings.whatsapp_default_message || "",
-        phone_number: settings.phone_number || "0116 212 3456",
-        contact_email: settings.contact_email || "info@floweratelier.co.uk",
+        phone_number: settings.phone_number || "",
+        contact_email: settings.contact_email || "",
+        instagram_url: settings.instagram_url || "",
         bank_account_name: settings.bank_account_name || "",
         bank_sort_code: settings.bank_sort_code || "",
         bank_account_number: settings.bank_account_number || "",
@@ -81,6 +101,9 @@ export default function AdminPage() {
         delivery_blocked_weekdays: settings.delivery_blocked_weekdays || [6],
         delivery_blocked_dates: settings.delivery_blocked_dates || [],
         delivery_window_days: settings.delivery_window_days ?? 28,
+        delivery_fee_standard: settings.delivery_fee_standard != null ? String(settings.delivery_fee_standard) : "9.99",
+        delivery_fee_saturday: settings.delivery_fee_saturday != null ? String(settings.delivery_fee_saturday) : "9.99",
+        free_delivery_threshold: settings.free_delivery_threshold != null ? String(settings.free_delivery_threshold) : "100",
         seo_default_title: settings.seo_default_title || "",
         seo_default_description: settings.seo_default_description || "",
         seo_default_og_image: settings.seo_default_og_image || "",
@@ -93,8 +116,19 @@ export default function AdminPage() {
     e.preventDefault();
     setSavingSettings(true);
     try {
-      await axios.put(`${API_URL}/api/settings`, settingsForm);
+      const money = (v, fallback) => {
+        const n = parseFloat(v);
+        return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : fallback;
+      };
+      const payload = {
+        ...settingsForm,
+        delivery_fee_standard: money(settingsForm.delivery_fee_standard, settings.delivery_fee_standard ?? 9.99),
+        delivery_fee_saturday: money(settingsForm.delivery_fee_saturday, settings.delivery_fee_saturday ?? 9.99),
+        free_delivery_threshold: money(settingsForm.free_delivery_threshold, settings.free_delivery_threshold ?? 100),
+      };
+      await axios.put(`${API_URL}/api/settings`, payload);
       try { sessionStorage.removeItem("site_settings"); } catch {}
+      clearSEOCache();  // SEO defaults live in settings too
       await refreshSettings();
       toast.success("Settings saved");
     } catch (err) {
@@ -110,15 +144,13 @@ export default function AdminPage() {
     const fetchData = async () => {
       if (!user || !user.is_admin) return;
       try {
-        const [statsRes, ordersRes, inquiriesRes, productsRes, categoriesRes] = await Promise.all([
+        const [statsRes, inquiriesRes, productsRes, categoriesRes] = await Promise.all([
           axios.get(`${API_URL}/api/admin/stats`),
-          axios.get(`${API_URL}/api/admin/orders`),
           axios.get(`${API_URL}/api/admin/inquiries`),
           axios.get(`${API_URL}/api/products`),
           axios.get(`${API_URL}/api/categories`),
         ]);
         setStats(statsRes.data);
-        setOrders(ordersRes.data);
         setInquiries(inquiriesRes.data);
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
@@ -128,13 +160,11 @@ export default function AdminPage() {
     fetchData();
   }, [user]);
 
-  const handleUpdateOrderStatus = async (orderId, status) => {
-    try {
-      await axios.put(`${API_URL}/api/admin/orders/${orderId}/status`, { status });
-      setOrders(orders.map((o) => (o.id === orderId ? { ...o, status } : o)));
-      toast.success("Updated");
-    } catch { toast.error("Failed"); }
-  };
+  const toggleInquiry = (id) => setExpandedInquiries((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
@@ -147,13 +177,17 @@ export default function AdminPage() {
         images: productForm.images.split(",").map((s) => s.trim()).filter(Boolean),
         in_stock: productForm.in_stock, featured: productForm.featured,
         occasion_tags: productForm.occasion_tags.split(",").map((s) => s.trim()).filter(Boolean),
+        is_bouquet: !!productForm.is_bouquet,
+        sizes: sizesFromForm(productForm.sizes || []),
       };
+      // Media is not edited here — always send back what the product already had so it's never wiped.
+      if (productForm.media !== undefined) payload.media = productForm.media;
       if (editingProduct) { await axios.put(`${API_URL}/api/products/${editingProduct.id}`, payload); toast.success("Updated"); }
       else { await axios.post(`${API_URL}/api/products`, payload); toast.success("Created"); }
       const productsRes = await axios.get(`${API_URL}/api/products`);
       setProducts(productsRes.data);
       setShowProductForm(false); setEditingProduct(null);
-      setProductForm({ name: "", description: "", price: "", original_price: "", category_id: "", images: "", in_stock: true, featured: false, occasion_tags: "" });
+      setProductForm(EMPTY_PRODUCT_FORM);
     } catch (error) { toast.error(error.response?.data?.detail || "Save failed"); }
   };
 
@@ -162,9 +196,12 @@ export default function AdminPage() {
     setProductForm({
       name: product.name, description: product.description,
       price: product.price.toString(), original_price: product.original_price?.toString() || "",
-      category_id: product.category_id, images: product.images.join(", "),
+      category_id: product.category_id, images: (product.images || []).join(", "),
       in_stock: product.in_stock, featured: product.featured,
-      occasion_tags: product.occasion_tags.join(", "),
+      occasion_tags: (product.occasion_tags || []).join(", "),
+      is_bouquet: product.is_bouquet !== false,
+      sizes: sizesToForm(product.sizes),
+      media: product.media,
     });
     setShowProductForm(true);
   };
@@ -196,6 +233,7 @@ export default function AdminPage() {
           <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Sales</p>
           {sidebarTrigger("orders", Package, "Orders", "admin-orders-tab")}
           {sidebarTrigger("inquiries", MessageSquare, "Inquiries", "admin-inquiries-tab")}
+          {sidebarTrigger("newsletter", Mail, "Newsletter", "admin-newsletter-tab")}
 
           <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Catalog</p>
           {sidebarTrigger("products", ShoppingBag, "Products", "admin-products-tab")}
@@ -219,6 +257,7 @@ export default function AdminPage() {
           <TabsTrigger value="homepage" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Homepage</TabsTrigger>
           <TabsTrigger value="orders" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Orders</TabsTrigger>
           <TabsTrigger value="inquiries" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Inquiries</TabsTrigger>
+          <TabsTrigger value="newsletter" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Newsletter</TabsTrigger>
           <TabsTrigger value="products" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Products</TabsTrigger>
           <TabsTrigger value="cards" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Cards</TabsTrigger>
           <TabsTrigger value="boxes" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Boxes</TabsTrigger>
@@ -258,7 +297,7 @@ export default function AdminPage() {
               <div className="bg-white p-6" data-testid="stat-revenue">
                 <DollarSign className="text-[#1A1A1A] mb-3" size={18} strokeWidth={1.3} />
                 <p className="accent-label mb-2">Revenue</p>
-                <p className="font-heading text-3xl font-light text-[#1A1A1A]">£{stats.total_revenue.toFixed(0)}</p>
+                <p className="font-heading text-3xl font-light text-[#1A1A1A]">{fmt(stats.total_revenue)}</p>
               </div>
             </div>
           )}
@@ -268,49 +307,11 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="orders" data-testid="admin-orders-content">
-            <div className="bg-white border border-[#E5E5E5] overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#F2EFEB]">
-                    <tr>
-                      {["Order", "Date", "Recipient", "Total", "Payment", "Status", "Actions"].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left accent-label text-[#1A1A1A]">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map((order) => (
-                      <tr key={order.id} className="border-t border-[#E5E5E5]" data-testid={`admin-order-${order.id}`}>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{order.id.slice(0, 8)}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#7A7A7A]">{format(new Date(order.created_at), "MMM d, yyyy")}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{order.recipient_name}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">£{order.total.toFixed(2)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-[10px] uppercase tracking-wider font-body ${order.payment_status === "paid" ? "bg-[#C4CFC0] text-[#1A1A1A]" : "bg-[#F2EFEB] text-[#7A7A7A]"}`}>
-                            {order.payment_status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 text-[10px] uppercase tracking-wider font-body bg-[#F2EFEB] text-[#1A1A1A]">{order.status}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Select value={order.status} onValueChange={(value) => handleUpdateOrderStatus(order.id, value)}>
-                            <SelectTrigger className="w-[130px] h-8 text-xs rounded-none"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
-                              <SelectItem value="processing">Processing</SelectItem>
-                              <SelectItem value="delivered">Delivered</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <OrdersAdmin />
+          </TabsContent>
+
+          <TabsContent value="newsletter" data-testid="admin-newsletter-content">
+            <NewsletterAdmin />
           </TabsContent>
 
           <TabsContent value="inquiries" data-testid="admin-inquiries-content">
@@ -319,25 +320,49 @@ export default function AdminPage() {
                 <table className="w-full">
                   <thead className="bg-[#F2EFEB]">
                     <tr>
-                      {["Date", "Name", "Email", "Service", "Event date", "Message"].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left accent-label text-[#1A1A1A]">{h}</th>
+                      {["", "Date", "Name", "Email", "Phone", "Service", "Event date", "Budget", "Message"].map((h, idx) => (
+                        <th key={idx} className="px-4 py-3 text-left accent-label text-[#1A1A1A]">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {inquiries.length === 0 && (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center font-body text-sm text-[#7A7A7A]">No inquiries yet.</td></tr>
+                      <tr><td colSpan={9} className="px-4 py-8 text-center font-body text-sm text-[#7A7A7A]">No inquiries yet.</td></tr>
                     )}
-                    {inquiries.map((i) => (
-                      <tr key={i.id} className="border-t border-[#E5E5E5]" data-testid={`admin-inquiry-${i.id}`}>
-                        <td className="px-4 py-3 font-body text-sm text-[#7A7A7A]">{format(new Date(i.created_at), "MMM d, yyyy")}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{i.name}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{i.email}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{i.service_type || "—"}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#7A7A7A]">{i.event_date || "—"}</td>
-                        <td className="px-4 py-3 font-body text-xs text-[#7A7A7A] max-w-xs truncate">{i.message}</td>
-                      </tr>
-                    ))}
+                    {inquiries.map((i, idx) => {
+                      const rowId = i.id || `inq-${idx}`;
+                      const open = expandedInquiries.has(rowId);
+                      return (
+                        <Fragment key={rowId}>
+                          <tr className="border-t border-[#E5E5E5] cursor-pointer hover:bg-[#FAFAF7]" onClick={() => toggleInquiry(rowId)} data-testid={`admin-inquiry-${i.id}`}>
+                            <td className="px-2 py-3 w-8 text-[#7A7A7A]">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</td>
+                            <td className="px-4 py-3 font-body text-sm text-[#7A7A7A] whitespace-nowrap">{fmtDateSafe(i.created_at, "MMM d, yyyy")}</td>
+                            <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{i.name}</td>
+                            <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">
+                              {i.email ? <a href={`mailto:${i.email}`} onClick={(e) => e.stopPropagation()} className="underline break-all">{i.email}</a> : "—"}
+                            </td>
+                            <td className="px-4 py-3 font-body text-sm text-[#1A1A1A] whitespace-nowrap">
+                              {i.phone ? <a href={`tel:${String(i.phone).replace(/\s/g, "")}`} onClick={(e) => e.stopPropagation()} className="underline">{i.phone}</a> : "—"}
+                            </td>
+                            <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{i.service_type || "—"}</td>
+                            <td className="px-4 py-3 font-body text-sm text-[#7A7A7A]">{i.event_date || "—"}</td>
+                            <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{i.budget || "—"}</td>
+                            <td className="px-4 py-3 font-body text-xs text-[#7A7A7A] max-w-xs truncate">{i.message}</td>
+                          </tr>
+                          {open && (
+                            <tr className="bg-[#FAFAF7] border-t border-[#F0F0F0]" data-testid={`admin-inquiry-detail-${i.id}`}>
+                              <td colSpan={9} className="px-6 py-5">
+                                <p className="accent-label text-[10px] mb-2">Full message</p>
+                                <p className="font-body text-sm text-[#1A1A1A] whitespace-pre-wrap break-words max-w-3xl">{i.message || "—"}</p>
+                                {i.portfolio_item_id && (
+                                  <p className="font-body text-xs text-[#7A7A7A] mt-3">Portfolio item: {i.portfolio_item_id}</p>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -349,7 +374,7 @@ export default function AdminPage() {
               <Button
                 onClick={() => {
                   setEditingProduct(null);
-                  setProductForm({ name: "", description: "", price: "", original_price: "", category_id: "", images: "", in_stock: true, featured: false, occasion_tags: "" });
+                  setProductForm(EMPTY_PRODUCT_FORM);
                   setShowProductForm(!showProductForm);
                 }}
                 className="btn-dark rounded-none inline-flex items-center gap-2"
@@ -419,7 +444,7 @@ export default function AdminPage() {
                           const fd = new FormData();
                           fd.append("file", file);
                           try {
-                            const r = await (await import("axios")).default.post(`${API_URL}/api/uploads/image?folder=products`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+                            const r = await axios.post(`${API_URL}/api/uploads/image?folder=products`, fd, { headers: { "Content-Type": "multipart/form-data" } });
                             const url = r.data.url;
                             setProductForm((prev) => ({ ...prev, images: prev.images ? `${prev.images}, ${url}` : url }));
                             toast.success("Image uploaded");
@@ -443,7 +468,54 @@ export default function AdminPage() {
                     <Input value={productForm.occasion_tags} onChange={(e) => setProductForm({ ...productForm, occasion_tags: e.target.value })} className="mt-2 light-input rounded-none" placeholder="birthday, anniversary" data-testid="product-tags-input" />
                   </div>
 
-                  <div className="flex gap-6">
+                  <div data-testid="product-sizes-editor">
+                    <Label className="accent-label text-[#1A1A1A]">Sizes</Label>
+                    <p className="font-body text-[11px] text-[#7A7A7A] mt-1 mb-3">
+                      Optional. The first size is the default. The price change is added to the base price (use a negative number for a smaller size).
+                    </p>
+                    <div className="space-y-2">
+                      {(productForm.sizes || []).map((sz, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Input
+                            value={sz.name}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, sizes: prev.sizes.map((r, i) => (i === idx ? { ...r, name: e.target.value } : r)) }))}
+                            placeholder="Size name (e.g. Luxe)"
+                            className="light-input rounded-none flex-1"
+                            data-testid={`product-size-name-${idx}`}
+                          />
+                          <span className="font-body text-xs text-[#7A7A7A]">+£</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={sz.price_modifier}
+                            onChange={(e) => setProductForm((prev) => ({ ...prev, sizes: prev.sizes.map((r, i) => (i === idx ? { ...r, price_modifier: e.target.value } : r)) }))}
+                            className="light-input rounded-none w-28"
+                            data-testid={`product-size-modifier-${idx}`}
+                          />
+                          <span className="font-body text-xs text-[#7A7A7A] w-20 text-right">
+                            = {fmt((parseFloat(productForm.price) || 0) + (parseFloat(sz.price_modifier) || 0))}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setProductForm((prev) => ({ ...prev, sizes: prev.sizes.filter((_, i) => i !== idx) }))}
+                            className="text-[#7A7A7A] hover:text-red-600 px-1"
+                            aria-label="Remove size"
+                            data-testid={`product-size-remove-${idx}`}
+                          ><Trash2 size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProductForm((prev) => ({ ...prev, sizes: [...(prev.sizes || []), { name: "", price_modifier: "0" }] }))}
+                      className="mt-3 inline-flex items-center gap-1.5 font-body text-[11px] uppercase tracking-[0.18em] text-[#1A1A1A] hover:text-[#B3A89B]"
+                      data-testid="product-size-add"
+                    >
+                      <Plus size={12} /> Add size
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-6">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={productForm.in_stock} onChange={(e) => setProductForm({ ...productForm, in_stock: e.target.checked })} />
                       <span className="font-body text-sm text-[#1A1A1A]">In stock</span>
@@ -451,6 +523,10 @@ export default function AdminPage() {
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={productForm.featured} onChange={(e) => setProductForm({ ...productForm, featured: e.target.checked })} />
                       <span className="font-body text-sm text-[#1A1A1A]">Featured</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer" title="Bouquets open the send flow (card, delivery day, box). Untick for items added straight to the basket.">
+                      <input type="checkbox" checked={!!productForm.is_bouquet} onChange={(e) => setProductForm({ ...productForm, is_bouquet: e.target.checked })} data-testid="product-is-bouquet" />
+                      <span className="font-body text-sm text-[#1A1A1A]">Bouquet (uses send flow)</span>
                     </label>
                   </div>
 
@@ -479,7 +555,7 @@ export default function AdminPage() {
                           {product.featured && <span className="ml-2 bg-[#E8D8D0] text-[#1A1A1A] text-[10px] uppercase tracking-wider px-2 py-0.5">Signature</span>}
                         </td>
                         <td className="px-4 py-3 font-body text-sm text-[#7A7A7A]">{product.category_name}</td>
-                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">£{product.price.toFixed(2)}</td>
+                        <td className="px-4 py-3 font-body text-sm text-[#1A1A1A]">{fmt(product.price)}{product.sizes?.length > 1 ? <span className="block text-[11px] text-[#7A7A7A]">{product.sizes.length} sizes</span> : null}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-[10px] uppercase tracking-wider font-body ${product.in_stock ? "bg-[#C4CFC0] text-[#1A1A1A]" : "bg-red-100 text-red-700"}`}>{product.in_stock ? "In stock" : "Out"}</span></td>
                         <td className="px-4 py-3">
                           <div className="flex gap-3">
@@ -579,12 +655,12 @@ export default function AdminPage() {
                     <Input
                       value={settingsForm.whatsapp_number}
                       onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_number: e.target.value })}
-                      placeholder="e.g. 447123456789 (country code + number, no + or spaces)"
+                      placeholder="e.g. 447773683630 (country code + number, no + or spaces)"
                       className="light-input rounded-none"
                       data-testid="settings-whatsapp-number"
                     />
                     <p className="font-body text-[11px] text-[#7A7A7A] mt-2">
-                      International format without &lsquo;+&rsquo; or spaces. UK example: 447123456789.
+                      International format without &lsquo;+&rsquo; or spaces. UK example: 447773683630.
                     </p>
                     <div className="mt-4">
                       <Label className="text-[#1A1A1A] text-sm">Default message</Label>
@@ -607,7 +683,7 @@ export default function AdminPage() {
                         <Input
                           value={settingsForm.phone_number}
                           onChange={(e) => setSettingsForm({ ...settingsForm, phone_number: e.target.value })}
-                          placeholder="e.g. 0116 212 3456"
+                          placeholder="e.g. 07773 683 630"
                           className="light-input rounded-none mt-2"
                           data-testid="settings-phone-number"
                         />
@@ -623,6 +699,17 @@ export default function AdminPage() {
                           data-testid="settings-contact-email"
                         />
                         <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer and used for mailto: links.</p>
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Instagram link</Label>
+                        <Input
+                          value={settingsForm.instagram_url}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, instagram_url: e.target.value })}
+                          placeholder="e.g. https://www.instagram.com/floweratelier"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-instagram-url"
+                        />
+                        <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer. Leave blank to hide the Instagram link.</p>
                       </div>
                     </div>
                   </section>
@@ -698,7 +785,7 @@ export default function AdminPage() {
                             const fd = new FormData();
                             fd.append("file", file);
                             try {
-                              const r = await (await import("axios")).default.post(`${API_URL}/api/uploads/image?folder=misc`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+                              const r = await axios.post(`${API_URL}/api/uploads/image?folder=misc`, fd, { headers: { "Content-Type": "multipart/form-data" } });
                               setSettingsForm((prev) => ({ ...prev, favicon_url: r.data.url }));
                               toast.success("Favicon uploaded");
                             } catch { toast.error("Upload failed"); }
@@ -791,6 +878,47 @@ export default function AdminPage() {
                           data-testid="settings-delivery-window"
                         />
                         <p className="text-[11px] text-[#7A7A7A] mt-1">How far ahead the calendar runs. Default 28 days.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-4 mt-5" data-testid="settings-delivery-fees">
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Standard delivery fee (£)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={settingsForm.delivery_fee_standard}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, delivery_fee_standard: e.target.value })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-delivery-fee-standard"
+                        />
+                        <p className="text-[11px] text-[#7A7A7A] mt-1">Monday–Friday delivery.</p>
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Saturday delivery fee (£)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={settingsForm.delivery_fee_saturday}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, delivery_fee_saturday: e.target.value })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-delivery-fee-saturday"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Free delivery over (£)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={settingsForm.free_delivery_threshold}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, free_delivery_threshold: e.target.value })}
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-free-delivery-threshold"
+                        />
+                        <p className="text-[11px] text-[#7A7A7A] mt-1">Basket subtotal at which delivery becomes free.</p>
                       </div>
                     </div>
 

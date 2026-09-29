@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { ArrowRight, Truck, Award, Leaf, Gift, Calendar, Mail, Star } from "lucide-react";
-import { useCart } from "../context/CartContext";
 import { useSettings } from "../context/SettingsContext";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -24,19 +23,26 @@ const DEFAULT_TESTIMONIALS = [
   { quote: "Our weekly installs have completely lifted the energy of the entire club. Impeccable.", author: "Private Members' Club", location: "Leicester" },
 ];
 
+const fmt = (n) => `£${(Number(n) || 0).toFixed(2)}`;
+
+// Each tile links to what it represents:
+//  - gift occasions → the collection filtered by the matching product occasion tag
+//  - "Just Because" / "New Home" → the Celebration category
+//  - Sympathy / Wedding → their shop category; if that category no longer exists, the service page.
 const OCCASIONS = [
-  { name: "Birthday", slug: "birthday" },
-  { name: "Anniversary", slug: "anniversary" },
-  { name: "Thank You", slug: "thank-you" },
-  { name: "Congratulations", slug: "congratulations" },
-  { name: "Just Because", slug: "celebration" },
-  { name: "New Home", slug: "celebration" },
-  { name: "Sympathy", slug: "sympathy" },
-  { name: "Wedding", slug: "wedding" },
+  { name: "Birthday", slug: "birthday", to: "/collection?occasion=birthday" },
+  { name: "Anniversary", slug: "anniversary", to: "/collection?occasion=anniversary" },
+  { name: "Thank You", slug: "thank-you", to: "/collection?occasion=thank-you" },
+  { name: "Congratulations", slug: "congratulations", to: "/collection?occasion=congratulations" },
+  { name: "Just Because", slug: "celebration", category: "celebration", fallback: "/collection?occasion=celebration" },
+  { name: "New Home", slug: "celebration", category: "celebration", fallback: "/collection?occasion=celebration" },
+  { name: "Sympathy", slug: "sympathy", category: "sympathy", fallback: "/sympathy" },
+  { name: "Wedding", slug: "wedding", category: "wedding", fallback: "/weddings" },
 ];
 
 
-function ProductCardLuxe({ product, onAdd }) {
+function ProductCardLuxe({ product, onChoose }) {
+  const inStock = product.in_stock !== false;
   return (
     <div className="group" data-testid={`home-product-${product.id}`}>
       <Link to={`/product/${product.id}`} className="block">
@@ -54,25 +60,33 @@ function ProductCardLuxe({ product, onAdd }) {
             {product.name}
           </h3>
           <p className="font-body text-sm text-[#7A7A7A]">
-            from <span className="text-[#1A1A1A]">£{product.price.toFixed(0)}</span>
+            from <span className="text-[#1A1A1A]">{fmt(product.price)}</span>
           </p>
         </div>
       </Link>
-      <button
-        onClick={(e) => { e.preventDefault(); onAdd(product); }}
-        className="mt-4 w-full bg-transparent border border-[#1A1A1A] text-[#1A1A1A] py-3 font-body text-[11px] uppercase tracking-[0.22em] hover:bg-[#1A1A1A] hover:text-white transition-all"
-        data-testid={`home-add-${product.id}`}
-      >
-        Add to Basket
-      </button>
+      {inStock ? (
+        <button
+          onClick={(e) => { e.preventDefault(); onChoose(product); }}
+          className="mt-4 w-full bg-transparent border border-[#1A1A1A] text-[#1A1A1A] py-3 font-body text-[11px] uppercase tracking-[0.22em] hover:bg-[#1A1A1A] hover:text-white transition-all"
+          data-testid={`home-add-${product.id}`}
+        >
+          {product.is_bouquet === false ? "View & Add" : "Choose & Send"}
+        </button>
+      ) : (
+        <p className="mt-4 w-full border border-[#E5E5E5] text-[#B3A89B] py-3 text-center font-body text-[11px] uppercase tracking-[0.22em]" data-testid={`home-unavailable-${product.id}`}>
+          Currently unavailable
+        </p>
+      )}
     </div>
   );
 }
 
 export default function HomePage() {
-  const { addToCart } = useCart();
+  const navigate = useNavigate();
   const { settings, loaded } = useSettings();
   const [products, setProducts] = useState([]);
+  const [categorySlugs, setCategorySlugs] = useState(null);
+  const [subscribing, setSubscribing] = useState(false);
 
   const IMG = {
     hero: loaded ? (settings?.homepage_hero_image || DEFAULT_IMG.hero) : null,
@@ -99,24 +113,41 @@ export default function HomePage() {
       finally { setLoading(false); }
     };
     fetchData();
+    axios.get(`${API_URL}/api/categories`)
+      .then((r) => setCategorySlugs(new Set((r.data || []).map((c) => c.slug))))
+      .catch(() => {});
   }, []);
+
+  const occasionHref = (occ) => {
+    if (occ.to) return occ.to;
+    // Until categories load (or if they fail), assume the seeded category exists.
+    if (!categorySlugs || categorySlugs.has(occ.category)) return `/collection/${occ.category}`;
+    return occ.fallback;
+  };
 
   const featured = products.filter((p) => p.featured).slice(0, 4);
   const bestSellers = products.slice(0, 4);
 
-  const handleQuickAdd = async (product) => {
-    try {
-      const firstSize = product.sizes?.[0]?.name || null;
-      await addToCart(product.id, 1, firstSize, null);
-      toast.success(`${product.name} added`);
-    } catch { toast.error("Could not add"); }
-  };
+  // Bouquets need a card, delivery day and box, so send customers to the product page.
+  const handleChoose = (product) => navigate(`/product/${product.id}`);
 
-  const handleNewsletterSubmit = (e) => {
+  const handleNewsletterSubmit = async (e) => {
     e.preventDefault();
-    if (!email) return;
-    toast.success("Welcome to the atelier list");
-    setEmail("");
+    const value = email.trim();
+    if (!value || subscribing) return;
+    setSubscribing(true);
+    try {
+      await axios.post(`${API_URL}/api/newsletter`, { email: value });
+      toast.success("Welcome to the atelier list");
+      setEmail("");
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 429) toast.error("Too many attempts — please try again in a little while.");
+      else if (status === 422 || status === 400) toast.error("Please enter a valid email address.");
+      else toast.error("Sorry, we couldn't sign you up just now. Please try again.");
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   return (
@@ -224,7 +255,7 @@ export default function HomePage() {
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
               {(featured.length >= 4 ? featured : bestSellers).map((product) => (
-                <ProductCardLuxe key={product.id} product={product} onAdd={handleQuickAdd} />
+                <ProductCardLuxe key={product.id} product={product} onChoose={handleChoose} />
               ))}
             </div>
           )}
@@ -244,7 +275,7 @@ export default function HomePage() {
             {OCCASIONS.map((occ) => (
               <Link
                 key={occ.name}
-                to={`/collection`}
+                to={occasionHref(occ)}
                 className="bg-white py-10 px-4 text-center hover:bg-[#F2EFEB] transition-colors group"
                 data-testid={`occasion-${occ.slug}`}
               >
@@ -409,7 +440,7 @@ export default function HomePage() {
               className="flex-1 bg-transparent border border-[#E5E5E5] px-5 py-3 font-body text-sm text-[#1A1A1A] placeholder:text-[#B3A89B] focus:outline-none focus:border-[#1A1A1A] transition-colors"
               data-testid="newsletter-email"
             />
-            <button type="submit" className="btn-dark px-8" data-testid="newsletter-submit">Subscribe</button>
+            <button type="submit" disabled={subscribing} className="btn-dark px-8 disabled:opacity-60" data-testid="newsletter-submit">{subscribing ? "Subscribing…" : "Subscribe"}</button>
           </form>
           <p className="font-body text-[10px] uppercase tracking-[0.22em] text-[#B3A89B] mt-5">
             No spam · unsubscribe with a single click

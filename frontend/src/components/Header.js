@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useSettings } from "../context/SettingsContext";
 import axios from "axios";
+import { SLUG_TO_PATH, OCCASION_SLUGS, SERVICE_SLUGS, isCustomPageSlug } from "../lib/pageRoutes";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,30 +16,7 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-// Slug to path mapping for service pages
-const SLUG_TO_PATH = {
-  // Services
-  "corporate": "/corporate",
-  "hotels-hospitality": "/hotels-hospitality",
-  "restaurants": "/restaurants",
-  "house-installs": "/house-installs",
-  "shop-front-installs": "/shop-front-installs",
-  "in-shop-displays": "/in-shop-displays",
-  "film-tv-photoshoot": "/film-tv-photoshoot",
-  "workshops": "/workshops",
-  "workshops-pubs": "/workshops/pubs-venues",
-  "workshops-care-homes": "/workshops/care-homes",
-  // Occasions
-  "weddings": "/weddings",
-  "traveller-weddings": "/traveller-weddings",
-  "faith-weddings": "/faith-weddings",
-  "sympathy": "/sympathy",
-  "traveller-funerals": "/traveller-funerals",
-};
-
-const OCCASION_SLUGS = new Set(["weddings", "traveller-weddings", "faith-weddings", "sympathy", "traveller-funerals"]);
-const SERVICE_SLUGS = new Set(["corporate", "hotels-hospitality", "restaurants", "house-installs", "shop-front-installs", "in-shop-displays", "film-tv-photoshoot", "workshops", "workshops-pubs", "workshops-care-homes"]);
-
+// Fallback menus — only used while the page-content list is loading or if it fails.
 const DEFAULT_OCCASIONS = [
   { name: "Weddings", path: "/weddings" },
   { name: "Traveller Weddings", path: "/traveller-weddings" },
@@ -72,17 +50,30 @@ export default function Header() {
   const location = useLocation();
 
   useEffect(() => {
+    let alive = true;
     axios.get(`${API_URL}/api/page-content/list`).then((r) => {
-      const activeServices = r.data
-        .filter((p) => p.active !== false && SERVICE_SLUGS.has(p.slug))
-        .map((p) => ({ name: p.label || p.slug, path: SLUG_TO_PATH[p.slug] }));
-      if (activeServices.length > 0) setServices(activeServices);
+      if (!alive || !Array.isArray(r.data)) return; // unexpected shape — keep defaults
+      const active = r.data.filter((p) => p && p.slug && p.active !== false);
+      const bySlug = Object.fromEntries(active.map((p) => [p.slug, p]));
 
-      const activeOccasions = r.data
-        .filter((p) => p.active !== false && OCCASION_SLUGS.has(p.slug))
-        .map((p) => ({ name: p.label || p.slug, path: SLUG_TO_PATH[p.slug] }));
-      if (activeOccasions.length > 0) setOccasions(activeOccasions);
+      // Admin-controlled: if every service is hidden, show none (no fallback to defaults).
+      const knownServices = SERVICE_SLUGS
+        .filter((slug) => bySlug[slug])
+        .map((slug) => ({ name: bySlug[slug].label || slug, path: SLUG_TO_PATH[slug] }));
+      // Admin-created custom pages (Page Content → Add page) appear under Services.
+      const customPages = active
+        .filter((p) => isCustomPageSlug(p.slug))
+        .sort((a, b) => String(a.label || a.slug).localeCompare(String(b.label || b.slug)))
+        .map((p) => ({ name: p.label || p.slug, path: `/${p.slug}` }));
+      setServices([...knownServices, ...customPages]);
+
+      setOccasions(
+        OCCASION_SLUGS
+          .filter((slug) => bySlug[slug])
+          .map((slug) => ({ name: bySlug[slug].label || slug, path: SLUG_TO_PATH[slug] }))
+      );
     }).catch(() => {}); // keep defaults on error
+    return () => { alive = false; };
   }, []);
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + "/");
@@ -143,6 +134,7 @@ export default function Header() {
               </Link>
 
               {/* Occasions dropdown */}
+              {occasions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger className={`${linkClass(isAnyActive(occasions.map(o => o.path)))} flex items-center gap-1 outline-none`} data-testid="nav-occasions">
                   Occasions <ChevronDown size={11} strokeWidth={1.4} />
@@ -155,8 +147,10 @@ export default function Header() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
 
               {/* Services dropdown */}
+              {services.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger className={`${linkClass(isAnyActive(services.map(s => s.path)))} flex items-center gap-1 outline-none`} data-testid="nav-services">
                   Services <ChevronDown size={11} strokeWidth={1.4} />
@@ -169,6 +163,7 @@ export default function Header() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
 
               <Link to="/portfolio" className={linkClass(isActive("/portfolio"))} data-testid="nav-portfolio">
                 Portfolio
@@ -240,6 +235,7 @@ export default function Header() {
             <Link to="/collection" className="block font-body text-xs uppercase tracking-[0.22em] text-[#7A7A7A]" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-nav-shop">Shop</Link>
 
             {/* Occasions section */}
+            {occasions.length > 0 && (
             <div>
               <button
                 onClick={() => setMobileSubOpen({ ...mobileSubOpen, occasions: !mobileSubOpen.occasions })}
@@ -259,8 +255,10 @@ export default function Header() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Services section */}
+            {services.length > 0 && (
             <div>
               <button
                 onClick={() => setMobileSubOpen({ ...mobileSubOpen, services: !mobileSubOpen.services })}
@@ -280,6 +278,7 @@ export default function Header() {
                 </div>
               )}
             </div>
+            )}
 
             <Link to="/portfolio" className="block font-body text-xs uppercase tracking-[0.22em] text-[#7A7A7A]" onClick={() => setMobileMenuOpen(false)} data-testid="mobile-nav-portfolio">Portfolio</Link>
 

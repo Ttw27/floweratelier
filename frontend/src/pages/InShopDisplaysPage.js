@@ -50,6 +50,7 @@ export default function InShopDisplaysPage() {
       {/* Offerings — editable in admin / Page Content */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Offerings"
         heading={<>Six core<br /><span className="italic">programmes.</span></>}

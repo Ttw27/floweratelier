@@ -1,4 +1,9 @@
+import { useSettings } from "../context/SettingsContext";
+import { getContact } from "../lib/contact";
+
 export default function PrivacyPage() {
+  const { settings } = useSettings();
+  const { email } = getContact(settings);
   return (
     <div className="pt-28 pb-20 bg-[#FAFAF7]" data-testid="privacy-page">
       <div className="max-w-3xl mx-auto px-6 md:px-8">
@@ -35,7 +40,7 @@ export default function PrivacyPage() {
           <h2 className="font-heading text-2xl text-[#1A1A1A] mt-10 mb-3">Your rights</h2>
           <p>
             Under UK GDPR you have the right to access, correct, or delete your data, restrict processing, and complain to the ICO.
-            Email <a className="underline" href="mailto:atelier@floweratelier.com">atelier@floweratelier.com</a> to exercise these rights.
+            Email <a className="underline" href={`mailto:${email}`}>{email}</a> to exercise these rights.
           </p>
 
           <p className="text-sm text-[#7A7A7A] pt-8">Last updated: February 2026.</p>

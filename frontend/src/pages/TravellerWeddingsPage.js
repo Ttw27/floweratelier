@@ -72,6 +72,7 @@ export default function TravellerWeddingsPage() {
       {/* Signature Pieces — editable in admin / Page Content */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Signature Pieces"
         heading={<>What we<br /><span className="italic">specialise in.</span></>}

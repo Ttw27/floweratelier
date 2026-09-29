@@ -63,6 +63,7 @@ export default function FilmTVPhotoshootPage() {
       {/* Services — editable in admin / Page Content */}
       <ServiceTiers
         content={content}
+        loading={loading}
         defaultTiers={defaultTiers}
         eyebrow="Services"
         heading={<>Built for<br /><span className="italic">production.</span></>}

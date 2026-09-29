@@ -40,7 +40,7 @@ export default function SendFlowSummary({ data, compact = false }) {
         <Item label="Box">
           {box ? (
             <span>
-              {box.name}{box.price > 0 ? ` · +£${box.price.toFixed(2)}` : ""}
+              {box.name}{Number(box.price) > 0 ? ` · +£${Number(box.price).toFixed(2)}` : ""}
               {box.is_personalised ? <span className="ml-2 inline-block bg-[#1A1A1A] text-white text-[9px] uppercase tracking-[0.2em] px-1.5 py-0.5">Personalised</span> : null}
             </span>
           ) : <span className="text-[#7A7A7A]">—</span>}
