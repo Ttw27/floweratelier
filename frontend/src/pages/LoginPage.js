@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,11 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const expired = searchParams.get("expired") === "1";
+  // Only return to pages on this site (never an outside address)
+  const rawNext = searchParams.get("next") || "";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "";
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -18,7 +23,7 @@ export default function LoginPage() {
     try {
       const userData = await login(formData.email, formData.password);
       toast.success("Welcome back");
-      navigate(userData?.is_admin ? "/admin" : "/");
+      navigate(next || (userData?.is_admin ? "/admin" : "/"));
     } catch (error) {
       toast.error(error.response?.data?.detail || "Invalid credentials");
     } finally { setLoading(false); }
@@ -27,6 +32,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen pt-28 flex items-center justify-center py-16" data-testid="login-page">
       <div className="w-full max-w-md px-6">
+        {expired && (
+          <p className="mb-8 p-4 bg-[#F2EFEB] text-center font-body text-sm text-[#1A1A1A]" data-testid="login-expired">
+            Your session has expired — please sign in again.
+          </p>
+        )}
         <div className="text-center mb-12">
           <p className="accent-label mb-4">Atelier Account</p>
           <h1 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] tracking-tight" data-testid="login-title">Welcome back</h1>
