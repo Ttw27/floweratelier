@@ -502,6 +502,85 @@ async def login(data: UserLogin):
 async def get_me(user = Depends(require_user)):
     return UserResponse(**user)
 
+
+class CredentialsUpdate(BaseModel):
+    current_password: str = Field(max_length=200)
+    new_email: Optional[str] = Field(default=None, max_length=254)
+    new_password: Optional[str] = Field(default=None, max_length=200)
+    name: Optional[str] = Field(default=None, max_length=200)
+
+
+@api_router.put("/auth/me/credentials", response_model=TokenResponse, dependencies=[Depends(rate_limit("login", 10))])
+async def update_my_credentials(data: CredentialsUpdate, user = Depends(require_user)):
+    """Change your own email / password / name. Requires your current password."""
+    full = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    if not full or not full.get("password") or not verify_password(data.current_password, full["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    patch = {}
+    if data.new_email is not None and data.new_email.strip():
+        email = _norm_email(data.new_email)
+        if not _EMAIL_RE.match(email):
+            raise HTTPException(status_code=400, detail="Please enter a valid email address")
+        if email != full["email"]:
+            other = await _find_user_by_email(email, {"_id": 0, "id": 1})
+            if other and other["id"] != full["id"]:
+                raise HTTPException(status_code=400, detail="That email is already used by another account")
+            patch["email"] = email
+    if data.new_password:
+        if len(data.new_password) < 8:
+            raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+        if data.new_password.strip().lower() in {"admin123", "password", "password123", "12345678"}:
+            raise HTTPException(status_code=400, detail="Please choose a less guessable password")
+        patch["password"] = hash_password(data.new_password)
+    if data.name is not None and data.name.strip():
+        patch["name"] = data.name.strip()
+    if patch:
+        patch["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.users.update_one({"id": full["id"]}, {"$set": patch})
+    updated = await db.users.find_one({"id": full["id"]}, {"_id": 0, "password": 0})
+    token = create_token(updated["id"], updated["email"], updated.get("is_admin", False))
+    return TokenResponse(access_token=token, user=UserResponse(**updated))
+
+
+# ---- Admin access management ----
+@api_router.get("/admin/admins")
+async def list_admins(admin = Depends(require_admin)):
+    docs = await db.users.find({"is_admin": True}, {"_id": 0}).to_list(100)
+    out = []
+    for d in docs:
+        try:
+            weak = bool(d.get("password")) and verify_password("admin123", d["password"])
+        except Exception:  # noqa: BLE001
+            weak = False
+        out.append({
+            "id": d["id"], "email": d.get("email", ""), "name": d.get("name", ""),
+            "created_at": d.get("created_at", ""), "is_you": d["id"] == admin["id"],
+            "uses_demo_password": weak,
+        })
+    return out
+
+
+@api_router.post("/admin/admins")
+async def grant_admin(payload: dict, admin = Depends(require_admin)):
+    """Give admin access to an existing account (they must register on the site first)."""
+    email = _norm_email(str(payload.get("email", "")))
+    target = await _find_user_by_email(email, {"_id": 0, "id": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="No account with that email — ask them to register on the site first")
+    await db.users.update_one({"id": target["id"]}, {"$set": {"is_admin": True}})
+    return {"ok": True}
+
+
+@api_router.put("/admin/admins/{user_id}/revoke")
+async def revoke_admin(user_id: str, admin = Depends(require_admin)):
+    """Remove admin access (the account itself is kept). You can't remove your own access."""
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="You can't remove your own admin access")
+    res = await db.users.update_one({"id": user_id, "is_admin": True}, {"$set": {"is_admin": False}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    return {"ok": True}
+
 # ==================== CATEGORY ENDPOINTS ====================
 
 @api_router.get("/categories", response_model=List[CategoryResponse])
@@ -2346,6 +2425,7 @@ class SiteSettings(BaseModel):
     phone_number: str = "07773 683 630"
     contact_email: str = "info@floweratelier.co.uk"
     instagram_url: str = ""
+    facebook_url: str = ""
     # Tracking pixels
     meta_pixel_id: str = ""
     ga4_id: str = ""           # e.g. G-XXXXXXX

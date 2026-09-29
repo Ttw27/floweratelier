@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,42 @@ export default function BespokePortfolioPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Only offer categories that actually have work in them (plus "All"), with counts
+  const counts = useMemo(() => {
+    const c = {};
+    items.forEach((i) => { c[i.category] = (c[i.category] || 0) + 1; });
+    return c;
+  }, [items]);
+  const visibleFilters = useMemo(
+    () => FILTERS.filter((f) => f.id === "all" || counts[f.id] || f.id === filter),
+    [counts, filter]
+  );
+
+  // Stick the filter bar directly under the fixed header (its height varies with the announcement strip)
+  const [headerH, setHeaderH] = useState(80);
+  useEffect(() => {
+    const el = document.querySelector('[data-testid="header"]');
+    if (!el) return undefined;
+    const update = () => setHeaderH(el.offsetHeight || 80);
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", update);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", update); };
+  }, []);
+
+  // Keep the active filter chip in view on narrow screens
+  // (scrolls the chip row sideways only — never moves the page itself)
+  const chipRefs = useRef({});
+  const rowRef = useRef(null);
+  useEffect(() => {
+    const row = rowRef.current;
+    const chip = chipRefs.current[filter];
+    if (!row || !chip) return;
+    const target = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+    row.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [filter, visibleFilters.length]);
+
   const filteredItems = useMemo(() => {
     if (filter === "all") return items;
     return items.filter((i) => i.category === filter);
@@ -87,18 +123,40 @@ export default function BespokePortfolioPage() {
       </section>
 
       {/* Filters */}
-      <section className="py-10 px-6 md:px-12 border-b border-[#E5E5E5] sticky top-20 bg-[#FAFAF7]/95 backdrop-blur-md z-30">
-        <div className="max-w-[1400px] mx-auto flex flex-wrap items-center gap-6">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => handleFilterChange(f.id)}
-              className={`nav-link font-body text-[11px] uppercase tracking-[0.22em] transition-colors ${filter === f.id ? "text-[#1A1A1A] active" : "text-[#7A7A7A] hover:text-[#1A1A1A]"}`}
-              data-testid={`portfolio-filter-${f.id}`}
-            >
-              {f.name}
-            </button>
-          ))}
+      <section
+        className="sticky z-30 border-b border-[#E5E5E5] bg-[#FAFAF7]/95 backdrop-blur-md"
+        style={{ top: headerH }}
+        data-testid="portfolio-filter-bar"
+      >
+        <div className="relative max-w-[1400px] mx-auto">
+          {/* One swipeable row — never wraps, so it stays slim on mobile */}
+          <div
+            ref={rowRef}
+            className="flex items-center gap-2 overflow-x-auto whitespace-nowrap px-6 md:px-12 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label="Filter portfolio by category"
+          >
+            {visibleFilters.map((f) => {
+              const active = filter === f.id;
+              const count = f.id === "all" ? items.length : counts[f.id] || 0;
+              return (
+                <button
+                  key={f.id}
+                  ref={(el) => { chipRefs.current[f.id] = el; }}
+                  onClick={() => handleFilterChange(f.id)}
+                  role="tab"
+                  aria-selected={active}
+                  className={`shrink-0 px-4 py-2 border font-body text-[10px] md:text-[11px] uppercase tracking-[0.18em] transition-colors ${active ? "bg-[#1A1A1A] border-[#1A1A1A] text-[#FAFAF7]" : "border-[#E5E5E5] text-[#5A5A5A] hover:border-[#1A1A1A] hover:text-[#1A1A1A]"}`}
+                  data-testid={`portfolio-filter-${f.id}`}
+                >
+                  {f.name}
+                  {!loading && count > 0 && <span className={`ml-1.5 ${active ? "text-[#FAFAF7]/60" : "text-[#B3A89B]"}`}>{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+          {/* Soft fade on the right hints that the row scrolls */}
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-[#FAFAF7] to-transparent md:hidden" />
         </div>
       </section>
 

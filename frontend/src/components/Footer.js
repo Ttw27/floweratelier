@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Instagram, Mail, Phone, MapPin, MessageCircle } from "lucide-react";
+import { Instagram, Facebook, Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { getContact, whatsappHref } from "../lib/contact";
 
@@ -8,6 +8,7 @@ export default function Footer() {
   const contact = getContact(settings);
   const waHref = whatsappHref(settings, settings?.whatsapp_default_message || "Hello Flower Atelier");
   const instagramUrl = (settings?.instagram_url || "").trim();
+  const facebookUrl = (settings?.facebook_url || "").trim();
   const year = new Date().getFullYear();
 
   return (
@@ -92,11 +93,18 @@ export default function Footer() {
               <li><Link to="/privacy" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-privacy">Privacy</Link></li>
               {/* Terms link hidden until the owner supplies terms & conditions */}
             </ul>
-            {instagramUrl && (
+            {(instagramUrl || facebookUrl) && (
               <div className="flex items-center gap-4">
-                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Flower Atelier on Instagram" className="text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="social-instagram">
-                  <Instagram size={18} strokeWidth={1.3} />
-                </a>
+                {instagramUrl && (
+                  <a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Flower Atelier on Instagram" className="text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="social-instagram">
+                    <Instagram size={18} strokeWidth={1.3} />
+                  </a>
+                )}
+                {facebookUrl && (
+                  <a href={facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Flower Atelier on Facebook" className="text-[#1A1A1A] hover:text-[#B3A89B] transition-colors" data-testid="social-facebook">
+                    <Facebook size={18} strokeWidth={1.3} />
+                  </a>
+                )}
               </div>
             )}
           </div>

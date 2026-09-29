@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2, Home, MessageSquare, Layers, Box, LayoutTemplate, Sparkles, Image, FileText, Search, Settings2, Calendar, Mail, ChevronDown, ChevronRight } from "lucide-react";
+import { Package, ShoppingBag, Users, DollarSign, Plus, Pencil, Trash2, Home, MessageSquare, Layers, Box, LayoutTemplate, Sparkles, Image, FileText, Search, Settings2, Calendar, Mail, KeyRound, ChevronDown, ChevronRight } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { clearSEOCache } from "../components/SEOHead";
 import SEOAdmin from "../components/admin/SEOAdmin";
@@ -24,6 +24,7 @@ import PageContentAdmin from "../components/admin/PageContentAdmin";
 import HomepageAdmin from "../components/admin/HomepageAdmin";
 import OrdersAdmin from "../components/admin/OrdersAdmin";
 import NewsletterAdmin from "../components/admin/NewsletterAdmin";
+import LoginsAdmin from "../components/admin/LoginsAdmin";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -88,6 +89,7 @@ export default function AdminPage() {
         phone_number: settings.phone_number || "",
         contact_email: settings.contact_email || "",
         instagram_url: settings.instagram_url || "",
+        facebook_url: settings.facebook_url || "",
         bank_account_name: settings.bank_account_name || "",
         bank_sort_code: settings.bank_sort_code || "",
         bank_account_number: settings.bank_account_number || "",
@@ -250,6 +252,7 @@ export default function AdminPage() {
 
           <p className="accent-label px-3 pt-4 pb-1 text-[10px]">Store</p>
           {sidebarTrigger("settings", Settings2, "Settings", "admin-settings-tab")}
+          {sidebarTrigger("logins", KeyRound, "Logins", "admin-logins-tab")}
         </TabsList>
 
         {/* ===== Mobile tab bar (horizontal, scrollable) ===== */}
@@ -268,6 +271,7 @@ export default function AdminPage() {
           <TabsTrigger value="pages" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Service Pages</TabsTrigger>
           <TabsTrigger value="seo" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">SEO</TabsTrigger>
           <TabsTrigger value="settings" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Settings</TabsTrigger>
+          <TabsTrigger value="logins" className="font-body text-[11px] uppercase tracking-[0.18em] rounded-none border-b-2 border-transparent data-[state=active]:border-[#1A1A1A] data-[state=active]:bg-transparent data-[state=active]:shadow-none pb-3 px-3 shrink-0">Logins</TabsTrigger>
         </TabsList>
 
         {/* ===== Main content ===== */}
@@ -603,6 +607,10 @@ export default function AdminPage() {
             <PageContentAdmin />
           </TabsContent>
 
+          <TabsContent value="logins" data-testid="admin-logins-content">
+            <LoginsAdmin />
+          </TabsContent>
+
           <TabsContent value="settings" data-testid="admin-settings-content">
             <div className="bg-white border border-[#E5E5E5] p-8 max-w-4xl" data-testid="settings-form-card">
               <h3 className="font-heading text-2xl font-light text-[#1A1A1A] mb-2">Site settings</h3>
@@ -710,6 +718,17 @@ export default function AdminPage() {
                           data-testid="settings-instagram-url"
                         />
                         <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer. Leave blank to hide the Instagram link.</p>
+                      </div>
+                      <div>
+                        <Label className="text-[#1A1A1A] text-sm">Facebook link</Label>
+                        <Input
+                          value={settingsForm.facebook_url}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, facebook_url: e.target.value })}
+                          placeholder="e.g. https://www.facebook.com/floweratelier"
+                          className="light-input rounded-none mt-2"
+                          data-testid="settings-facebook-url"
+                        />
+                        <p className="font-body text-[11px] text-[#7A7A7A] mt-2">Shown in the footer. Leave blank to hide the Facebook link.</p>
                       </div>
                     </div>
                   </section>
