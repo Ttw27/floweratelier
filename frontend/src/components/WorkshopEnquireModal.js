@@ -32,7 +32,10 @@ export default function WorkshopEnquireModal({ open, workshop, onClose }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.phone) { toast.error("Name, email & phone are required"); return; }
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    if (!name || !email || !phone) { toast.error("Please add your name, email and phone number"); return; }
     setSubmitting(true);
     try {
       const messageBody = [
@@ -44,9 +47,9 @@ export default function WorkshopEnquireModal({ open, workshop, onClose }) {
       ].filter(Boolean).join("\n");
 
       await axios.post(`${API_URL}/api/inquiries`, {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
+        name,
+        email,
+        phone,
         event_date: form.target_date || null,
         message: messageBody,
         service_type: "workshop_host",
@@ -61,13 +64,13 @@ export default function WorkshopEnquireModal({ open, workshop, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-stretch md:items-center justify-center md:p-4 overflow-y-auto" onClick={onClose} data-testid="workshop-enquire-modal">
-      <div className="bg-[#FAFAF7] w-full md:max-w-[720px] md:max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="workshop-enquire-title" className="bg-[#FAFAF7] w-full md:max-w-[720px] md:max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 md:px-7 py-4 border-b border-[#E5E5E5] bg-white">
           <div>
             <p className="accent-label text-[10px]"><span className="thin-rule" />{workshop.tag || "Enquire"}</p>
-            <h3 className="font-heading text-lg md:text-2xl text-[#1A1A1A]">{workshop.name}</h3>
+            <h3 id="workshop-enquire-title" className="font-heading text-lg md:text-2xl text-[#1A1A1A]">{workshop.name}</h3>
           </div>
-          <button onClick={onClose} aria-label="Close" className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid="workshop-enquire-close">
+          <button type="button" onClick={onClose} aria-label="Close enquiry" className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid="workshop-enquire-close">
             <X size={20} />
           </button>
         </div>
@@ -113,34 +116,34 @@ export default function WorkshopEnquireModal({ open, workshop, onClose }) {
               <form onSubmit={submit} className="space-y-4" data-testid="workshop-enquire-form">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Your name *</Label>
-                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-name" />
+                    <Label htmlFor="workshop-enquire-name" className="text-sm text-[#1A1A1A]">Your name *</Label>
+                    <Input id="workshop-enquire-name" autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-name" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Venue / organisation</Label>
-                    <Input value={form.venue_name} onChange={(e) => setForm({ ...form, venue_name: e.target.value })} placeholder="e.g. The Drapers Arms" className="light-input rounded-none mt-2" data-testid="workshop-enquire-venue" />
+                    <Label htmlFor="workshop-enquire-venue" className="text-sm text-[#1A1A1A]">Venue / organisation</Label>
+                    <Input id="workshop-enquire-venue" autoComplete="organization" value={form.venue_name} onChange={(e) => setForm({ ...form, venue_name: e.target.value })} placeholder="e.g. The Drapers Arms" className="light-input rounded-none mt-2" data-testid="workshop-enquire-venue" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Email *</Label>
-                    <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-email" />
+                    <Label htmlFor="workshop-enquire-email" className="text-sm text-[#1A1A1A]">Email *</Label>
+                    <Input id="workshop-enquire-email" autoComplete="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-email" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Phone *</Label>
-                    <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-phone" />
+                    <Label htmlFor="workshop-enquire-phone" className="text-sm text-[#1A1A1A]">Phone *</Label>
+                    <Input id="workshop-enquire-phone" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-phone" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Approx. date</Label>
-                    <Input type="date" value={form.target_date} onChange={(e) => setForm({ ...form, target_date: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-date" />
+                    <Label htmlFor="workshop-enquire-date" className="text-sm text-[#1A1A1A]">Approx. date</Label>
+                    <Input id="workshop-enquire-date" type="date" value={form.target_date} onChange={(e) => setForm({ ...form, target_date: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-enquire-date" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Expected guests</Label>
-                    <Input value={form.guests} onChange={(e) => setForm({ ...form, guests: e.target.value })} placeholder="e.g. 14–20" className="light-input rounded-none mt-2" data-testid="workshop-enquire-guests" />
+                    <Label htmlFor="workshop-enquire-guests" className="text-sm text-[#1A1A1A]">Expected guests</Label>
+                    <Input id="workshop-enquire-guests" value={form.guests} onChange={(e) => setForm({ ...form, guests: e.target.value })} placeholder="e.g. 14–20" className="light-input rounded-none mt-2" data-testid="workshop-enquire-guests" />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-sm text-[#1A1A1A]">Anything else?</Label>
-                  <Textarea rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="light-input rounded-none mt-2" placeholder="Tell us about the room, the audience, and what you'd like the night to feel like." data-testid="workshop-enquire-notes" />
+                  <Label htmlFor="workshop-enquire-notes" className="text-sm text-[#1A1A1A]">Anything else?</Label>
+                  <Textarea id="workshop-enquire-notes" rows={3} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="light-input rounded-none mt-2" placeholder="Tell us about the room, the audience, and what you'd like the night to feel like." data-testid="workshop-enquire-notes" />
                 </div>
 
                 <Button type="submit" disabled={submitting} className="btn-dark rounded-none w-full py-6" data-testid="workshop-enquire-submit">

@@ -7,7 +7,7 @@ import WorkshopBookingModal from "../components/WorkshopBookingModal";
 import WorkshopEnquireModal from "../components/WorkshopEnquireModal";
 import { useSettings } from "../context/SettingsContext";
 import { getContact } from "../lib/contact";
-import { workshopPricePerGuest, isSessionPast } from "../lib/workshopPricing";
+import { workshopPricePerGuest, isSessionPast, fmtTimeRange, placesLeftLabel, sessionLocationLabel } from "../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -26,6 +26,7 @@ export default function WorkshopDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingSessionId, setBookingSessionId] = useState("");
   const [enquireOpen, setEnquireOpen] = useState(false);
 
   useEffect(() => {
@@ -66,7 +67,17 @@ export default function WorkshopDetailPage() {
   const waNumber = getContact(settings).whatsapp;
   const whatsappHref = `https://wa.me/${waNumber}?text=${whatsappMsg}`;
 
-  const primaryCTA = () => isEnquire ? setEnquireOpen(true) : setBookingOpen(true);
+  const primaryCTA = () => {
+    if (isEnquire) { setEnquireOpen(true); return; }
+    setBookingSessionId("");
+    setBookingOpen(true);
+  };
+  // "Book" on a specific date card: open the modal with that date already chosen
+  const bookSession = (sessionId) => {
+    if (isEnquire) { setEnquireOpen(true); return; }
+    setBookingSessionId(sessionId);
+    setBookingOpen(true);
+  };
 
   return (
     <div className="pt-28" data-testid="workshop-detail-page">
@@ -180,7 +191,7 @@ export default function WorkshopDetailPage() {
           <div className="max-w-[1100px] mx-auto">
             <div className="mb-10">
               <p className="accent-label mb-4"><span className="thin-rule" />Upcoming dates</p>
-              <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] tracking-tight leading-[1.05]">Pick an evening &mdash; we&rsquo;ll save you a seat.</h2>
+              <h2 className="font-heading text-4xl md:text-5xl font-light text-[#1A1A1A] tracking-tight leading-[1.05]">Pick a date &mdash; we&rsquo;ll save you a seat.</h2>
             </div>
 
             {sessions.length === 0 ? (
@@ -210,14 +221,14 @@ export default function WorkshopDetailPage() {
                     <div key={s.id} className="bg-white border border-[#E5E5E5] p-5" data-testid={`workshop-detail-session-${s.id}`}>
                       <p className="font-heading text-xl text-[#1A1A1A]"><Calendar size={14} strokeWidth={1.3} className="inline mr-2 text-[#B3A89B]" />{fmtDate(s.date)}</p>
                       <div className="text-[12px] text-[#7A7A7A] mt-2 space-y-1">
-                        {s.start_time && <p><Clock size={11} className="inline mr-1" /> {s.start_time}{s.end_time ? `–${s.end_time}` : ""}</p>}
-                        <p><MapPin size={11} className="inline mr-1" /> {s.location || workshop.location_default}</p>
-                        <p><Users size={11} className="inline mr-1" /> {soldOut ? "Sold out" : `${remaining} spot${remaining === 1 ? "" : "s"} remaining`}</p>
+                        {fmtTimeRange(s.start_time, s.end_time) && <p><Clock size={11} className="inline mr-1" /> {fmtTimeRange(s.start_time, s.end_time)}</p>}
+                        <p><MapPin size={11} className="inline mr-1" /> {sessionLocationLabel(s, workshop)}</p>
+                        <p><Users size={11} className="inline mr-1" /> {placesLeftLabel(remaining)}</p>
                       </div>
                       <div className="mt-4 flex items-center justify-between">
                         <p className="font-heading text-xl text-[#1A1A1A]">£{workshopPricePerGuest(workshop, s).toFixed(0)}<span className="text-[11px] text-[#7A7A7A] ml-1">/ guest</span></p>
-                        <Button size="sm" onClick={primaryCTA} disabled={soldOut} className="btn-dark rounded-none" data-testid={`workshop-detail-book-${s.id}`}>
-                          {soldOut ? "Sold out" : "Book"}
+                        <Button size="sm" onClick={() => bookSession(s.id)} disabled={soldOut} className="btn-dark rounded-none" data-testid={`workshop-detail-book-${s.id}`}>
+                          {soldOut ? "Fully booked" : "Book"}
                         </Button>
                       </div>
                     </div>
@@ -249,7 +260,7 @@ export default function WorkshopDetailPage() {
         </section>
       )}
 
-      <WorkshopBookingModal open={bookingOpen} workshop={workshop} onClose={() => setBookingOpen(false)} />
+      <WorkshopBookingModal open={bookingOpen} workshop={workshop} initialSessionId={bookingSessionId} onClose={() => setBookingOpen(false)} />
       <WorkshopEnquireModal open={enquireOpen} workshop={workshop} onClose={() => setEnquireOpen(false)} />
     </div>
   );

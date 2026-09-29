@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -9,10 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Clock, MapPin, Users, CheckCircle2, Phone, MessageCircle } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import BankDetails, { pickBankDetails } from "../components/BankDetails";
+import BookingReview, { DEFAULT_CANCELLATION_POLICY } from "../components/BookingReview";
 import { getContact, whatsappHref } from "../lib/contact";
-import { calcWorkshopAmounts, isSessionPast, fmtWorkshopDate as fmtDate } from "../lib/workshopPricing";
+import { calcWorkshopAmounts, isSessionPast, fmtWorkshopDate as fmtDate, fmtTimeRange, placesLeftLabel, sessionLocationLabel } from "../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FIELD_ORDER = ["name", "email", "phone", "guests", "venue_postcode", "venue_address"];
+
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return <p id={`${id}-error`} className="text-[12px] text-red-700 mt-1" role="alert">{message}</p>;
+}
 
 function Row({ label, value, bold = false }) {
   return (
@@ -41,7 +50,15 @@ export default function PrivateWorkshopBookingPage() {
     photo_consent: "", heard_about: "",
   });
   const [forOrganisation, setForOrganisation] = useState(false);
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const [errors, setErrors] = useState({});
+  const [reviewing, setReviewing] = useState(false); // "Check your booking" screen before anything is sent
+  const [agreed, setAgreed] = useState(false);
+  const submittingRef = useRef(false); // guards against double taps on "Confirm booking"
+  const setField = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((er) => (er[key] ? { ...er, [key]: undefined } : er));
+  };
+  const set = (key) => (e) => setField(key, e.target.value);
   const [paymentChoice, setPaymentChoice] = useState("deposit");
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [cardEnabled, setCardEnabled] = useState(true);
@@ -90,22 +107,58 @@ export default function PrivateWorkshopBookingPage() {
   const { pricePerGuest, discountPct, subtotal, fullAmount, depositAmount, depositAvailable, effectiveChoice, discountAmount, amountDueNow, balanceOnDay } = amounts;
   const sessionPast = isSessionPast(session);
 
-  const submit = async (e) => {
+  const validate = () => {
+    const er = {};
+    if (!form.name.trim()) er.name = "Please enter your name";
+    if (!form.email.trim()) er.email = "Please enter your email address";
+    else if (!EMAIL_RE.test(form.email.trim())) er.email = "Please check your email address";
+    if (!form.phone.trim()) er.phone = "Please enter a phone number";
+    const g = parseInt(form.guests, 10);
+    if (!g || g < 1) er.guests = "Please enter the number of guests";
+    else if (g > spotsRemaining) er.guests = `Sorry, only ${placesLeftLabel(spotsRemaining)}`;
+    if (session?.at_customer_venue) {
+      if (!form.venue_postcode.trim()) er.venue_postcode = "Please enter the venue postcode";
+      if (!form.venue_address.trim()) er.venue_address = "Please enter the venue address";
+    }
+    return er;
+  };
+
+  const reviewBooking = (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.phone) { toast.error("Name, email & phone are required"); return; }
     if (sessionPast) { toast.error("This session date has passed"); return; }
     if (noPaymentMethod) { toast.error("Online booking is unavailable — please call or WhatsApp the studio"); return; }
-    if (form.guests > spotsRemaining) { toast.error(`Only ${spotsRemaining} spot(s) left`); return; }
-    if (session?.at_customer_venue && (!form.venue_address.trim() || !form.venue_postcode.trim())) {
-      toast.error("Please add the venue address and postcode"); return;
+    const er = validate();
+    setErrors(er);
+    const first = FIELD_ORDER.find((k) => er[k]);
+    if (first) {
+      const el = document.getElementById(`private-booking-${first.replace("_", "-")}`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus({ preventScroll: true }); }
+      toast.error("Please fill in the highlighted details");
+      return;
     }
+    setAgreed(false);
+    setReviewing(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const editDetails = () => {
+    setReviewing(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const confirmBooking = async () => {
+    if (submittingRef.current || !agreed) return;
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const r = await axios.post(`${API_URL}/api/workshop-bookings`, {
         session_id: sessionId,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
+        name,
+        email,
+        phone,
         guests: parseInt(form.guests, 10) || 1,
         dietary_requirements: form.dietary_requirements,
         notes: form.notes,
@@ -131,7 +184,7 @@ export default function PrivateWorkshopBookingPage() {
         // No Stripe redirect — show bank details & reference right here
         setConfirmedBooking(r.data);
         setSubmitting(false);
-        return;
+        return; // leave the guard set: this booking is done
       }
 
       const c = await axios.post(`${API_URL}/api/workshop-checkout/session`, {
@@ -141,6 +194,7 @@ export default function PrivateWorkshopBookingPage() {
       window.location.href = c.data.url;
     } catch (err) {
       toast.error(err.response?.data?.detail || "Booking failed");
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -176,11 +230,11 @@ export default function PrivateWorkshopBookingPage() {
           <p className="accent-label justify-center mb-4 text-center"><span className="thin-rule" />Booking held</p>
           <h1 className="font-heading text-3xl md:text-4xl text-[#1A1A1A] mb-3 text-center">Almost there.</h1>
           <p className="font-body text-sm text-[#5A5A5A] mb-4 text-center">
-            Your spot is <strong className="text-[#1A1A1A]">held provisionally</strong> for <strong className="text-[#1A1A1A]">{workshop.name}</strong>. Please transfer <strong className="text-[#1A1A1A]">£{Number(b.amount_due_now).toFixed(2)}</strong> using the details below, quoting the reference — we&rsquo;ll confirm as soon as it lands.
+            Your place is <strong className="text-[#1A1A1A]">held provisionally</strong> for <strong className="text-[#1A1A1A]">{workshop.name}</strong>. Please transfer <strong className="text-[#1A1A1A]">£{Number(b.amount_due_now).toFixed(2)}</strong> using the details below, quoting the reference — we&rsquo;ll confirm as soon as it lands.
           </p>
           <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mb-6">
             <p className="text-[12px] text-[#6B4E00] leading-relaxed text-center">
-              <strong>This date is not secured until your deposit is received.</strong> Please transfer as soon as possible to avoid losing it to another booking.
+              <strong>This date is not secured until your {b.payment_choice === "deposit" ? "deposit" : "payment"} is received.</strong> Please transfer as soon as possible to avoid losing it to another booking.
             </p>
           </div>
 
@@ -215,9 +269,9 @@ export default function PrivateWorkshopBookingPage() {
           <h1 className="font-heading text-3xl md:text-4xl text-[#1A1A1A] mb-4">{workshop.name}</h1>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#5A5A5A]">
             <span className="inline-flex items-center gap-2"><Calendar size={14} className="text-[#B3A89B]" /> {fmtDate(session.date)}</span>
-            {session.start_time && <span className="inline-flex items-center gap-2"><Clock size={14} className="text-[#B3A89B]" /> {session.start_time}{session.end_time ? `–${session.end_time}` : ""}</span>}
-            <span className="inline-flex items-center gap-2"><MapPin size={14} className="text-[#B3A89B]" /> {session.at_customer_venue ? "At your venue — we come to you" : (session.location || workshop.location_default)}</span>
-            <span className="inline-flex items-center gap-2"><Users size={14} className="text-[#B3A89B]" /> {spotsRemaining} spot{spotsRemaining === 1 ? "" : "s"} available</span>
+            {fmtTimeRange(session.start_time, session.end_time) && <span className="inline-flex items-center gap-2"><Clock size={14} className="text-[#B3A89B]" /> {fmtTimeRange(session.start_time, session.end_time)}</span>}
+            <span className="inline-flex items-center gap-2"><MapPin size={14} className="text-[#B3A89B]" /> {session.at_customer_venue ? "At your venue — we come to you" : sessionLocationLabel(session, workshop)}</span>
+            <span className="inline-flex items-center gap-2"><Users size={14} className="text-[#B3A89B]" /> {placesLeftLabel(spotsRemaining)}</span>
           </div>
           {session.notes && <p className="font-body text-sm text-[#7A7A7A] mt-4">{session.notes}</p>}
         </div>
@@ -231,25 +285,46 @@ export default function PrivateWorkshopBookingPage() {
               <a href={`mailto:${contact.email}`} className="underline text-[#1A1A1A]">{contact.email}</a>.
             </p>
           </div>
+        ) : reviewing ? (
+          <div className="bg-white border border-[#E5E5E5] p-6 md:p-8">
+            <BookingReview
+              workshop={workshop}
+              session={session}
+              form={form}
+              forOrganisation={forOrganisation}
+              amounts={amounts}
+              paymentMethod={paymentMethod}
+              agreed={agreed}
+              onAgreeChange={setAgreed}
+              onEdit={editDetails}
+              onConfirm={confirmBooking}
+              submitting={submitting}
+              testIdPrefix="private-booking-review"
+            />
+          </div>
         ) : (
-          <form onSubmit={submit} className="bg-white border border-[#E5E5E5] p-6 md:p-8 space-y-5" data-testid="private-booking-form">
+          <form onSubmit={reviewBooking} noValidate className="bg-white border border-[#E5E5E5] p-6 md:p-8 space-y-5" data-testid="private-booking-form">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Your name *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="light-input rounded-none mt-2" data-testid="private-booking-name" />
+                <Label htmlFor="private-booking-name" className="text-sm text-[#1A1A1A]">Your name *</Label>
+                <Input id="private-booking-name" autoComplete="name" value={form.name} onChange={(e) => setField("name", e.target.value)} className={`light-input rounded-none mt-2 ${errors.name ? "!border-red-600" : ""}`} aria-invalid={!!errors.name} aria-describedby={errors.name ? "private-booking-name-error" : undefined} data-testid="private-booking-name" />
+                <FieldError id="private-booking-name" message={errors.name} />
               </div>
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Email *</Label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="light-input rounded-none mt-2" data-testid="private-booking-email" />
+                <Label htmlFor="private-booking-email" className="text-sm text-[#1A1A1A]">Email *</Label>
+                <Input id="private-booking-email" type="email" autoComplete="email" value={form.email} onChange={(e) => setField("email", e.target.value)} className={`light-input rounded-none mt-2 ${errors.email ? "!border-red-600" : ""}`} aria-invalid={!!errors.email} aria-describedby={errors.email ? "private-booking-email-error" : undefined} data-testid="private-booking-email" />
+                <FieldError id="private-booking-email" message={errors.email} />
               </div>
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Phone *</Label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="light-input rounded-none mt-2" data-testid="private-booking-phone" />
+                <Label htmlFor="private-booking-phone" className="text-sm text-[#1A1A1A]">Phone *</Label>
+                <Input id="private-booking-phone" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setField("phone", e.target.value)} className={`light-input rounded-none mt-2 ${errors.phone ? "!border-red-600" : ""}`} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "private-booking-phone-error" : undefined} data-testid="private-booking-phone" />
+                <FieldError id="private-booking-phone" message={errors.phone} />
               </div>
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Number of guests *</Label>
-                <Input type="number" min={1} max={Math.max(1, spotsRemaining)} value={form.guests} onChange={(e) => setForm({ ...form, guests: e.target.value })} className="light-input rounded-none mt-2" data-testid="private-booking-guests" />
-                <p className="text-[11px] text-[#7A7A7A] mt-1">{spotsRemaining} spot(s) available</p>
+                <Label htmlFor="private-booking-guests" className="text-sm text-[#1A1A1A]">Number of guests *</Label>
+                <Input id="private-booking-guests" type="number" min={1} max={Math.max(1, spotsRemaining)} value={form.guests} onChange={(e) => setField("guests", e.target.value)} className={`light-input rounded-none mt-2 ${errors.guests ? "!border-red-600" : ""}`} aria-invalid={!!errors.guests} aria-describedby={errors.guests ? "private-booking-guests-error" : undefined} data-testid="private-booking-guests" />
+                <FieldError id="private-booking-guests" message={errors.guests} />
+                <p className="text-[11px] text-[#7A7A7A] mt-1">{placesLeftLabel(spotsRemaining)}</p>
               </div>
             </div>
 
@@ -282,16 +357,18 @@ export default function PrivateWorkshopBookingPage() {
                 <p className="font-body text-xs text-[#7A7A7A] -mt-2">We'll bring everything to you — tell us where and how to get set up.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Venue name</Label>
-                    <Input value={form.venue_name} onChange={set("venue_name")} placeholder="e.g. The Red Lion" className="light-input rounded-none mt-2" />
+                    <Label htmlFor="private-booking-venue-name" className="text-sm text-[#1A1A1A]">Venue name</Label>
+                    <Input id="private-booking-venue-name" value={form.venue_name} onChange={set("venue_name")} placeholder="e.g. The Red Lion" className="light-input rounded-none mt-2" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Postcode *</Label>
-                    <Input value={form.venue_postcode} onChange={set("venue_postcode")} className="light-input rounded-none mt-2" data-testid="private-booking-venue-postcode" />
+                    <Label htmlFor="private-booking-venue-postcode" className="text-sm text-[#1A1A1A]">Postcode *</Label>
+                    <Input id="private-booking-venue-postcode" autoComplete="postal-code" value={form.venue_postcode} onChange={set("venue_postcode")} className={`light-input rounded-none mt-2 ${errors.venue_postcode ? "!border-red-600" : ""}`} aria-invalid={!!errors.venue_postcode} aria-describedby={errors.venue_postcode ? "private-booking-venue-postcode-error" : undefined} data-testid="private-booking-venue-postcode" />
+                    <FieldError id="private-booking-venue-postcode" message={errors.venue_postcode} />
                   </div>
                   <div className="md:col-span-2">
-                    <Label className="text-sm text-[#1A1A1A]">Venue address *</Label>
-                    <Textarea rows={2} value={form.venue_address} onChange={set("venue_address")} className="light-input rounded-none mt-2" data-testid="private-booking-venue-address" />
+                    <Label htmlFor="private-booking-venue-address" className="text-sm text-[#1A1A1A]">Venue address *</Label>
+                    <Textarea id="private-booking-venue-address" rows={2} value={form.venue_address} onChange={set("venue_address")} className={`light-input rounded-none mt-2 ${errors.venue_address ? "!border-red-600" : ""}`} aria-invalid={!!errors.venue_address} aria-describedby={errors.venue_address ? "private-booking-venue-address-error" : undefined} data-testid="private-booking-venue-address" />
+                    <FieldError id="private-booking-venue-address" message={errors.venue_address} />
                   </div>
                   <div>
                     <Label className="text-sm text-[#1A1A1A]">Earliest time we can arrive to set up</Label>
@@ -302,8 +379,8 @@ export default function PrivateWorkshopBookingPage() {
                     <Input value={form.onsite_contact_name} onChange={set("onsite_contact_name")} placeholder="Name" className="light-input rounded-none mt-2" />
                   </div>
                   <div>
-                    <Label className="text-sm text-[#1A1A1A]">Their mobile</Label>
-                    <Input value={form.onsite_contact_phone} onChange={set("onsite_contact_phone")} className="light-input rounded-none mt-2" />
+                    <Label htmlFor="private-booking-onsite-phone" className="text-sm text-[#1A1A1A]">Their mobile</Label>
+                    <Input id="private-booking-onsite-phone" type="tel" value={form.onsite_contact_phone} onChange={set("onsite_contact_phone")} className="light-input rounded-none mt-2" />
                   </div>
                   <div className="md:col-span-2">
                     <Label className="text-sm text-[#1A1A1A]">Parking &amp; access</Label>
@@ -483,16 +560,14 @@ export default function PrivateWorkshopBookingPage() {
                 </div>
               </div>
 
-              {workshop.cancellation_policy && (
-                <p className="text-[11px] text-[#7A7A7A] mt-3 leading-relaxed">
-                  <strong className="text-[#1A1A1A]">Cancellation policy:</strong> {workshop.cancellation_policy}
-                </p>
-              )}
+              <p className="text-[11px] text-[#7A7A7A] mt-3 leading-relaxed" data-testid="private-cancellation-policy">
+                <strong className="text-[#1A1A1A]">Cancellation policy:</strong> {workshop.cancellation_policy || DEFAULT_CANCELLATION_POLICY}
+              </p>
             </div>
 
             <div className="flex justify-end pt-3 border-t border-[#E5E5E5]">
-              {!noPaymentMethod && <Button type="submit" disabled={submitting} className="btn-dark rounded-none" data-testid="private-booking-submit">
-                {submitting ? "Please wait…" : paymentMethod === "bank_transfer" ? `Confirm booking — £${amountDueNow.toFixed(2)} by bank transfer` : `Pay £${amountDueNow.toFixed(2)} & book`}
+              {!noPaymentMethod && <Button type="submit" className="btn-dark rounded-none btn-booking" data-testid="private-booking-submit">
+                Review my booking
               </Button>}
             </div>
           </form>

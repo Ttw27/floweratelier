@@ -104,6 +104,24 @@
     background-color: #333;
     transform: translateY(-1px);
 }
+/* Booking action buttons: full width and wrapping on phones so long labels (amounts) are never clipped */
+.btn-booking {
+    width: 100%;
+    height: auto;
+    min-height: 2.75rem;
+    white-space: normal;
+    line-height: 1.375;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    letter-spacing: 0.12em;
+}
+@media (min-width: 640px) {
+    .btn-booking {
+        width: auto;
+        padding: 0.75rem 2rem;
+        letter-spacing: 0.22em;
+    }
+}
 .btn-outline-dark {
     @apply bg-transparent text-[#1A1A1A] border border-[#1A1A1A] px-8 py-4 font-body text-xs uppercase tracking-[0.22em] transition-all duration-300;
 }
@@ -180,4 +198,25 @@
     background-image:
         radial-gradient(circle at 20% 30%, rgba(232, 216, 208, 0.25), transparent 40%),
         radial-gradient(circle at 80% 70%, rgba(196, 207, 192, 0.2), transparent 40%);
+}
+
+/* While the workshop booking modal is open, hide the floating WhatsApp button so it can't cover the form */
+body[data-booking-modal-open] [data-testid="whatsapp-floating-button"] {
+    display: none;
+}
+
+/* Announcement bar ticker (phones) — two copies of the text slide left and loop seamlessly */
+@keyframes utility-ticker-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+.utility-ticker { animation: utility-ticker-scroll 22s linear infinite; }
+.utility-ticker-mask {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+    .utility-ticker { animation: none; width: auto; flex-wrap: wrap; justify-content: center; text-align: center; }
+    .utility-ticker > span { white-space: normal; }
+    .utility-ticker > span + span { display: none; }
 }

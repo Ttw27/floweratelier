@@ -5,7 +5,16 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Calendar, Mail, MapPin, Clock } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { getContact } from "../lib/contact";
-import { fmtWorkshopDate as fmtDate } from "../lib/workshopPricing";
+import { fmtWorkshopDate as fmtDate, fmtTimeRange } from "../lib/workshopPricing";
+
+// At-your-venue bookings show the customer's venue, not the studio
+function bookingLocation(b) {
+  if (b?.at_customer_venue) {
+    const venue = [b.venue_name, b.venue_address, b.venue_postcode].map((x) => String(x || "").trim()).filter(Boolean).join(", ");
+    return venue || "At your venue";
+  }
+  return String(b?.session_location || "").trim() || "Location TBC";
+}
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -69,13 +78,11 @@ export default function WorkshopBookingSuccessPage() {
                 {booking.session_date && (
                   <p data-testid="workshop-success-date"><Calendar size={14} className="inline mr-2 text-[#B3A89B]" />{fmtDate(booking.session_date)}</p>
                 )}
-                {booking.session_start_time && (
-                  <p data-testid="workshop-success-time"><Clock size={14} className="inline mr-2 text-[#B3A89B]" />{booking.session_start_time}{booking.session_end_time ? `–${booking.session_end_time}` : ""}</p>
+                {fmtTimeRange(booking.session_start_time, booking.session_end_time) && (
+                  <p data-testid="workshop-success-time"><Clock size={14} className="inline mr-2 text-[#B3A89B]" />{fmtTimeRange(booking.session_start_time, booking.session_end_time)}</p>
                 )}
-                {booking.session_location && (
-                  <p data-testid="workshop-success-location"><MapPin size={14} className="inline mr-2 text-[#B3A89B]" />{booking.session_location}</p>
-                )}
-                <p className="text-[#7A7A7A]">{booking.guests} guest(s) · paid £{Number(booking.amount_paid || 0).toFixed(2)}{Number(booking.balance_due_on_day) > 0 ? ` · balance £${Number(booking.balance_due_on_day).toFixed(2)} on the day` : ""}</p>
+                <p data-testid="workshop-success-location"><MapPin size={14} className="inline mr-2 text-[#B3A89B]" />{bookingLocation(booking)}</p>
+                <p className="text-[#7A7A7A]">{booking.guests} guest{Number(booking.guests) === 1 ? "" : "s"} · paid £{Number(booking.amount_paid || 0).toFixed(2)}{Number(booking.balance_due_on_day) > 0 ? ` · balance £${Number(booking.balance_due_on_day).toFixed(2)} on the day` : ""}</p>
               </div>
             </div>}
 

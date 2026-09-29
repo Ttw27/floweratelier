@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -9,18 +9,29 @@ import { Label } from "@/components/ui/label";
 import { X, Calendar, Clock, MapPin, Users, MessageCircle, Phone, CheckCircle2 } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import BankDetails, { pickBankDetails } from "./BankDetails";
+import BookingReview, { DEFAULT_CANCELLATION_POLICY } from "./BookingReview";
 import { getContact, whatsappHref } from "../lib/contact";
-import { calcWorkshopAmounts, workshopPricePerGuest, isSessionPast, fmtWorkshopDate as fmtDate } from "../lib/workshopPricing";
+import { calcWorkshopAmounts, workshopPricePerGuest, isSessionPast, fmtWorkshopDate as fmtDate, fmtTimeRange, placesLeftLabel, sessionLocationLabel } from "../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-export default function WorkshopBookingModal({ open, workshop, onClose }) {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return <p id={`${id}-error`} className="text-[12px] text-red-700 mt-1" role="alert">{message}</p>;
+}
+
+const EMPTY_FORM = { name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "", venue_name: "", venue_address: "", venue_postcode: "" };
+
+// initialSessionId: open with that date already chosen (e.g. the "Book" button on a date card)
+export default function WorkshopBookingModal({ open, workshop, onClose, initialSessionId = "" }) {
   const { settings } = useSettings();
   const [sessions, setSessions] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState("");
   const [step, setStep] = useState(1); // 1 = pick session, 2 = details + payment
-  const [form, setForm] = useState({ name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "" });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [paymentChoice, setPaymentChoice] = useState("deposit");
   const [submitting, setSubmitting] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(true);
@@ -28,6 +39,11 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [bankFromApi, setBankFromApi] = useState(null);
+  const [reviewing, setReviewing] = useState(false); // step 3: check everything before booking
+  const [agreed, setAgreed] = useState(false);
+  const [errors, setErrors] = useState({});
+  const submittingRef = useRef(false); // guards against double taps on "Confirm booking"
+  const contentRef = useRef(null);
   const bankDetails = pickBankDetails(confirmedBooking?.bank_details, bankFromApi, settings);
 
   useEffect(() => {
@@ -51,17 +67,46 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
   useEffect(() => {
     if (!open || !workshop) return;
     setStep(1);
+    setReviewing(false);
+    setAgreed(false);
+    setErrors({});
+    submittingRef.current = false;
     setSelectedSessionId("");
-    setForm({ name: "", email: "", phone: "", guests: 1, dietary_requirements: "", notes: "" });
+    setForm(EMPTY_FORM);
     setPaymentChoice("deposit");
     setConfirmedBooking(null);
     setSubmitting(false);
     setLoadingSessions(true);
     axios.get(`${API_URL}/api/workshops/${workshop.slug}/sessions`)
-      .then((r) => setSessions(Array.isArray(r.data) ? r.data.filter((s) => !isSessionPast(s)) : []))
+      .then((r) => {
+        const list = Array.isArray(r.data) ? r.data.filter((s) => !isSessionPast(s)) : [];
+        setSessions(list);
+        // Came from a specific date's "Book" button: pre-select it and go straight to details
+        const pre = initialSessionId && list.find((s) => s.id === initialSessionId);
+        if (pre && Math.max(0, (pre.capacity || 0) - (pre.spots_booked || 0)) > 0) {
+          setSelectedSessionId(pre.id);
+          setStep(2);
+        }
+      })
       .catch(() => toast.error("Could not load dates"))
       .finally(() => setLoadingSessions(false));
-  }, [open, workshop]);
+  }, [open, workshop, initialSessionId]);
+
+  // Escape closes; lock the page behind the modal from scrolling while it is open;
+  // flag the body so the floating WhatsApp button hides and can't cover the form
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") onClose?.(); };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.body.setAttribute("data-booking-modal-open", "");
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      document.body.removeAttribute("data-booking-modal-open");
+    };
+  }, [open, onClose]);
 
   const selectedSession = useMemo(() => sessions.find((s) => s.id === selectedSessionId), [sessions, selectedSessionId]);
 
@@ -78,24 +123,74 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
     setStep(2);
   };
 
-  const submit = async (e) => {
+  const setField = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((er) => (er[key] ? { ...er, [key]: undefined } : er));
+  };
+
+  // Required fields, in the order they appear on the form (first one gets scrolled to)
+  const validate = () => {
+    const er = {};
+    if (!form.name.trim()) er.name = "Please enter your name";
+    if (!form.email.trim()) er.email = "Please enter your email address";
+    else if (!EMAIL_RE.test(form.email.trim())) er.email = "Please check your email address";
+    if (!form.phone.trim()) er.phone = "Please enter a phone number";
+    const g = parseInt(form.guests, 10);
+    const remaining = selectedSession ? spotsRemaining(selectedSession) : 0;
+    if (!g || g < 1) er.guests = "Please enter the number of guests";
+    else if (g > remaining) er.guests = `Sorry, only ${placesLeftLabel(remaining)}`;
+    if (selectedSession?.at_customer_venue) {
+      if (!form.venue_postcode.trim()) er.venue_postcode = "Please enter the venue postcode";
+      if (!form.venue_address.trim()) er.venue_address = "Please enter the venue address";
+    }
+    return er;
+  };
+
+  const FIELD_ORDER = ["name", "email", "phone", "guests", "venue_postcode", "venue_address"];
+
+  const reviewBooking = (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.phone) { toast.error("Name, email & phone are required"); return; }
     if (!selectedSession) { toast.error("Pick a date"); return; }
     if (noPaymentMethod) { toast.error("Online booking is unavailable — please call or WhatsApp the studio"); return; }
     if (isSessionPast(selectedSession)) { toast.error("This date has already passed — please pick another"); return; }
-    const remaining = spotsRemaining(selectedSession);
-    if (form.guests > remaining) { toast.error(`Only ${remaining} spot(s) left`); return; }
+    const er = validate();
+    setErrors(er);
+    const first = FIELD_ORDER.find((k) => er[k]);
+    if (first) {
+      const el = document.getElementById(`workshop-booking-${first.replace("_", "-")}`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.focus({ preventScroll: true }); }
+      toast.error("Please fill in the highlighted details");
+      return;
+    }
+    setAgreed(false);
+    setReviewing(true);
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  };
+
+  const editDetails = () => {
+    setReviewing(false);
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+  };
+
+  const confirmBooking = async () => {
+    if (submittingRef.current || !agreed) return;
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const phone = form.phone.trim();
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       const r = await axios.post(`${API_URL}/api/workshop-bookings`, {
         session_id: selectedSession.id,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
+        name,
+        email,
+        phone,
         guests: parseInt(form.guests, 10) || 1,
         dietary_requirements: form.dietary_requirements,
         notes: form.notes,
+        ...(selectedSession.at_customer_venue ? {
+          venue_name: form.venue_name.trim(), venue_address: form.venue_address.trim(), venue_postcode: form.venue_postcode.trim(),
+        } : {}),
         payment_choice: effectiveChoice,
         payment_method: paymentMethod,
       });
@@ -103,7 +198,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
         // No Stripe redirect — show bank details & reference in the modal
         setConfirmedBooking(r.data);
         setSubmitting(false);
-        return;
+        return; // leave the guard set: this booking is done
       }
       const bookingId = r.data.id;
       const c = await axios.post(`${API_URL}/api/workshop-checkout/session`, {
@@ -113,6 +208,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
       window.location.href = c.data.url;
     } catch (err) {
       toast.error(err.response?.data?.detail || "Booking failed");
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -128,14 +224,14 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-stretch md:items-center justify-center md:p-4 overflow-y-auto" onClick={onClose} data-testid="workshop-booking-modal">
-      <div className="bg-[#FAFAF7] w-full md:max-w-[820px] md:max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-labelledby="workshop-booking-title" className="bg-[#FAFAF7] w-full md:max-w-[820px] md:max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 md:px-7 py-4 border-b border-[#E5E5E5] bg-white">
           <div>
             <p className="accent-label text-[10px]"><span className="thin-rule" />{workshop.tag || "Workshop"}</p>
-            <h3 className="font-heading text-lg md:text-2xl text-[#1A1A1A]">{workshop.name}</h3>
+            <h3 id="workshop-booking-title" className="font-heading text-lg md:text-2xl text-[#1A1A1A]">{workshop.name}</h3>
           </div>
-          <button onClick={onClose} aria-label="Close" className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid="workshop-booking-close">
+          <button type="button" onClick={onClose} aria-label="Close booking" className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid="workshop-booking-close">
             <X size={20} />
           </button>
         </div>
@@ -145,9 +241,11 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
           <span className={step >= 1 ? "text-[#1A1A1A]" : ""}>1 · Date</span>
           <span>—</span>
           <span className={step >= 2 ? "text-[#1A1A1A]" : ""}>2 · Your details</span>
+          <span>—</span>
+          <span className={step >= 2 && reviewing ? "text-[#1A1A1A]" : ""}>3 · Review</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 md:p-7">
+        <div ref={contentRef} className="flex-1 overflow-y-auto p-5 md:p-7">
           {confirmedBooking && (
             <BankTransferConfirmation booking={confirmedBooking} workshop={workshop} session={selectedSession} settings={settings} bankDetails={bankDetails} onCopy={copyText} onClose={onClose} />
           )}
@@ -182,9 +280,9 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                             {fmtDate(s.date)}
                           </p>
                           <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1 text-[12px] text-[#7A7A7A]">
-                            {s.start_time && <span className="inline-flex items-center gap-1"><Clock size={11} /> {s.start_time}{s.end_time ? `–${s.end_time}` : ""}</span>}
-                            <span className="inline-flex items-center gap-1"><MapPin size={11} /> {s.location || workshop.location_default}</span>
-                            <span className="inline-flex items-center gap-1"><Users size={11} /> {isSoldOut ? "Sold out" : `${remaining} spot${remaining === 1 ? "" : "s"} left`}</span>
+                            {fmtTimeRange(s.start_time, s.end_time) && <span className="inline-flex items-center gap-1"><Clock size={11} /> {fmtTimeRange(s.start_time, s.end_time)}</span>}
+                            <span className="inline-flex items-center gap-1"><MapPin size={11} /> {sessionLocationLabel(s, workshop)}</span>
+                            <span className="inline-flex items-center gap-1"><Users size={11} /> {placesLeftLabel(remaining)}</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -197,51 +295,100 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                 </div>
               )}
 
-              <div className="mt-6 flex justify-end">
-                <Button onClick={handleNext} disabled={!selectedSessionId} className="btn-dark rounded-none" data-testid="workshop-booking-next">
-                  Continue
-                </Button>
-              </div>
+              {!loadingSessions && sessions.length > 0 && (
+                <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                  {!selectedSessionId && (
+                    <p className="font-body text-sm text-[#7A7A7A] sm:mr-auto" data-testid="workshop-booking-choose-hint">Choose a date above to continue</p>
+                  )}
+                  <Button onClick={handleNext} disabled={!selectedSessionId} className="btn-dark rounded-none btn-booking" data-testid="workshop-booking-next">
+                    Continue
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
-          {!confirmedBooking && step === 2 && selectedSession && (
-            <form onSubmit={submit} className="space-y-5" data-testid="workshop-booking-step-details">
+          {!confirmedBooking && step === 2 && selectedSession && reviewing && (
+            <BookingReview
+              workshop={workshop}
+              session={selectedSession}
+              form={form}
+              amounts={amounts}
+              paymentMethod={paymentMethod}
+              agreed={agreed}
+              onAgreeChange={setAgreed}
+              onEdit={editDetails}
+              onConfirm={confirmBooking}
+              submitting={submitting}
+              testIdPrefix="workshop-booking-review"
+            />
+          )}
+
+          {!confirmedBooking && step === 2 && selectedSession && !reviewing && (
+            <form onSubmit={reviewBooking} noValidate className="space-y-5" data-testid="workshop-booking-step-details">
               <div className="bg-white border border-[#E5E5E5] p-4">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[#B3A89B]">Selected date</p>
-                <p className="font-heading text-lg text-[#1A1A1A]">{fmtDate(selectedSession.date)}{selectedSession.start_time ? ` · ${selectedSession.start_time}` : ""}</p>
-                <p className="text-xs text-[#7A7A7A]">{selectedSession.location || workshop.location_default}</p>
+                <p className="font-heading text-lg text-[#1A1A1A]">{fmtDate(selectedSession.date)}{fmtTimeRange(selectedSession.start_time, selectedSession.end_time) ? ` · ${fmtTimeRange(selectedSession.start_time, selectedSession.end_time)}` : ""}</p>
+                <p className="text-xs text-[#7A7A7A]">{sessionLocationLabel(selectedSession, workshop)}</p>
                 <button type="button" onClick={() => setStep(1)} className="text-[11px] uppercase tracking-[0.18em] text-[#1A1A1A] underline mt-2" data-testid="workshop-booking-change-date">Change date</button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm text-[#1A1A1A]">Full name *</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-booking-name" />
+                  <Label htmlFor="workshop-booking-name" className="text-sm text-[#1A1A1A]">Full name *</Label>
+                  <Input id="workshop-booking-name" autoComplete="name" value={form.name} onChange={(e) => setField("name", e.target.value)} className={`light-input rounded-none mt-2 ${errors.name ? "!border-red-600" : ""}`} aria-invalid={!!errors.name} aria-describedby={errors.name ? "workshop-booking-name-error" : undefined} data-testid="workshop-booking-name" />
+                  <FieldError id="workshop-booking-name" message={errors.name} />
                 </div>
                 <div>
-                  <Label className="text-sm text-[#1A1A1A]">Email *</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-booking-email" />
+                  <Label htmlFor="workshop-booking-email" className="text-sm text-[#1A1A1A]">Email *</Label>
+                  <Input id="workshop-booking-email" type="email" autoComplete="email" value={form.email} onChange={(e) => setField("email", e.target.value)} className={`light-input rounded-none mt-2 ${errors.email ? "!border-red-600" : ""}`} aria-invalid={!!errors.email} aria-describedby={errors.email ? "workshop-booking-email-error" : undefined} data-testid="workshop-booking-email" />
+                  <FieldError id="workshop-booking-email" message={errors.email} />
                 </div>
                 <div>
-                  <Label className="text-sm text-[#1A1A1A]">Phone *</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-booking-phone" />
+                  <Label htmlFor="workshop-booking-phone" className="text-sm text-[#1A1A1A]">Phone *</Label>
+                  <Input id="workshop-booking-phone" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setField("phone", e.target.value)} className={`light-input rounded-none mt-2 ${errors.phone ? "!border-red-600" : ""}`} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "workshop-booking-phone-error" : undefined} data-testid="workshop-booking-phone" />
+                  <FieldError id="workshop-booking-phone" message={errors.phone} />
                 </div>
                 <div>
-                  <Label className="text-sm text-[#1A1A1A]">Number of guests *</Label>
-                  <Input type="number" min={1} max={Math.max(1, spotsRemaining(selectedSession))} value={form.guests} onChange={(e) => setForm({ ...form, guests: e.target.value })} className="light-input rounded-none mt-2" data-testid="workshop-booking-guests" />
-                  <p className="text-[11px] text-[#7A7A7A] mt-1">{spotsRemaining(selectedSession)} spot(s) available</p>
+                  <Label htmlFor="workshop-booking-guests" className="text-sm text-[#1A1A1A]">Number of guests *</Label>
+                  <Input id="workshop-booking-guests" type="number" min={1} max={Math.max(1, spotsRemaining(selectedSession))} value={form.guests} onChange={(e) => setField("guests", e.target.value)} className={`light-input rounded-none mt-2 ${errors.guests ? "!border-red-600" : ""}`} aria-invalid={!!errors.guests} aria-describedby={errors.guests ? "workshop-booking-guests-error" : undefined} data-testid="workshop-booking-guests" />
+                  <FieldError id="workshop-booking-guests" message={errors.guests} />
+                  <p className="text-[11px] text-[#7A7A7A] mt-1">{placesLeftLabel(spotsRemaining(selectedSession))}</p>
                 </div>
               </div>
 
+              {/* Venue — only for sessions where we travel to the customer (same fields as the private booking page) */}
+              {selectedSession.at_customer_venue && (
+                <div className="border-t border-[#E5E5E5] pt-5 space-y-4" data-testid="workshop-booking-venue-section">
+                  <p className="accent-label"><span className="thin-rule" />Your venue</p>
+                  <p className="font-body text-xs text-[#7A7A7A] -mt-2">We&rsquo;ll bring everything to you — tell us where.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="workshop-booking-venue-name" className="text-sm text-[#1A1A1A]">Venue name</Label>
+                      <Input id="workshop-booking-venue-name" value={form.venue_name} onChange={(e) => setForm({ ...form, venue_name: e.target.value })} placeholder="e.g. The Red Lion" className="light-input rounded-none mt-2" data-testid="workshop-booking-venue-name" />
+                    </div>
+                    <div>
+                      <Label htmlFor="workshop-booking-venue-postcode" className="text-sm text-[#1A1A1A]">Postcode *</Label>
+                      <Input id="workshop-booking-venue-postcode" autoComplete="postal-code" value={form.venue_postcode} onChange={(e) => setField("venue_postcode", e.target.value)} className={`light-input rounded-none mt-2 ${errors.venue_postcode ? "!border-red-600" : ""}`} aria-invalid={!!errors.venue_postcode} aria-describedby={errors.venue_postcode ? "workshop-booking-venue-postcode-error" : undefined} data-testid="workshop-booking-venue-postcode" />
+                      <FieldError id="workshop-booking-venue-postcode" message={errors.venue_postcode} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="workshop-booking-venue-address" className="text-sm text-[#1A1A1A]">Venue address *</Label>
+                      <Textarea id="workshop-booking-venue-address" rows={2} value={form.venue_address} onChange={(e) => setField("venue_address", e.target.value)} className={`light-input rounded-none mt-2 ${errors.venue_address ? "!border-red-600" : ""}`} aria-invalid={!!errors.venue_address} aria-describedby={errors.venue_address ? "workshop-booking-venue-address-error" : undefined} data-testid="workshop-booking-venue-address" />
+                      <FieldError id="workshop-booking-venue-address" message={errors.venue_address} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(only if food &amp; drink has been arranged with us — extra charges apply)</span></Label>
-                <Textarea rows={2} value={form.dietary_requirements} onChange={(e) => setForm({ ...form, dietary_requirements: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. gluten-free, vegan, nut allergy" data-testid="workshop-booking-dietary" />
+                <Label htmlFor="workshop-booking-dietary" className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(only if food &amp; drink has been arranged with us — extra charges apply)</span></Label>
+                <Textarea id="workshop-booking-dietary" rows={2} value={form.dietary_requirements} onChange={(e) => setForm({ ...form, dietary_requirements: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. gluten-free, vegan, nut allergy" data-testid="workshop-booking-dietary" />
               </div>
 
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Anything else? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
-                <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="light-input rounded-none mt-2" placeholder="Booking for a hen-do? Tell us a little about the occasion." data-testid="workshop-booking-notes" />
+                <Label htmlFor="workshop-booking-notes" className="text-sm text-[#1A1A1A]">Anything else? <span className="text-[#7A7A7A] text-xs">(optional)</span></Label>
+                <Textarea id="workshop-booking-notes" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="light-input rounded-none mt-2" placeholder="Booking for a hen-do? Tell us a little about the occasion." data-testid="workshop-booking-notes" />
               </div>
 
               {/* Payment choice */}
@@ -256,7 +403,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                     data-testid="workshop-payment-deposit"
                   >
                     <p className="font-heading text-base text-[#1A1A1A]">Pay deposit</p>
-                    <p className="text-[11px] text-[#7A7A7A] mt-1">Secure your spot with a deposit. Balance collected on the day (cash or card).</p>
+                    <p className="text-[11px] text-[#7A7A7A] mt-1">Secure your place with a deposit. Balance collected on the day (cash or card).</p>
                     <p className="font-heading text-lg text-[#1A1A1A] mt-2">£{depositAmount.toFixed(2)}<span className="text-[11px] text-[#7A7A7A] font-body ml-2">now</span></p>
                   </button>
                   )}
@@ -286,7 +433,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                 </div>
 
                 <p className="text-[11px] text-[#7A7A7A] mt-3 leading-relaxed" data-testid="workshop-cancellation-policy">
-                  <strong className="text-[#1A1A1A]">Cancellation policy:</strong> {workshop.cancellation_policy || "Deposits are non-refundable. Balance is collected on the day."}
+                  <strong className="text-[#1A1A1A]">Cancellation policy:</strong> {workshop.cancellation_policy || DEFAULT_CANCELLATION_POLICY}
                 </p>
               </div>
 
@@ -345,14 +492,10 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
               )}
 
               <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-3 border-t border-[#E5E5E5]">
-                <Button type="button" variant="outline" className="rounded-none" onClick={() => setStep(1)}>Back</Button>
+                <Button type="button" variant="outline" className="rounded-none btn-booking" onClick={() => setStep(1)}>Back</Button>
                 {!noPaymentMethod && (
-                  <Button type="submit" disabled={submitting} className="btn-dark rounded-none" data-testid="workshop-booking-submit">
-                    {submitting
-                      ? (paymentMethod === "bank_transfer" ? "Please wait…" : "Redirecting to Stripe…")
-                      : paymentMethod === "bank_transfer"
-                        ? `Confirm booking — £${amountDueNow.toFixed(2)} by bank transfer`
-                        : `Pay £${amountDueNow.toFixed(2)} & book`}
+                  <Button type="submit" className="btn-dark rounded-none btn-booking" data-testid="workshop-booking-submit">
+                    Review my booking
                   </Button>
                 )}
               </div>
@@ -470,7 +613,7 @@ function BankTransferConfirmation({ booking: b, workshop, session, settings, ban
         <p className="font-body text-xs text-[#7A7A7A] text-center mb-5">A confirmation has been sent to <strong className="text-[#1A1A1A]">{b.email}</strong>.</p>
       )}
       <div className="flex justify-center">
-        <Button type="button" onClick={onClose} className="btn-dark rounded-none" data-testid="workshop-booking-done">Done</Button>
+        <Button type="button" onClick={onClose} className="btn-dark rounded-none btn-booking" data-testid="workshop-booking-done">Done</Button>
       </div>
     </div>
   );

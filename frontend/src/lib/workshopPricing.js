@@ -41,12 +41,73 @@ export function calcWorkshopAmounts(workshop, session, guests, paymentChoice) {
   return { guests: g, pricePerGuest, depositPerGuest, discountPct, subtotal, fullAmount, depositAmount, depositAvailable, effectiveChoice: choice, discountAmount, amountDueNow, balanceOnDay };
 }
 
-// True when a session's date is before today (local time).
+// Today's date ("YYYY-MM-DD") and the time ("HH:MM") in London, whatever the visitor's own timezone.
+function londonNow() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).formatToParts(new Date());
+    const get = (t) => parts.find((p) => p.type === t)?.value || "";
+    return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+  } catch {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+  }
+}
+
+// Today's date in London as "YYYY-MM-DD"
+export function londonTodayIso() {
+  return londonNow().date;
+}
+
+// True once a session has started (London time). With no start time it stays bookable until the end of its day.
+// Mirrors backend _session_is_past.
 export function isSessionPast(session) {
   if (!session?.date) return false;
-  const today = new Date();
-  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  return String(session.date).slice(0, 10) < todayIso;
+  const now = londonNow();
+  const day = String(session.date).slice(0, 10);
+  if (day !== now.date) return day < now.date;
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(session.start_time || "").trim());
+  if (!m) return false;
+  const start = `${m[1].padStart(2, "0")}:${m[2]}`;
+  return now.time >= start;
+}
+
+// "18:30" -> "6:30pm", "18:00" -> "6pm". Anything unreadable is shown as typed.
+export function fmtTime(t) {
+  const raw = String(t || "").trim();
+  const m = /^(\d{1,2}):(\d{2})/.exec(raw);
+  if (!m) return raw;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h > 23 || min > 59) return raw;
+  const suffix = h < 12 ? "am" : "pm";
+  const h12 = h % 12 || 12;
+  return min === 0 ? `${h12}${suffix}` : `${h12}:${String(min).padStart(2, "0")}${suffix}`;
+}
+
+// "6:30pm–9pm", "from 6:30pm", "until 9pm" or "".
+export function fmtTimeRange(start, end) {
+  const s = fmtTime(start);
+  const e = fmtTime(end);
+  if (s && e) return `${s}–${e}`;
+  if (s) return `from ${s}`;
+  if (e) return `until ${e}`;
+  return "";
+}
+
+// "1 place left" / "3 places left" / "Fully booked"
+export function placesLeftLabel(n) {
+  const left = Math.max(0, Number(n) || 0);
+  if (left <= 0) return "Fully booked";
+  return `${left} place${left === 1 ? "" : "s"} left`;
+}
+
+// Where the session happens, for display.
+export function sessionLocationLabel(session, workshop) {
+  if (session?.at_customer_venue) return "At your venue";
+  return String(session?.location || workshop?.location_default || "").trim() || "Location TBC";
 }
 
 export const fmtWorkshopDate = (iso) => {

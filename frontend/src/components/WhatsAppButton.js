@@ -8,6 +8,8 @@ export default function WhatsAppButton() {
   if (!settings?.whatsapp_enabled || !settings?.whatsapp_number) return null;
   // Hide on admin to avoid clashing with admin UI elements
   if (location.pathname.startsWith("/admin")) return null;
+  // Hide on private booking pages so it never sits on top of the booking form / buttons on phones
+  if (location.pathname.startsWith("/workshops/book/")) return null;
 
   const digits = settings.whatsapp_number.replace(/\D/g, "");
   if (!digits) return null;

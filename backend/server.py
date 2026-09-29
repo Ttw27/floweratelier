@@ -3517,6 +3517,7 @@ class WorkshopCreate(BaseModel):
     whatsapp_message: str = ""          # pre-filled enquiry message
     sort_order: int = 0
     active: bool = True
+    hidden: bool = False                # True = one-off private programme: never listed on the public Workshops page
 
 class WorkshopResponse(WorkshopCreate):
     id: str
@@ -3584,6 +3585,11 @@ class WorkshopBookingCreate(BaseModel):
     heard_about: str = Field(default="", max_length=200)
     payment_choice: str = "deposit"   # "deposit" | "full"
     payment_method: str = "stripe"    # "stripe" | "bank_transfer"
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _strip_email(cls, v):
+        return v.strip() if isinstance(v, str) else v
 
 class WorkshopBookingResponse(BaseModel):
     id: str
@@ -3761,20 +3767,99 @@ async def _reserve_for_booking(booking: dict) -> bool:
 
 # ---------- Workshop emails ----------
 
+DEFAULT_CANCELLATION_POLICY = "Deposits are non-refundable. Balance is collected on the day."
+_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
+           "September", "October", "November", "December"]
+
+
+def _fmt_time_12h(t) -> str:
+    """'18:30' -> '6:30pm', '18:00' -> '6pm'. Anything unparseable is returned as typed."""
+    raw = str(t or "").strip()
+    if not raw:
+        return ""
+    try:
+        hh, mm = raw.split(":")[:2]
+        h, m = int(hh), int(mm[:2])
+    except (ValueError, IndexError):
+        return raw
+    if not (0 <= h <= 23 and 0 <= m <= 59):
+        return raw
+    suffix = "am" if h < 12 else "pm"
+    h12 = h % 12 or 12
+    return f"{h12}{suffix}" if m == 0 else f"{h12}:{m:02d}{suffix}"
+
+
+def _friendly_when(date_str, start_time="", end_time="") -> str:
+    """e.g. 'Saturday 5 December 2026, 6:30pm–9pm'. Copes with a missing date, start or end."""
+    raw = str(date_str or "").strip()
+    try:
+        d = datetime.strptime(raw[:10], "%Y-%m-%d")
+        day = f"{_WEEKDAYS[d.weekday()]} {d.day} {_MONTHS[d.month - 1]} {d.year}"
+    except ValueError:
+        day = raw
+    s, e = _fmt_time_12h(start_time), _fmt_time_12h(end_time)
+    if s and e:
+        times = f"{s}–{e}"
+    elif s:
+        times = f"from {s}"
+    elif e:
+        times = f"until {e}"
+    else:
+        times = ""
+    return ", ".join(x for x in [day, times] if x)
+
+
+def _booking_location(b: dict) -> str:
+    """Where the workshop happens: the customer's venue for at-your-venue sessions, else the session/studio location."""
+    if b.get("at_customer_venue"):
+        venue = ", ".join(str(x).strip() for x in [b.get("venue_name"), b.get("venue_address"), b.get("venue_postcode")]
+                          if str(x or "").strip())
+        return venue or "At your venue"
+    return str(b.get("session_location") or "").strip() or "Location TBC"
+
+
+_PAYMENT_METHOD_LABELS = {"stripe": "Card", "bank_transfer": "Bank transfer"}
+_PAYMENT_CHOICE_LABELS = {"deposit": "Deposit", "full": "Paid in full"}
+_PAYMENT_STATUS_LABELS = {"awaiting_bank_transfer": "Awaiting payment", "paid": "Paid",
+                          "pending": "Pending", "cancelled": "Cancelled"}
+
+
+def _payment_summary_label(b: dict) -> str:
+    """e.g. 'Bank transfer · Deposit · Awaiting payment'."""
+    def lab(mapping, v):
+        v = str(v or "")
+        return mapping.get(v, v.replace("_", " ").capitalize())
+    status = b.get("payment_status")
+    if b.get("status") == "cancelled" and status != "paid":
+        status = "cancelled"
+    return " · ".join(x for x in [lab(_PAYMENT_METHOD_LABELS, b.get("payment_method")),
+                                  lab(_PAYMENT_CHOICE_LABELS, b.get("payment_choice")),
+                                  lab(_PAYMENT_STATUS_LABELS, status)] if x)
+
+
 def _booking_summary_html(b: dict, for_admin: bool) -> str:
-    when = " ".join(x for x in [b.get("session_date"), b.get("session_start_time")] if x)
-    if b.get("session_end_time"):
-        when += f"–{b.get('session_end_time')}"
+    when = _friendly_when(b.get("session_date"), b.get("session_start_time"), b.get("session_end_time"))
+    paid = b.get("payment_status") == "paid"
+    balance = _to_float(b.get("balance_due_on_day"))
+    money = f"<p>Guests: {_e(b.get('guests'))}<br>Total: {_money(b.get('subtotal'))}"
+    if b.get("discount_amount"):
+        money += f"<br>Discount: −{_money(b.get('discount_amount'))}"
+    if paid:
+        money += f"<br>Paid: {_money(b.get('amount_paid') or b.get('amount_due_now'))}"
+    else:
+        money += f"<br>Due now: {_money(b.get('amount_due_now'))}"
+    if balance > 0:
+        money += f"<br>Balance on the day: {_money(balance)}"
+    money += "</p>"
     parts = [
-        f"<p><strong>{_e(b.get('workshop_name'))}</strong><br>{_e(when)}<br>{_e(b.get('session_location'))}</p>",
-        f"<p>Guests: {_e(b.get('guests'))}<br>Total: {_money(b.get('subtotal'))}"
-        + (f"<br>Discount: −{_money(b.get('discount_amount'))}" if b.get("discount_amount") else "")
-        + f"<br>Due now: {_money(b.get('amount_due_now'))}<br>Balance on the day: {_money(b.get('balance_due_on_day'))}</p>",
+        f"<p><strong>{_e(b.get('workshop_name'))}</strong><br>{_e(when)}<br>{_e(_booking_location(b))}</p>",
+        money,
     ]
     if for_admin:
         parts.append(
             f"<p>Name: {_e(b.get('name'))}<br>Email: {_e(b.get('email'))}<br>Phone: {_e(b.get('phone'))}<br>"
-            f"Payment: {_e(b.get('payment_method'))} / {_e(b.get('payment_choice'))} — status {_e(b.get('payment_status'))}"
+            f"Payment: {_e(_payment_summary_label(b))}"
             + (f"<br>Reference: {_e(b.get('bank_reference'))}" if b.get("bank_reference") else "")
             + ("<br><strong style=\"color:#b00\">OVERBOOKED — session was full when payment arrived</strong>" if b.get("overbooked") else "")
             + "</p>"
@@ -3787,9 +3872,23 @@ def _booking_summary_html(b: dict, for_admin: bool) -> str:
             lines = [f"{label}: {_e(_detail_value(k, b.get(k)))}" for k, label in rows if b.get(k)]
             if lines:
                 parts.append(f"<p><strong>{title}</strong><br>" + "<br>".join(lines) + "</p>")
-    elif b.get("venue_address"):
-        parts.append(f"<p>Venue: {_e(', '.join(x for x in [b.get('venue_name'), b.get('venue_address'), b.get('venue_postcode')] if x))}</p>")
     return "".join(parts)
+
+
+async def _booking_customer_extras_html(b: dict) -> str:
+    """Cancellation policy, how the balance is paid and who to call — for customer booking emails."""
+    s = await _get_settings_dict()
+    w = await db.workshops.find_one({"id": b.get("workshop_id")}, {"_id": 0, "cancellation_policy": 1}) or {}
+    policy = str(w.get("cancellation_policy") or "").strip() or DEFAULT_CANCELLATION_POLICY
+    out = ""
+    if _to_float(b.get("balance_due_on_day")) > 0:
+        out += (f"<p>The balance of {_money(b.get('balance_due_on_day'))} is paid on the day "
+                "— cash or card on the day is fine.</p>")
+    out += f"<p><strong>Cancellation policy:</strong> {_e(policy)}</p>"
+    phone = str(s.get("phone_number") or "").strip()
+    if phone:
+        out += f"<p>Any questions? Just reply to this email or call us on {_e(phone)}.</p>"
+    return out
 
 
 _BOOKING_DETAIL_SECTIONS = [
@@ -3821,16 +3920,18 @@ async def _send_booking_bank_transfer_emails(booking_id: str) -> None:
             return
         s = await _get_settings_dict()
         bank = (
-            f"<p><strong>Please pay {_money(b.get('amount_due_now'))} by bank transfer to:</strong><br>"
+            f"<p><strong>Please transfer {_money(b.get('amount_due_now'))} to:</strong><br>"
             f"Account name: {_e(s.get('bank_account_name'))}<br>"
-            f"Sort code: {_e(s.get('bank_sort_code'))}<br>"
-            f"Account number: {_e(s.get('bank_account_number'))}<br>"
             + (f"Bank: {_e(s.get('bank_name'))}<br>" if s.get("bank_name") else "")
-            + f"Reference: <strong>{_e(b.get('bank_reference'))}</strong></p>"
-            "<p>Your places are held for you — we'll confirm as soon as the payment arrives.</p>"
+            + f"Sort code: {_e(s.get('bank_sort_code'))}<br>"
+            f"Account number: {_e(s.get('bank_account_number'))}<br>"
+            f"Reference: <strong>{_e(b.get('bank_reference'))}</strong></p>"
+            "<p>Your place is held provisionally — it's not secured until payment is received. "
+            "If you can, please make the transfer within 3 days, and we'll confirm by email as soon as it arrives.</p>"
         )
+        extras = await _booking_customer_extras_html(b)
         await _send_email(b.get("email"), f"Your workshop booking — payment details ({b.get('bank_reference')})",
-                          _email_wrap("Thank you for booking", _booking_summary_html(b, False) + bank))
+                          _email_wrap("Thank you for booking", _booking_summary_html(b, False) + bank + extras))
         admin_to = await _admin_email()
         if admin_to:
             await _send_email(admin_to, f"New workshop booking (bank transfer) {b.get('bank_reference')}",
@@ -3844,14 +3945,39 @@ async def _send_booking_paid_emails(booking_id: str) -> None:
         b = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
         if not b:
             return
+        extras = await _booking_customer_extras_html(b)
         await _send_email(b.get("email"), "Your workshop booking is confirmed",
-                          _email_wrap("You're booked in", "<p>We've received your payment — see you there!</p>" + _booking_summary_html(b, False)))
+                          _email_wrap("You're booked in", "<p>We've received your payment — see you there!</p>"
+                                      + _booking_summary_html(b, False) + extras))
         admin_to = await _admin_email()
         if admin_to:
             await _send_email(admin_to, f"Workshop booking paid — {b.get('name')} ×{b.get('guests')}",
                               _email_wrap("Workshop booking paid", _booking_summary_html(b, True)))
     except Exception as e:  # noqa: BLE001
         logger.error(f"Booking paid email error for {booking_id}: {e}")
+
+
+async def _send_booking_cancelled_email(booking_id: str) -> None:
+    try:
+        b = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
+        if not b:
+            return
+        when = _friendly_when(b.get("session_date"), b.get("session_start_time"), b.get("session_end_time"))
+        s = await _get_settings_dict()
+        phone = str(s.get("phone_number") or "").strip()
+        body = (
+            f"<p>Hi {_e((b.get('name') or '').split(' ')[0] or 'there')},</p>"
+            f"<p>Your booking for <strong>{_e(b.get('workshop_name'))}</strong>"
+            + (f" on {_e(when)}" if when else "")
+            + " has been cancelled.</p>"
+            "<p>If you've already paid, we'll be in touch about any refund.</p>"
+            "<p>If you think this is a mistake, or you'd like to book another date, just reply to this email"
+            + (f" or call us on {_e(phone)}" if phone else "")
+            + ".</p>"
+        )
+        await _send_email(b.get("email"), "Your workshop booking has been cancelled", _email_wrap("Booking cancelled", body))
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Booking cancelled email error for {booking_id}: {e}")
 
 
 async def _mark_booking_paid(booking_id: str, stripe_session_id: Optional[str] = None, source: str = "") -> bool:
@@ -3899,16 +4025,43 @@ async def _mark_booking_paid(booking_id: str, stripe_session_id: Optional[str] =
     return True
 
 
+def _session_bookable_via_programme(workshop: dict, session: dict) -> bool:
+    """Public sessions need an active, non-hidden programme. Private session links (sent to one customer)
+    work as long as the session itself is active, even if the programme is hidden or switched off."""
+    if session.get("private"):
+        return True
+    return workshop.get("active") is not False and not workshop.get("hidden")
+
+
+def _session_is_past(session: dict) -> bool:
+    """True once the session's start (Europe/London) has passed. No start time = bookable until the end of that day."""
+    try:
+        day = datetime.strptime(str(session.get("date") or "")[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return False
+    now = datetime.now(LONDON_TZ)
+    if day != now.date():
+        return day < now.date()
+    raw = str(session.get("start_time") or "").strip()
+    try:
+        hh, mm = raw.split(":")[:2]
+        start = (int(hh), int(mm[:2]))
+    except (ValueError, IndexError):
+        return False  # today, no (readable) start time: still bookable today
+    return (now.hour, now.minute) >= start
+
+
 # ---- Public workshop listing ----
 @api_router.get("/workshops", response_model=List[WorkshopResponse])
 async def list_workshops(active_only: bool = True):
     q = {"active": True} if active_only else {}
+    q["hidden"] = {"$ne": True}  # private one-off programmes are only reachable by their session links
     docs = await db.workshops.find(q).sort([("sort_order", 1), ("name", 1)]).to_list(length=200)
     return [WorkshopResponse(**{**d, "id": d["id"]}) for d in docs]
 
 @api_router.get("/workshops/{slug}", response_model=WorkshopResponse)
 async def get_workshop_by_slug(slug: str):
-    doc = await db.workshops.find_one({"slug": slug, "active": True}, {"_id": 0})
+    doc = await db.workshops.find_one({"slug": slug, "active": True, "hidden": {"$ne": True}}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Workshop not found")
     return WorkshopResponse(**doc)
@@ -3916,7 +4069,7 @@ async def get_workshop_by_slug(slug: str):
 @api_router.get("/workshops/{slug}/sessions", response_model=List[WorkshopSessionResponse])
 async def list_workshop_sessions_by_slug(slug: str):
     """Public — upcoming, active, non-private sessions for a workshop."""
-    w = await db.workshops.find_one({"slug": slug, "active": True}, {"_id": 0})
+    w = await db.workshops.find_one({"slug": slug, "active": True, "hidden": {"$ne": True}}, {"_id": 0})
     if not w:
         raise HTTPException(404, "Workshop not found")
     today = _london_today().isoformat()
@@ -3935,8 +4088,11 @@ async def get_public_workshop_session(session_id: str):
     session = await db.workshop_sessions.find_one({"id": session_id, "active": True}, {"_id": 0})
     if not session:
         raise HTTPException(404, "Session not found")
-    workshop = await db.workshops.find_one({"id": session["workshop_id"], "active": True}, {"_id": 0})
+    workshop = await db.workshops.find_one({"id": session["workshop_id"]}, {"_id": 0})
     if not workshop:
+        raise HTTPException(404, "Workshop not found")
+    # Private links keep working for hidden / inactive programmes; public sessions need a live, listed programme.
+    if not _session_bookable_via_programme(workshop, session):
         raise HTTPException(404, "Workshop not found")
     return {
         "session": WorkshopSessionResponse(**{**session, "id": session["id"]}).model_dump(),
@@ -4039,12 +4195,17 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
     workshop = await db.workshops.find_one({"id": session["workshop_id"]}, {"_id": 0})
     if not workshop:
         raise HTTPException(404, "Workshop not found")
-    if workshop.get("active") is False:
+    if not _session_bookable_via_programme(workshop, session):
         raise HTTPException(400, "This workshop is not currently taking bookings")
     if (workshop.get("booking_mode") or "direct") != "direct" and not session.get("private"):
         raise HTTPException(400, "This workshop is booked by enquiry — please contact us")
-    if str(session.get("date") or "") < _london_today().isoformat():
+    if _session_is_past(session):
         raise HTTPException(400, "This session has already taken place")
+    name, phone = (data.name or "").strip(), (data.phone or "").strip()
+    if not name:
+        raise HTTPException(400, "Please enter your name")
+    if not phone:
+        raise HTTPException(400, "Please enter a phone number so we can reach you about your booking")
     if data.payment_choice not in ("deposit", "full"):
         raise HTTPException(400, "payment_choice must be 'deposit' or 'full'")
     if session.get("at_customer_venue") and not (data.venue_address.strip() and data.venue_postcode.strip()):
@@ -4060,7 +4221,7 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         raise HTTPException(400, f"This session has a maximum of {capacity} guest(s)")
     spots_remaining = max(0, capacity - int(session.get("spots_booked", 0) or 0))
     if data.guests > spots_remaining:
-        raise HTTPException(400, f"Only {spots_remaining} spot(s) remaining for this session")
+        raise HTTPException(400, f"Sorry, only {spots_remaining} place{'' if spots_remaining == 1 else 's'} left for this session")
 
     is_bank_transfer = data.payment_method == "bank_transfer"
     if is_bank_transfer and not _bank_transfer_enabled(await _get_settings_dict()):
@@ -4092,9 +4253,9 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
         "session_start_time": session.get("start_time", ""),
         "session_end_time": session.get("end_time", ""),
         "session_location": session.get("location") or workshop.get("location_default", ""),
-        "name": data.name,
+        "name": name,
         "email": _norm_email(data.email),
-        "phone": data.phone,
+        "phone": phone,
         "guests": data.guests,
         "dietary_requirements": data.dietary_requirements,
         "notes": data.notes,
@@ -4254,7 +4415,7 @@ async def admin_cancel_booking(booking_id: str, admin=Depends(require_admin)):
     booking = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(404, "Booking not found")
-    await db.workshop_bookings.update_one(
+    cancelled = await db.workshop_bookings.update_one(
         {"id": booking_id, "status": {"$ne": "cancelled"}},
         {"$set": {"status": "cancelled", "cancelled_at": _now_iso()}},
     )
@@ -4268,6 +4429,8 @@ async def admin_cancel_booking(booking_id: str, admin=Depends(require_admin)):
     )
     if release.modified_count == 1:
         await _release_spots(booking["session_id"], int(booking.get("guests", 1) or 1))
+    if cancelled.modified_count == 1:
+        _fire(_send_booking_cancelled_email(booking_id))  # only on the first cancel, never twice
     updated = await db.workshop_bookings.find_one({"id": booking_id}, {"_id": 0})
     return _ws_serialise_booking(updated, updated.get("workshop_name", ""))
 

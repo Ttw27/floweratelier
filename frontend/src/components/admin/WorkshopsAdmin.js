@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Pencil, Trash2, Calendar, X, ChevronRight } from "lucide-react";
-import { workshopPricePerGuest } from "../../lib/workshopPricing";
+import { workshopPricePerGuest, isSessionPast, londonTodayIso } from "../../lib/workshopPricing";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -28,7 +28,7 @@ const emptyWorkshop = () => ({
   booking_mode: "direct",
   enquire_pitch: "", enquire_venues: "", enquire_bullets: "",
   whatsapp_message: "",
-  sort_order: 0, active: true,
+  sort_order: 0, active: true, hidden: false,
 });
 
 const emptySession = (workshop_id) => ({
@@ -78,6 +78,41 @@ function BookingDetails({ b }) {
   );
 }
 
+// £45 or £45.50
+const money = (v) => {
+  const n = Math.round((Number(v) || 0) * 100) / 100;
+  return Number.isInteger(n) ? `£${n}` : `£${n.toFixed(2)}`;
+};
+
+const METHOD_LABELS = { stripe: "Card", bank_transfer: "Bank transfer" };
+const CHOICE_LABELS = { deposit: "Deposit", full: "Paid in full" };
+const STATUS_LABELS = { awaiting_bank_transfer: "Awaiting payment", paid: "Paid", pending: "Pending", cancelled: "Cancelled" };
+
+const isAwaitingPayment = (b) => b.status !== "cancelled" && b.payment_status !== "paid" && b.payment_method === "bank_transfer";
+
+// Bank-transfer bookings still unpaid more than 3 days after they were made (flag only — nothing is auto-cancelled)
+const isUnpaidTooLong = (b) => {
+  if (!isAwaitingPayment(b) || !b.created_at) return false;
+  const created = new Date(b.created_at).getTime();
+  return !Number.isNaN(created) && Date.now() - created > 3 * 24 * 60 * 60 * 1000;
+};
+
+// What the customer still has to pay
+function owesLabel(b) {
+  if (b.status === "cancelled") return "—";
+  const onDay = Number(b.balance_due_on_day) || 0;
+  if (b.payment_status === "paid") return onDay > 0 ? `${money(onDay)} on day` : "Nothing";
+  const now = Number(b.amount_due_now) || 0;
+  return onDay > 0 ? `${money(now)} now · ${money(onDay)} on day` : `${money(now)} now`;
+}
+
+const BOOKING_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "awaiting", label: "Awaiting payment" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "cancelled", label: "Cancelled" },
+];
+
 const fmtDate = (iso) => {
   if (!iso) return "";
   try { return new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
@@ -95,6 +130,8 @@ export default function WorkshopsAdmin() {
   const [quickAdd, setQuickAdd] = useState(null);
   const [quickAddDone, setQuickAddDone] = useState(null); // { link } once created, if private
   const [sessionFilter, setSessionFilter] = useState("");
+  const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingFilter, setBookingFilter] = useState("all"); // "all" still hides cancelled — use "Cancelled" to see them
   const [saving, setSaving] = useState(false);
 
   const loadWorkshops = async () => {
@@ -154,6 +191,7 @@ export default function WorkshopsAdmin() {
           : (w.enquire_bullets || []),
         whatsapp_message: w.whatsapp_message || "",
         sort_order: parseInt(w.sort_order) || 0, active: !!w.active,
+        hidden: !!w.hidden,
       };
       if (w.id) await axios.put(`${API_URL}/api/admin/workshops/${w.id}`, payload);
       else await axios.post(`${API_URL}/api/admin/workshops`, payload);
@@ -203,6 +241,8 @@ export default function WorkshopsAdmin() {
         enquire_pitch: "", enquire_venues: [], enquire_bullets: [],
         whatsapp_message: "",
         sort_order: 0, active: true,
+        // A private one-off must not appear on the public Workshops page — its link still works
+        hidden: !!q.private,
       };
       const wRes = await axios.post(`${API_URL}/api/admin/workshops`, workshopPayload);
       const workshopId = wRes.data.id;
@@ -289,6 +329,24 @@ export default function WorkshopsAdmin() {
 
   const wMap = Object.fromEntries(workshops.map((w) => [w.id, w]));
   const filteredSessions = sessionFilter ? sessions.filter((s) => s.workshop_id === sessionFilter) : sessions;
+  // Upcoming first (soonest first), then past sessions (most recent first)
+  const byDateTime = (a, b) => `${a.date || ""} ${a.start_time || ""}`.localeCompare(`${b.date || ""} ${b.start_time || ""}`);
+  const upcomingSessions = filteredSessions.filter((s) => !isSessionPast(s)).sort(byDateTime);
+  const pastSessions = filteredSessions.filter((s) => isSessionPast(s)).sort((a, b) => byDateTime(b, a));
+
+  const visibleBookings = useMemo(() => {
+    const q = bookingSearch.trim().toLowerCase();
+    const today = londonTodayIso();
+    return bookings.filter((b) => {
+      if (bookingFilter === "cancelled") { if (b.status !== "cancelled") return false; }
+      else if (b.status === "cancelled") return false;
+      if (bookingFilter === "awaiting" && !isAwaitingPayment(b)) return false;
+      if (bookingFilter === "upcoming" && !(String(b.session_date || "") >= today)) return false;
+      if (!q) return true;
+      return [b.name, b.email, b.bank_reference, b.organisation_name, b.phone]
+        .some((v) => String(v || "").toLowerCase().includes(q));
+    });
+  }, [bookings, bookingSearch, bookingFilter]);
 
   return (
     <div className="bg-white border border-[#E5E5E5] p-6 md:p-8" data-testid="workshops-admin-card">
@@ -335,15 +393,15 @@ export default function WorkshopsAdmin() {
                 </div>
                 <div className="p-3">
                   <p className="font-body text-[12px] text-[#1A1A1A] truncate">{w.name}</p>
-                  <p className="font-body text-[11px] text-[#7A7A7A] truncate">{w.slug} · £{Number(w.price_per_guest).toFixed(0)}/guest · {w.active ? "Active" : "Hidden"}</p>
+                  <p className="font-body text-[11px] text-[#7A7A7A] truncate">{w.slug} · £{Number(w.price_per_guest).toFixed(0)}/guest · {w.active ? "Active" : "Inactive"}{w.hidden ? " · Private (not listed)" : ""}</p>
                   <div className="flex justify-end gap-2 mt-2">
                     <button onClick={() => setEditingWorkshop({
                       ...w,
                       includes: (w.includes || []).join("\n"),
                       enquire_venues: (w.enquire_venues || []).join("\n"),
                       enquire_bullets: (w.enquire_bullets || []).join("\n"),
-                    })} className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid={`workshops-edit-${w.id}`}><Pencil size={14} /></button>
-                    <button onClick={() => removeWorkshop(w.id)} className="text-[#7A7A7A] hover:text-red-600" data-testid={`workshops-delete-${w.id}`}><Trash2 size={14} /></button>
+                    })} aria-label={`Edit ${w.name}`} className="text-[#7A7A7A] hover:text-[#1A1A1A]" data-testid={`workshops-edit-${w.id}`}><Pencil size={14} /></button>
+                    <button onClick={() => removeWorkshop(w.id)} aria-label={`Delete ${w.name}`} className="text-[#7A7A7A] hover:text-red-600" data-testid={`workshops-delete-${w.id}`}><Trash2 size={14} /></button>
                   </div>
                 </div>
               </div>
@@ -379,10 +437,17 @@ export default function WorkshopsAdmin() {
               </thead>
               <tbody>
                 {filteredSessions.length === 0 && (<tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No sessions.</td></tr>)}
-                {filteredSessions.map((s) => {
+                {[[upcomingSessions, false], [pastSessions, true]].map(([list, past]) => (
+                  <Fragment key={past ? "past" : "upcoming"}>
+                {past && list.length > 0 && (
+                  <tr className="border-t border-[#E5E5E5]" data-testid="sessions-past-divider">
+                    <td colSpan={10} className="px-3 pt-6 pb-2 accent-label text-[#9A9A9A]">Past</td>
+                  </tr>
+                )}
+                {list.map((s) => {
                   const w = wMap[s.workshop_id];
                   return (
-                    <tr key={s.id} className="border-t border-[#E5E5E5]" data-testid={`sessions-row-${s.id}`}>
+                    <tr key={s.id} className={`border-t border-[#E5E5E5] ${past ? "text-[#9A9A9A] bg-[#FAFAF7]" : ""}`} data-testid={`sessions-row-${s.id}`}>
                       <td className="px-3 py-2 text-sm">{w?.name || s.workshop_id}</td>
                       <td className="px-3 py-2 text-sm">{fmtDate(s.date)}</td>
                       <td className="px-3 py-2 text-sm">{s.start_time}{s.end_time ? `–${s.end_time}` : ""}</td>
@@ -399,12 +464,14 @@ export default function WorkshopsAdmin() {
                       <td className="px-3 py-2 text-sm">{s.active ? "Yes" : "No"}</td>
                       <td className="px-3 py-2 text-right whitespace-nowrap">
                         <button onClick={() => copyLink(s.id)} title="Copy booking link" className="text-[#7A7A7A] hover:text-[#1A1A1A] mr-2 text-[11px] uppercase tracking-wider underline">Link</button>
-                        <button onClick={() => setEditingSession({ ...s })} className="text-[#7A7A7A] hover:text-[#1A1A1A] mr-2" data-testid={`sessions-edit-${s.id}`}><Pencil size={14} /></button>
-                        <button onClick={() => removeSession(s.id)} className="text-[#7A7A7A] hover:text-red-600" data-testid={`sessions-delete-${s.id}`}><Trash2 size={14} /></button>
+                        <button onClick={() => setEditingSession({ ...s })} aria-label="Edit session" className="text-[#7A7A7A] hover:text-[#1A1A1A] mr-2" data-testid={`sessions-edit-${s.id}`}><Pencil size={14} /></button>
+                        <button onClick={() => removeSession(s.id)} aria-label="Delete session" className="text-[#7A7A7A] hover:text-red-600" data-testid={`sessions-delete-${s.id}`}><Trash2 size={14} /></button>
                       </td>
                     </tr>
                   );
                 })}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>
@@ -413,18 +480,47 @@ export default function WorkshopsAdmin() {
 
       {/* === BOOKINGS === */}
       {tab === "bookings" && (
+        <div>
+        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3" data-testid="bookings-filters">
+          <Input
+            type="search"
+            value={bookingSearch}
+            onChange={(e) => setBookingSearch(e.target.value)}
+            placeholder="Search name, email, reference or organisation"
+            aria-label="Search bookings"
+            className="light-input rounded-none md:max-w-sm"
+            data-testid="bookings-search"
+          />
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Show bookings">
+            {BOOKING_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setBookingFilter(f.id)}
+                aria-pressed={bookingFilter === f.id}
+                className={`px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] border ${bookingFilter === f.id ? "border-[#1A1A1A] bg-[#1A1A1A] text-white" : "border-[#E5E5E5] text-[#7A7A7A] hover:text-[#1A1A1A] hover:border-[#1A1A1A]"}`}
+                data-testid={`bookings-filter-${f.id}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {bookingFilter === "all" && bookings.some((b) => b.status === "cancelled") && (
+          <p className="font-body text-[11px] text-[#7A7A7A] mb-2">Cancelled bookings are hidden — tap &ldquo;Cancelled&rdquo; to see them.</p>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-[#F2EFEB]">
               <tr>
-                {["Created", "Workshop", "Date", "Name", "Email", "Phone", "Guests", "Dietary", "Payment", "Method", "Paid", "Balance", "Status", ""].map((h) => (
+                {["Created", "Workshop", "Date", "Name", "Email", "Phone", "Guests", "Dietary", "Payment", "Method", "Paid", "Owes", "Status", ""].map((h) => (
                   <th key={h} className="px-3 py-2 text-left accent-label">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {bookings.length === 0 && (<tr><td colSpan={14} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">No bookings yet.</td></tr>)}
-              {bookings.map((b) => (
+              {visibleBookings.length === 0 && (<tr><td colSpan={14} className="px-4 py-8 text-center text-sm text-[#7A7A7A]">{bookings.length === 0 ? "No bookings yet." : "No bookings match."}</td></tr>)}
+              {visibleBookings.map((b) => (
                 <Fragment key={b.id}>
                 <tr className="border-t border-[#E5E5E5]" data-testid={`bookings-row-${b.id}`}>
                   <td className="px-3 py-2 text-xs text-[#7A7A7A]">{b.created_at?.slice(0, 10)}</td>
@@ -435,19 +531,22 @@ export default function WorkshopsAdmin() {
                   <td className="px-3 py-2 text-sm">{b.phone}</td>
                   <td className="px-3 py-2 text-sm">{b.guests}</td>
                   <td className="px-3 py-2 text-xs max-w-[180px] truncate" title={b.dietary_requirements}>{b.dietary_requirements || "—"}</td>
-                  <td className="px-3 py-2 text-xs">{b.payment_choice}</td>
+                  <td className="px-3 py-2 text-xs">{CHOICE_LABELS[b.payment_choice] || b.payment_choice}</td>
                   <td className="px-3 py-2 text-xs">
                     {b.payment_method === "bank_transfer" ? (
-                      <span title={b.bank_reference ? `Ref: ${b.bank_reference}` : ""}>BACS{b.bank_reference ? ` · ${b.bank_reference}` : ""}</span>
-                    ) : "Card"}
+                      <span title={b.bank_reference ? `Ref: ${b.bank_reference}` : ""}>Bank transfer{b.bank_reference ? ` · ${b.bank_reference}` : ""}</span>
+                    ) : (METHOD_LABELS[b.payment_method] || "Card")}
                   </td>
-                  <td className="px-3 py-2 text-sm">£{Number(b.amount_paid).toFixed(2)}</td>
-                  <td className="px-3 py-2 text-sm">£{Number(b.balance_due_on_day).toFixed(2)}</td>
+                  <td className="px-3 py-2 text-sm whitespace-nowrap" data-testid={`bookings-paid-${b.id}`}>{money(b.amount_paid)}</td>
+                  <td className="px-3 py-2 text-sm whitespace-nowrap" data-testid={`bookings-owes-${b.id}`}>{owesLabel(b)}</td>
                   <td className="px-3 py-2">
                     {b.status === "cancelled" ? (
                       <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-red-50 text-red-700" data-testid={`bookings-status-cancelled-${b.id}`}>cancelled</span>
                     ) : (
-                      <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider ${b.payment_status === "paid" ? "bg-[#C4CFC0]" : "bg-[#F2EFEB] text-[#7A7A7A]"}`}>{String(b.payment_status || "").replace(/_/g, " ")}</span>
+                      <span className={`px-2 py-0.5 text-[10px] uppercase tracking-wider ${b.payment_status === "paid" ? "bg-[#C4CFC0]" : "bg-[#F2EFEB] text-[#7A7A7A]"}`}>{STATUS_LABELS[b.payment_status] || String(b.payment_status || "").replace(/_/g, " ")}</span>
+                    )}
+                    {isUnpaidTooLong(b) && (
+                      <span className="ml-1 px-2 py-0.5 text-[10px] uppercase tracking-wider bg-[#FBF3E7] text-[#6B4E00] border border-[#E9C46A]" title="Bank transfer not received after 3 days — maybe send a friendly reminder" data-testid={`bookings-unpaid-3-days-${b.id}`}>Unpaid 3+ days</span>
                     )}
                     {b.overbooked && (
                       <span className="ml-1 px-2 py-0.5 text-[10px] uppercase tracking-wider bg-red-100 text-red-700" data-testid={`bookings-overbooked-${b.id}`}>Overbooked</span>
@@ -484,15 +583,16 @@ export default function WorkshopsAdmin() {
             </tbody>
           </table>
         </div>
+        </div>
       )}
 
       {/* === Edit workshop modal === */}
       {editingWorkshop && (
-        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingWorkshop(null)}>
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-start md:items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingWorkshop(null)}>
           <form onClick={(e) => e.stopPropagation()} onSubmit={saveWorkshop} className="bg-white max-w-2xl w-full p-6 md:p-8 max-h-[95vh] overflow-y-auto" data-testid="workshops-edit-form">
             <div className="flex justify-between items-center mb-6">
               <h4 className="font-heading text-xl">{editingWorkshop.id ? "Edit workshop" : "Add workshop"}</h4>
-              <button type="button" onClick={() => setEditingWorkshop(null)}><X size={18} /></button>
+              <button type="button" onClick={() => setEditingWorkshop(null)} aria-label="Close"><X size={18} /></button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Slug (URL)"><Input value={editingWorkshop.slug} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, slug: e.target.value })} placeholder="christmas-wreath" className="light-input rounded-none" data-testid="workshops-form-slug" /></Field>
@@ -518,7 +618,7 @@ export default function WorkshopsAdmin() {
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <label className={`border p-3 cursor-pointer ${editingWorkshop.booking_mode !== "enquire" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5]"}`}>
                     <input type="radio" name="booking_mode" value="direct" checked={editingWorkshop.booking_mode !== "enquire"} onChange={() => setEditingWorkshop({ ...editingWorkshop, booking_mode: "direct" })} className="mr-2" data-testid="workshops-form-mode-direct" />
-                    <strong className="text-sm text-[#1A1A1A]">Direct (Stripe)</strong>
+                    <strong className="text-sm text-[#1A1A1A]">Direct booking (online)</strong>
                     <p className="text-[11px] text-[#7A7A7A] mt-1">Customers pick a dated session and pay deposit or full.</p>
                   </label>
                   <label className={`border p-3 cursor-pointer ${editingWorkshop.booking_mode === "enquire" ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A]" : "border-[#E5E5E5]"}`}>
@@ -542,6 +642,13 @@ export default function WorkshopsAdmin() {
                 <input type="checkbox" checked={editingWorkshop.active} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, active: e.target.checked })} />
                 <span className="font-body text-xs text-[#1A1A1A]">Active</span>
               </label>
+              <label className="flex items-start gap-2 cursor-pointer md:col-span-2">
+                <input type="checkbox" className="mt-1" checked={!!editingWorkshop.hidden} onChange={(e) => setEditingWorkshop({ ...editingWorkshop, hidden: e.target.checked })} data-testid="workshops-form-hidden" />
+                <span>
+                  <span className="font-body text-xs text-[#1A1A1A] block">Hidden from the public Workshops page</span>
+                  <span className="font-body text-[11px] text-[#7A7A7A]">For private one-offs. Private booking links for its dates still work.</span>
+                </span>
+              </label>
             </div>
             <div className="flex gap-3 mt-6">
               <Button type="submit" disabled={saving} className="btn-dark rounded-none" data-testid="workshops-form-save">{saving ? "Saving…" : "Save"}</Button>
@@ -553,11 +660,11 @@ export default function WorkshopsAdmin() {
 
       {/* === Edit session modal === */}
       {editingSession && (
-        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingSession(null)}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={saveSession} className="bg-white max-w-lg w-full p-6 md:p-8" data-testid="sessions-edit-form">
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-start md:items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingSession(null)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveSession} className="bg-white max-w-lg w-full p-6 md:p-8 max-h-[90vh] overflow-y-auto" data-testid="sessions-edit-form">
             <div className="flex justify-between items-center mb-6">
               <h4 className="font-heading text-xl">{editingSession.id ? "Edit session" : "Add session"}</h4>
-              <button type="button" onClick={() => setEditingSession(null)}><X size={18} /></button>
+              <button type="button" onClick={() => setEditingSession(null)} aria-label="Close"><X size={18} /></button>
             </div>
             <div className="space-y-4">
               <Field label="Workshop">
@@ -621,11 +728,11 @@ export default function WorkshopsAdmin() {
 
       {/* === QUICK ADD — one form: workshop + first date === */}
       {quickAdd && (
-        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setQuickAdd(null)}>
-          <form onClick={(e) => e.stopPropagation()} onSubmit={saveQuickAdd} className="bg-white max-w-lg w-full p-6 md:p-8" data-testid="workshops-quick-add-form">
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-start md:items-center justify-center p-4 overflow-y-auto" onClick={() => setQuickAdd(null)}>
+          <form onClick={(e) => e.stopPropagation()} onSubmit={saveQuickAdd} className="bg-white max-w-lg w-full p-6 md:p-8 max-h-[90vh] overflow-y-auto" data-testid="workshops-quick-add-form">
             <div className="flex justify-between items-center mb-6">
               <h4 className="font-heading text-xl">Add workshop</h4>
-              <button type="button" onClick={() => setQuickAdd(null)}><X size={18} /></button>
+              <button type="button" onClick={() => setQuickAdd(null)} aria-label="Close"><X size={18} /></button>
             </div>
             <div className="space-y-4">
               <Field label="Workshop name"><Input value={quickAdd.name} onChange={(e) => setQuickAdd({ ...quickAdd, name: e.target.value })} placeholder="e.g. Wreath Making Workshop" className="light-input rounded-none" data-testid="quick-add-name" /></Field>
@@ -648,7 +755,7 @@ export default function WorkshopsAdmin() {
                   <input type="checkbox" checked={quickAdd.private} onChange={(e) => setQuickAdd({ ...quickAdd, private: e.target.checked })} data-testid="quick-add-private" />
                   <span>
                     <span className="font-body text-sm text-[#1A1A1A] block">Private booking</span>
-                    <span className="font-body text-[11px] text-[#7A7A7A]">Hidden from the public Workshops page. Only bookable via a direct link — you'll get one to copy after saving.</span>
+                    <span className="font-body text-[11px] text-[#7A7A7A]">Won't appear on the public Workshops page at all. Only bookable via a direct link — you'll get one to copy after saving.</span>
                   </span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer mt-3">
