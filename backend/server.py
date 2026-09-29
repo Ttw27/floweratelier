@@ -26,7 +26,13 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Config
-JWT_SECRET = os.environ.get('JWT_SECRET', 'florist-secret-key-2024')
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    # No guessable fallback — a public default would let anyone forge admin tokens.
+    # A random per-boot secret means admins just log in again after a restart.
+    import secrets as _secrets
+    JWT_SECRET = _secrets.token_urlsafe(48)
+    logging.getLogger(__name__).warning("JWT_SECRET not set — using a random secret; set it on Railway.")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
@@ -890,13 +896,12 @@ async def stripe_webhook(request: Request):
     stripe_lib.api_key = api_key
 
     try:
-        if webhook_secret:
-            event = stripe_lib.Webhook.construct_event(body, signature, webhook_secret)
-        else:
-            # No webhook secret configured yet — fall back to unverified parsing.
-            # Payment confirmation still works via the /checkout/status polling on the success page,
-            # so this only affects the belt-and-braces webhook path.
-            event = json.loads(body)
+        if not webhook_secret:
+            # Unverified events could be forged to mark orders/bookings as paid, so ignore them.
+            # Payment confirmation still works via the /checkout/status polling on the success page.
+            logger.warning("Stripe webhook received but STRIPE_WEBHOOK_SECRET is not set — ignored")
+            return {"status": "ignored"}
+        event = stripe_lib.Webhook.construct_event(body, signature, webhook_secret)
 
         event_type = event["type"] if isinstance(event, dict) else event.type
         obj = event["data"]["object"] if isinstance(event, dict) else event.data.object
@@ -1052,19 +1057,16 @@ async def admin_delete_portfolio(item_id: str, admin = Depends(require_admin)):
 # ==================== SEED DATA ====================
 
 @api_router.post("/seed")
-async def seed_data(reset: bool = False):
-    # Always reseed if reset=true or if versioning changes
-    existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
+async def seed_data(admin=Depends(require_admin)):
+    # Insert-only first-run seed. NEVER deletes or overwrites anything: if the catalogue
+    # has ever been seeded, or already contains any categories/products/portfolio items,
+    # this is a no-op. Admin-added and admin-edited content must never be reset.
     current_version = "v7-leicester-r7"
-    already_current = existing_version and existing_version.get("value") == current_version
-
-    if already_current and not reset:
-        return {"message": "Data already seeded", "version": current_version}
-
-    # Wipe catalog data for a clean reseed, but preserve manually-added items
-    await db.categories.delete_many({"seeded": True})   # Only delete seeded categories
-    await db.products.delete_many({"seeded": True})      # Only delete seeded products
-    await db.portfolio.delete_many({"seeded": True})     # Only delete seeded portfolio items
+    existing_version = await db.system.find_one({"key": "seed_version"}, {"_id": 0})
+    if existing_version or await db.categories.count_documents({}) > 0 \
+            or await db.products.count_documents({}) > 0 \
+            or await db.portfolio.count_documents({}) > 0:
+        return {"message": "Catalogue already has data — nothing changed", "version": current_version}
 
     # Premium luxury categories (light aesthetic)
     categories = [
@@ -1777,20 +1779,6 @@ async def seed_data(reset: bool = False):
         item["seeded"] = True  # Mark as seeded so manual items are never deleted
     await db.portfolio.insert_many(portfolio_items)
 
-    # Ensure admin user exists (idempotent)
-    admin_email = "admin@petalsatelier.com"
-    existing_admin = await db.users.find_one({"email": admin_email})
-    if not existing_admin:
-        admin_doc = {
-            "id": str(uuid.uuid4()),
-            "email": admin_email,
-            "password": hash_password("admin123"),
-            "name": "Admin",
-            "is_admin": True,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        await db.users.insert_one(admin_doc)
-
     # Record version
     await db.system.update_one(
         {"key": "seed_version"},
@@ -2181,10 +2169,8 @@ async def delete_template(tid: str, admin=Depends(require_admin)):
 
 # Seed starter categories + templates
 @api_router.post("/seed/templates")
-async def seed_templates(reset: bool = False, admin=Depends(require_admin)):
-    if reset:
-        await db.template_categories.delete_many({"seeded": True})
-        await db.design_templates.delete_many({"seeded": True})
+async def seed_templates(admin=Depends(require_admin)):
+    # Insert-only: never deletes existing (seeded or admin-edited) records.
 
     if await db.template_categories.count_documents({}) == 0:
         for c in [
@@ -2250,9 +2236,8 @@ BOX_SEED = [
 ]
 
 @api_router.post("/seed/boxes")
-async def seed_boxes(reset: bool = False, admin=Depends(require_admin)):
-    if reset:
-        await db.boxes.delete_many({"seeded": True})
+async def seed_boxes(admin=Depends(require_admin)):
+    # Insert-only: never deletes existing (seeded or admin-edited) records.
     if await db.boxes.count_documents({}) == 0:
         for b in BOX_SEED:
             await db.boxes.insert_one({**b, "id": str(uuid.uuid4()), "active": True, "seeded": True})
@@ -2315,10 +2300,8 @@ ADDON_SEED = [
 ]
 
 @api_router.post("/seed/cards-addons")
-async def seed_cards_addons(reset: bool = False, admin=Depends(require_admin)):
-    if reset:
-        await db.cards.delete_many({"seeded": True})
-        await db.addons.delete_many({"seeded": True})
+async def seed_cards_addons(admin=Depends(require_admin)):
+    # Insert-only: never deletes existing (seeded or admin-edited) records.
     cards_count = await db.cards.count_documents({})
     if cards_count == 0:
         for c in CARD_SEED:
@@ -2688,9 +2671,8 @@ PAGE_CONTENT_SEED = [
 ]
 
 @api_router.post("/seed/page-content")
-async def seed_page_content(reset: bool = False, admin=Depends(require_admin)):
-    if reset:
-        await db.page_content.delete_many({"seeded": True})
+async def seed_page_content(admin=Depends(require_admin)):
+    # Insert-only: never deletes existing (seeded or admin-edited) records.
     existing_slugs = set([d["slug"] for d in await db.page_content.find({}, {"slug": 1}).to_list(200)])
     inserted = 0
     for p in PAGE_CONTENT_SEED:
@@ -3222,10 +3204,8 @@ WORKSHOP_SEED = [
 ]
 
 @api_router.post("/seed/workshops")
-async def seed_workshops(reset: bool = False, admin=Depends(require_admin)):
-    if reset:
-        await db.workshops.delete_many({"seeded": True})
-        await db.workshop_sessions.delete_many({"seeded": True})
+async def seed_workshops(admin=Depends(require_admin)):
+    # Insert-only: never deletes existing (seeded or admin-edited) records.
     if await db.workshops.count_documents({}) == 0:
         for w in WORKSHOP_SEED:
             doc = {

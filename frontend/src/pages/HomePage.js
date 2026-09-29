@@ -93,7 +93,6 @@ export default function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        await axios.post(`${API_URL}/api/seed`).catch(() => {});
         const res = await axios.get(`${API_URL}/api/products`);
         setProducts(res.data);
       } catch (e) { /* silent */ }

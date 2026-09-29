@@ -54,12 +54,12 @@ export default function AdminPage() {
     images: "", in_stock: true, featured: false, occasion_tags: "",
   });
 
-  const { settings, refresh: refreshSettings } = useSettings();
+  const { settings, fresh: settingsFresh, refresh: refreshSettings } = useSettings();
   const [settingsForm, setSettingsForm] = useState(null);
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
-    if (settings) {
+    if (settings && settingsFresh) {
       setSettingsForm({
         utility_bar_text: settings.utility_bar_text || "",
         utility_bar_enabled: settings.utility_bar_enabled !== false,
@@ -87,7 +87,7 @@ export default function AdminPage() {
         seo_site_name: settings.seo_site_name || "Flower Atelier",
       });
     }
-  }, [settings]);
+  }, [settings, settingsFresh]);
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
@@ -264,7 +264,7 @@ export default function AdminPage() {
           )}
 
           <TabsContent value="homepage">
-            <HomepageAdmin settings={settings} onSaved={refreshSettings} />
+            <HomepageAdmin settings={settingsFresh ? settings : null} onSaved={refreshSettings} />
           </TabsContent>
 
           <TabsContent value="orders" data-testid="admin-orders-content">

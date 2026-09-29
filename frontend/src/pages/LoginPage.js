@@ -53,12 +53,6 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
-
-        <div className="mt-6 p-4 bg-[#F2EFEB] text-center">
-          <p className="font-body text-[11px] uppercase tracking-[0.2em] text-[#7A7A7A]">
-            Demo · admin@petalsatelier.com / admin123
-          </p>
-        </div>
       </div>
     </div>
   );

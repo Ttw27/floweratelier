@@ -37,7 +37,8 @@ export default function HomepageAdmin({ settings, onSaved }) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API_URL}/api/settings`, { ...settings, ...form });
+      // Send only this form's fields — the server merges them, so other settings are untouched
+      await axios.put(`${API_URL}/api/settings`, form);
       try { sessionStorage.removeItem("site_settings"); } catch {}  // Clear cache so new images show immediately
       toast.success("Homepage updated");
       if (onSaved) onSaved();
