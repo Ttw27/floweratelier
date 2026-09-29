@@ -122,7 +122,13 @@ def _post_resend(api_key: str, payload: dict) -> int:
     req = urllib.request.Request(
         "https://api.resend.com/emails",
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        # A real User-Agent is required: Resend's firewall rejects Python's default one with 403
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "FlowerAtelier-Website/1.0 (+https://www.floweratelier.co.uk)",
+        },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
@@ -531,12 +537,13 @@ async def send_test_email(admin = Depends(require_admin)):
     try:
         await asyncio.to_thread(_post_resend, api_key, payload)
     except urllib.error.HTTPError as e:
-        detail = ""
+        raw = ""
         try:
-            detail = json.loads(e.read().decode("utf-8")).get("message", "")
+            raw = e.read().decode("utf-8", "replace")
+            detail = json.loads(raw).get("message", "") or raw
         except Exception:  # noqa: BLE001
-            pass
-        raise HTTPException(400, f"Resend refused the email: {detail or e.reason}")
+            detail = raw
+        raise HTTPException(400, f"Resend refused the email ({e.code}): {(detail or e.reason)[:300]}")
     except Exception as e:  # noqa: BLE001
         raise HTTPException(400, f"Could not reach Resend: {e}")
     return {"ok": True, "to": to, "from": EMAIL_FROM}
