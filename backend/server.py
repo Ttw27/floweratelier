@@ -1284,6 +1284,18 @@ def _bank_transfer_enabled(settings: dict) -> bool:
     return bool(str(settings.get("bank_account_number") or "").strip() and str(settings.get("bank_sort_code") or "").strip())
 
 
+def _bank_details(settings: dict) -> Optional[dict]:
+    """The shop's bank details for customers paying by transfer (these are shown to every BACS customer)."""
+    if not _bank_transfer_enabled(settings):
+        return None
+    return {
+        "account_name": str(settings.get("bank_account_name") or "").strip(),
+        "bank_name": str(settings.get("bank_name") or "").strip(),
+        "sort_code": str(settings.get("bank_sort_code") or "").strip(),
+        "account_number": str(settings.get("bank_account_number") or "").strip(),
+    }
+
+
 @api_router.get("/payment-methods")
 async def get_payment_methods():
     """Public — tells the frontend which payment methods are currently usable."""
@@ -1291,6 +1303,7 @@ async def get_payment_methods():
     return {
         "card_enabled": bool(os.environ.get("STRIPE_API_KEY")),
         "bank_transfer_enabled": _bank_transfer_enabled(settings),
+        "bank_details": _bank_details(settings),
     }
 
 
@@ -3623,6 +3636,7 @@ class WorkshopBookingResponse(BaseModel):
     overbooked: bool = False
     refund_needed: bool = False
     stripe_session_id: Optional[str] = None
+    bank_details: Optional[Dict] = None   # only on the create response for bank-transfer bookings
     created_at: str
 
 class WorkshopCheckoutRequest(BaseModel):
@@ -4129,7 +4143,10 @@ async def create_workshop_booking(data: WorkshopBookingCreate):
     doc.pop("_id", None)
     if is_bank_transfer:
         _fire(_send_booking_bank_transfer_emails(booking_id))
-    return _ws_serialise_booking(doc, workshop["name"])
+    resp = _ws_serialise_booking(doc, workshop["name"])
+    if is_bank_transfer:
+        resp.bank_details = _bank_details(await _get_settings_dict())
+    return resp
 
 
 @api_router.post("/workshop-checkout/session")

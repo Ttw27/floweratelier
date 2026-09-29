@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { X, Calendar, Clock, MapPin, Users, MessageCircle, Phone, CheckCircle2, Copy } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Users, MessageCircle, Phone, CheckCircle2 } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
+import BankDetails, { pickBankDetails } from "./BankDetails";
 import { getContact, whatsappHref } from "../lib/contact";
 import { calcWorkshopAmounts, workshopPricePerGuest, isSessionPast, fmtWorkshopDate as fmtDate } from "../lib/workshopPricing";
 
@@ -26,12 +27,15 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
   const [bankEnabled, setBankEnabled] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+  const [bankFromApi, setBankFromApi] = useState(null);
+  const bankDetails = pickBankDetails(confirmedBooking?.bank_details, bankFromApi, settings);
 
   useEffect(() => {
     axios.get(`${API_URL}/api/payment-methods`)
       .then((r) => {
         setCardEnabled(!!r.data?.card_enabled);
         setBankEnabled(!!r.data?.bank_transfer_enabled);
+        setBankFromApi(r.data?.bank_details || null);
       })
       .catch(() => { setCardEnabled(true); setBankEnabled(false); }); // fail open for card
   }, []);
@@ -145,7 +149,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
 
         <div className="flex-1 overflow-y-auto p-5 md:p-7">
           {confirmedBooking && (
-            <BankTransferConfirmation booking={confirmedBooking} workshop={workshop} session={selectedSession} settings={settings} onCopy={copyText} onClose={onClose} />
+            <BankTransferConfirmation booking={confirmedBooking} workshop={workshop} session={selectedSession} settings={settings} bankDetails={bankDetails} onCopy={copyText} onClose={onClose} />
           )}
 
           {!confirmedBooking && step === 1 && (
@@ -231,7 +235,7 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
               </div>
 
               <div>
-                <Label className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(food &amp; drink is served)</span></Label>
+                <Label className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(only if food &amp; drink has been arranged with us — extra charges apply)</span></Label>
                 <Textarea rows={2} value={form.dietary_requirements} onChange={(e) => setForm({ ...form, dietary_requirements: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. gluten-free, vegan, nut allergy" data-testid="workshop-booking-dietary" />
               </div>
 
@@ -323,10 +327,18 @@ export default function WorkshopBookingModal({ open, workshop, onClose }) {
                     </p>
                   )}
                   {paymentMethod === "bank_transfer" && (
-                    <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mt-3">
-                      <p className="text-[12px] text-[#6B4E00] leading-relaxed">
-                        <strong>Please note:</strong> your place is held provisionally and is not secured until we&rsquo;ve received your bank transfer — please send payment as soon as possible.
-                      </p>
+                    <div className="mt-3 space-y-3">
+                      <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3">
+                        <p className="text-[12px] text-[#6B4E00] leading-relaxed">
+                          <strong>Please note:</strong> your place is held provisionally and is not secured until we&rsquo;ve received your bank transfer — please send payment as soon as possible. You&rsquo;ll get your payment reference on the next screen and by email.
+                        </p>
+                      </div>
+                      {bankDetails && (
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.18em] text-[#B3A89B] mb-2">Our bank details</p>
+                          <BankDetails details={bankDetails} compact />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -419,7 +431,7 @@ function ContactToBookPanel({ settings, workshop, session }) {
   );
 }
 
-function BankTransferConfirmation({ booking: b, workshop, session, settings, onCopy, onClose }) {
+function BankTransferConfirmation({ booking: b, workshop, session, settings, bankDetails, onCopy, onClose }) {
   const contact = getContact(settings);
   const dateStr = fmtDate(b.session_date || session?.date);
   return (
@@ -436,26 +448,13 @@ function BankTransferConfirmation({ booking: b, workshop, session, settings, onC
         </p>
       </div>
 
-      <div className="bg-white border border-[#E5E5E5] p-5 mb-5 space-y-2">
-        {settings?.bank_account_name && <Row label="Account name" value={settings.bank_account_name} />}
-        {settings?.bank_name && <Row label="Bank" value={settings.bank_name} />}
-        {settings?.bank_sort_code && <Row label="Sort code" value={settings.bank_sort_code} />}
-        {settings?.bank_account_number && <Row label="Account number" value={settings.bank_account_number} />}
-        {!settings?.bank_sort_code && !settings?.bank_account_number && (
-          <p className="text-[12px] text-[#5A5A5A]">
-            We&rsquo;ll email you our bank details shortly. Any questions? Call <a href={contact.telHref} className="underline text-[#1A1A1A]">{contact.phone}</a>.
+      <div className="mb-5">
+        {bankDetails ? (
+          <BankDetails details={bankDetails} reference={b.bank_reference} />
+        ) : (
+          <p className="text-[12px] text-[#5A5A5A] bg-white border border-[#E5E5E5] p-5">
+            We&rsquo;ll email you our bank details shortly{b.bank_reference ? <> — your reference is <strong className="text-[#1A1A1A]">{b.bank_reference}</strong></> : null}. Any questions? Call <a href={contact.telHref} className="underline text-[#1A1A1A]">{contact.phone}</a>.
           </p>
-        )}
-        {b.bank_reference && (
-          <div className="border-t border-[#E5E5E5] mt-3 pt-3 flex items-center justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-[#B3A89B]">Reference — please quote this</p>
-              <p className="font-heading text-xl text-[#1A1A1A]" data-testid="workshop-booking-bank-reference">{b.bank_reference}</p>
-            </div>
-            <button type="button" onClick={() => onCopy(b.bank_reference, "Reference")} className="text-[#7A7A7A] hover:text-[#1A1A1A]" aria-label="Copy reference">
-              <Copy size={16} />
-            </button>
-          </div>
         )}
       </div>
 

@@ -91,14 +91,20 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50" data-testid="header">
       {/* Utility strip */}
       {settings?.utility_bar_enabled !== false && (
-        <div className="bg-[#1A1A1A] text-[#FAFAF7] py-1.5 px-6 md:px-12" data-testid="utility-strip">
-          <div className="max-w-[1400px] mx-auto flex items-center justify-end gap-4 sm:gap-6 text-[10px] uppercase tracking-[0.18em] sm:tracking-[0.22em] font-body">
+        <div className="bg-[#1A1A1A] text-[#FAFAF7] py-1.5 px-4 md:px-12" data-testid="utility-strip">
+          {/* Mobile: the message wraps onto up to two centred lines (never cut off); the Enquire link is
+              already in the main menu, so it only shows here when there is no message. Desktop: one row. */}
+          <div className="max-w-[1400px] mx-auto flex items-center justify-center md:justify-end gap-4 sm:gap-6 text-[9px] sm:text-[10px] uppercase tracking-[0.12em] sm:tracking-[0.22em] font-body leading-snug">
             {settings?.utility_bar_text ? (
-              <span className="text-[#FAFAF7]/85 truncate min-w-0" data-testid="utility-strip-text">
+              <span className="text-[#FAFAF7]/85 text-center md:text-right min-w-0 line-clamp-2 md:line-clamp-1" data-testid="utility-strip-text">
                 {settings.utility_bar_text}
               </span>
             ) : null}
-            <Link to="/consultation" className="hover:text-[#B3A89B] transition-colors whitespace-nowrap shrink-0" data-testid="utility-enquire-link">
+            <Link
+              to="/consultation"
+              className={`hover:text-[#B3A89B] transition-colors whitespace-nowrap shrink-0 ${settings?.utility_bar_text ? "hidden md:inline" : ""}`}
+              data-testid="utility-enquire-link"
+            >
               Enquire — bespoke →
             </Link>
           </div>

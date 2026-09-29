@@ -36,7 +36,8 @@ export function calcWorkshopAmounts(workshop, session, guests, paymentChoice) {
   const choice = depositAvailable ? paymentChoice : "full";
   const discountAmount = choice === "full" ? fullDiscount : 0;
   const amountDueNow = choice === "full" ? fullAmount : depositAmount;
-  const balanceOnDay = +(subtotal - amountDueNow).toFixed(2);
+  // Paying in full leaves nothing to pay on the day (the discount is a saving, not a balance)
+  const balanceOnDay = choice === "full" ? 0 : +(subtotal - amountDueNow).toFixed(2);
   return { guests: g, pricePerGuest, depositPerGuest, discountPct, subtotal, fullAmount, depositAmount, depositAvailable, effectiveChoice: choice, discountAmount, amountDueNow, balanceOnDay };
 }
 

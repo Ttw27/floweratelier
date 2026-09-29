@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, MapPin, Users, CheckCircle2, Copy, Phone, MessageCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, CheckCircle2, Phone, MessageCircle } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
+import BankDetails, { pickBankDetails } from "../components/BankDetails";
 import { getContact, whatsappHref } from "../lib/contact";
 import { calcWorkshopAmounts, isSessionPast, fmtWorkshopDate as fmtDate } from "../lib/workshopPricing";
 
@@ -45,6 +46,7 @@ export default function PrivateWorkshopBookingPage() {
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [cardEnabled, setCardEnabled] = useState(true);
   const [bankEnabled, setBankEnabled] = useState(false);
+  const [bankFromApi, setBankFromApi] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
 
@@ -53,6 +55,7 @@ export default function PrivateWorkshopBookingPage() {
       .then((r) => {
         setCardEnabled(!!r.data?.card_enabled);
         setBankEnabled(!!r.data?.bank_transfer_enabled);
+        setBankFromApi(r.data?.bank_details || null);
       })
       .catch(() => { setCardEnabled(true); setBankEnabled(false); }); // fail open for card — don't block booking on a status-check error
   }, []);
@@ -63,6 +66,7 @@ export default function PrivateWorkshopBookingPage() {
     else if (cardEnabled) setPaymentMethod("stripe");
   }, [cardEnabled, bankEnabled]);
 
+  const bankDetails = pickBankDetails(confirmedBooking?.bank_details, bankFromApi, settings);
   const noPaymentMethod = !cardEnabled && !bankEnabled;
   const contact = getContact(settings);
 
@@ -141,11 +145,6 @@ export default function PrivateWorkshopBookingPage() {
     }
   };
 
-  const copyText = (text, label) => {
-    navigator.clipboard.writeText(text)
-      .then(() => toast.success(`${label} copied`))
-      .catch(() => {});
-  };
 
   if (loading) {
     return (
@@ -185,23 +184,12 @@ export default function PrivateWorkshopBookingPage() {
             </p>
           </div>
 
-          <div className="bg-[#FAFAF7] border border-[#E5E5E5] p-6 mb-6 space-y-3">
-            {settings?.bank_account_name && <Row label="Account name" value={settings.bank_account_name} />}
-            {settings?.bank_name && <Row label="Bank" value={settings.bank_name} />}
-            {settings?.bank_sort_code && <Row label="Sort code" value={settings.bank_sort_code} />}
-            {settings?.bank_account_number && <Row label="Account number" value={settings.bank_account_number} />}
-            {!settings?.bank_sort_code && !settings?.bank_account_number && (
-              <p className="text-[12px] text-[#5A5A5A]">We&rsquo;ll email you our bank details shortly. Any questions? Call <a href={contact.telHref} className="underline text-[#1A1A1A]">{contact.phone}</a>.</p>
+          <div className="mb-6">
+            {bankDetails ? (
+              <BankDetails details={bankDetails} reference={b.bank_reference} />
+            ) : (
+              <p className="text-[12px] text-[#5A5A5A] bg-white border border-[#E5E5E5] p-5">We&rsquo;ll email you our bank details shortly — your reference is <strong className="text-[#1A1A1A]">{b.bank_reference}</strong>. Any questions? Call <a href={contact.telHref} className="underline text-[#1A1A1A]">{contact.phone}</a>.</p>
             )}
-            <div className="border-t border-[#E5E5E5] mt-3 pt-3 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[#B3A89B]">Reference — please quote this</p>
-                <p className="font-heading text-xl text-[#1A1A1A]">{b.bank_reference}</p>
-              </div>
-              <button type="button" onClick={() => copyText(b.bank_reference, "Reference")} className="text-[#7A7A7A] hover:text-[#1A1A1A]">
-                <Copy size={16} />
-              </button>
-            </div>
           </div>
 
           <div className="bg-white border border-[#E5E5E5] p-4 mb-8 text-sm">
@@ -364,7 +352,7 @@ export default function PrivateWorkshopBookingPage() {
             </div>
 
             <div>
-              <Label className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(food &amp; drink is served)</span></Label>
+              <Label className="text-sm text-[#1A1A1A]">Dietary requirements <span className="text-[#7A7A7A] text-xs">(only if food &amp; drink has been arranged with us — extra charges apply)</span></Label>
               <Textarea rows={2} value={form.dietary_requirements} onChange={(e) => setForm({ ...form, dietary_requirements: e.target.value })} className="light-input rounded-none mt-2" placeholder="e.g. gluten-free, vegan, nut allergy" />
             </div>
 
@@ -471,10 +459,18 @@ export default function PrivateWorkshopBookingPage() {
               )}
 
               {!noPaymentMethod && paymentMethod === "bank_transfer" && (
-                <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3 mt-3">
-                  <p className="text-[12px] text-[#6B4E00] leading-relaxed">
-                    <strong>Please note:</strong> this date is only held provisionally. Your booking is not secured until we've received your bank transfer — please send payment as soon as possible to avoid losing this date to another booking.
-                  </p>
+                <div className="mt-3 space-y-3">
+                  <div className="bg-[#FBF3E7] border border-[#E9C46A] p-3">
+                    <p className="text-[12px] text-[#6B4E00] leading-relaxed">
+                      <strong>Please note:</strong> this date is only held provisionally. Your booking is not secured until we've received your bank transfer — please send payment as soon as possible to avoid losing this date to another booking. You&rsquo;ll get your payment reference on the next screen and by email.
+                    </p>
+                  </div>
+                  {bankDetails && (
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-[#B3A89B] mb-2">Our bank details</p>
+                      <BankDetails details={bankDetails} compact />
+                    </div>
+                  )}
                 </div>
               )}
 
