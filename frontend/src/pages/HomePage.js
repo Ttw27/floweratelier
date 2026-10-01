@@ -34,8 +34,8 @@ const OCCASIONS = [
   { name: "Anniversary", slug: "anniversary", to: "/collection?occasion=anniversary" },
   { name: "Thank You", slug: "thank-you", to: "/collection?occasion=thank-you" },
   { name: "Congratulations", slug: "congratulations", to: "/collection?occasion=congratulations" },
-  { name: "Just Because", slug: "celebration", category: "celebration", fallback: "/collection?occasion=celebration" },
-  { name: "New Home", slug: "celebration", category: "celebration", fallback: "/collection?occasion=celebration" },
+  { name: "Just Because", slug: "celebration", category: "celebration", fallback: "/collection" },
+  { name: "New Home", slug: "celebration", category: "celebration", fallback: "/collection" },
   { name: "Sympathy", slug: "sympathy", category: "sympathy", fallback: "/sympathy" },
   { name: "Wedding", slug: "wedding", category: "wedding", fallback: "/weddings" },
 ];
@@ -114,7 +114,7 @@ export default function HomePage() {
     };
     fetchData();
     axios.get(`${API_URL}/api/categories`)
-      .then((r) => setCategorySlugs(new Set((r.data || []).map((c) => c.slug))))
+      .then((r) => setCategorySlugs(new Set((r.data || []).filter((c) => c.product_count > 0).map((c) => c.slug))))
       .catch(() => {});
   }, []);
 

@@ -15,7 +15,7 @@ export default function InShopDisplaysPage() {
     { title: "Bespoke Brand Activations", description: "Floral takeovers of concept stores, capsule collections and product launches — designed end-to-end.", price_label: "from £4,400", image_url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200" },
     { title: "Daily Café & Patisserie", description: "Delicate florals on cake stands, counter tops and tableware — refreshed twice weekly.", price_label: "from £180 / visit", image_url: "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200" },
     { title: "Fitting Room Posies", description: "Small considered posies in every fitting room — for bridal, boutique and luxury retail.", price_label: "from £55 each", image_url: "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200" },
-    { title: "Permanent Programmes", description: "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", price_label: "from £1,800 / month", image_url: "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200" },
+    { title: "Permanent Programmes", description: "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", price_label: "from £1,800 / month", image_url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200" },
   ];
 
   return (

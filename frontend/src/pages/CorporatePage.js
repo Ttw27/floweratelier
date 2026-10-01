@@ -10,7 +10,7 @@ const HERO = "https://images.unsplash.com/photo-1768508949823-26255327c264?w=180
 export default function CorporatePage() {
   const { content, loading } = usePageContent("corporate");
   const defaultTiers = [
-    { title: "Weekly Install Programmes", description: "Rotating seasonal arrangements for hotels, clubs, offices and showrooms — delivered weekly with account-managed continuity.", price_label: "from £1,200 / month", image_url: "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200" },
+    { title: "Weekly Install Programmes", description: "Rotating seasonal arrangements for hotels, clubs, offices and showrooms — delivered weekly with account-managed continuity.", price_label: "from £1,200 / month", image_url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200" },
     { title: "Product Launches & Openings", description: "Statement floral architecture — arches, pedestals, installations and press-wall floral detailing.", price_label: "from £3,500", image_url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200" },
     { title: "Gala Dinners & Award Events", description: "Tablescape design, room decoration and guest floral gifts.", price_label: "from £2,500", image_url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200" },
     { title: "Executive & Client Gifting", description: "Curated gift programmes for VIPs, clients and executives — delivered nationally.", price_label: "from £95 per piece", image_url: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200" },

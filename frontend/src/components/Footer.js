@@ -1,7 +1,13 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import { Instagram, Facebook, Mail, Phone, MapPin, MessageCircle } from "lucide-react";
 import { useSettings } from "../context/SettingsContext";
 import { getContact, whatsappHref } from "../lib/contact";
+
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+// Wedding & sympathy already have their own links under Occasions
+const SHOP_LINK_EXCLUDE = new Set(["wedding", "sympathy"]);
 
 export default function Footer() {
   const { settings } = useSettings();
@@ -10,6 +16,18 @@ export default function Footer() {
   const instagramUrl = (settings?.instagram_url || "").trim();
   const facebookUrl = (settings?.facebook_url || "").trim();
   const year = new Date().getFullYear();
+  // Only link to shop categories that actually have products in them
+  const [shopCategories, setShopCategories] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    axios.get(`${API_URL}/api/categories`)
+      .then((r) => {
+        if (cancelled) return;
+        setShopCategories((r.data || []).filter((c) => c.product_count > 0 && !SHOP_LINK_EXCLUDE.has(c.slug)).slice(0, 4));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <footer className="bg-[#FAFAF7] border-t border-[#E5E5E5]" data-testid="footer">
@@ -59,9 +77,9 @@ export default function Footer() {
             <h4 className="accent-label mb-6 text-[#1A1A1A]">Shop</h4>
             <ul className="space-y-3">
               <li><Link to="/collection" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors" data-testid="footer-collection">Bouquets</Link></li>
-              <li><Link to="/collection/garden-roses" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">Garden Roses</Link></li>
-              <li><Link to="/collection/exotics" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">Orchids</Link></li>
-              <li><Link to="/collection/celebration" className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">Celebration</Link></li>
+              {shopCategories.map((c) => (
+                <li key={c.slug}><Link to={`/collection/${c.slug}`} className="font-body text-sm text-[#7A7A7A] hover:text-[#1A1A1A] transition-colors">{c.name}</Link></li>
+              ))}
             </ul>
           </div>
 

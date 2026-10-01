@@ -15,7 +15,7 @@ export default function FilmTVPhotoshootPage() {
     { title: "Music Videos", description: "Hero floral builds for music video productions — petal baths, floor florals, floral architecture.", price_label: "from £3,200", image_url: "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=1200" },
     { title: "Film & TV Set Florals", description: "Period-accurate or contemporary floral set dressing — for series, features and commercials.", price_label: "from £2,800 / day", image_url: "https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=1200" },
     { title: "Brand Campaign Florals", description: "Hero stems, custom builds and bespoke florals shot for global advertising.", price_label: "from £1,200", image_url: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200" },
-    { title: "Daily Studio Programmes", description: "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", price_label: "from £680 / day", image_url: "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200" },
+    { title: "Daily Studio Programmes", description: "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", price_label: "from £680 / day", image_url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200" },
   ];
 
   const credits = ["Vogue", "Tatler", "British GQ", "Harper's Bazaar", "Netflix", "BBC", "Burberry", "Charlotte Tilbury"];

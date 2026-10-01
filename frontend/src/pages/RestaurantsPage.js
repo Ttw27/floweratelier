@@ -27,7 +27,7 @@ export default function RestaurantsPage() {
       title: "Private Members' Club Programmes",
       description: "Full-property floral programmes for private clubs — reading rooms, dining rooms, bars, entrance halls and event spaces. Discreet access, impeccable delivery.",
       price_label: "from £1,800 / month",
-      image_url: "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200",
+      image_url: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200",
     },
     {
       title: "Seasonal & Event Dressing",

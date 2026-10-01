@@ -645,7 +645,26 @@ async def get_categories():
         {"$addFields": {"product_count": {"$ifNull": [{"$arrayElemAt": ["$_count.n", 0]}, 0]}}},
         {"$project": {"_id": 0, "_count": 0}},
     ]
-    return await db.categories.aggregate(pipeline).to_list(200)
+    docs = await db.categories.aggregate(pipeline).to_list(200)
+    return _merge_duplicate_categories(docs)
+
+
+def _merge_duplicate_categories(docs: list) -> list:
+    """Older data contains duplicate copies of some categories. Show each slug once, keeping the copy
+    that has products (counts combined). Display-only — no category records are changed or deleted."""
+    merged: dict = {}
+    for d in docs:
+        key = d.get("slug") or d.get("id")
+        if key not in merged:
+            merged[key] = d
+        else:
+            keep = merged[key]
+            total = keep.get("product_count", 0) + d.get("product_count", 0)
+            if d.get("product_count", 0) > keep.get("product_count", 0):
+                keep = d
+            keep["product_count"] = total
+            merged[key] = keep
+    return list(merged.values())
 
 @api_router.post("/categories", response_model=CategoryResponse)
 async def create_category(data: CategoryCreate, admin = Depends(require_admin)):
@@ -671,7 +690,9 @@ async def get_products(
 ):
     query = {}
     if category:
-        cat = await db.categories.find_one({"slug": category}, {"_id": 0})
+        # Match every category with this slug (older data has duplicate copies of some categories)
+        cat_ids = [c["id"] async for c in db.categories.find({"slug": category}, {"_id": 0, "id": 1})]
+        cat = {"id": {"$in": cat_ids}} if cat_ids else None
         if cat:
             query["category_id"] = cat["id"]
     if occasion:
@@ -3284,7 +3305,7 @@ PAGE_CONTENT_SEED = [
         "tiers": [
             {"title": "Table Centrepiece Programmes", "description": "Weekly or fortnightly centrepieces for every table — designed to your colour palette and interior scheme.", "price_label": "from £600 / month", "image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200", "sort_order": 10},
             {"title": "Bar & Reception Displays", "description": "Statement arrangements for bar tops, host stands and entrance areas — the first impression your guests carry.", "price_label": "from £350 / month", "image_url": "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=1200", "sort_order": 20},
-            {"title": "Private Members' Club Programmes", "description": "Full-property floral programmes for private clubs — reading rooms, dining rooms, bars and entrance halls.", "price_label": "from £1,800 / month", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 30},
+            {"title": "Private Members' Club Programmes", "description": "Full-property floral programmes for private clubs — reading rooms, dining rooms, bars and entrance halls.", "price_label": "from £1,800 / month", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 30},
             {"title": "Seasonal & Event Dressing", "description": "Tasting menus, chef's table evenings, launch nights and private hire — full floral dressing around your brief.", "price_label": "from £1,200 per event", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 40},
         ],
     },
@@ -3296,7 +3317,7 @@ PAGE_CONTENT_SEED = [
         "hero_image": "https://images.unsplash.com/photo-1530092285049-1c42085fd395?w=1800",
         "hero_cta_label": "Discuss a corporate programme", "hero_cta_url": "/consultation?service=corporate",
         "tiers": [
-            {"title": "Weekly Install Programmes", "description": "Rotating seasonal arrangements for hotels, clubs, offices and showrooms — delivered weekly with account-managed continuity.", "price_label": "from £1,200 / month", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 10},
+            {"title": "Weekly Install Programmes", "description": "Rotating seasonal arrangements for hotels, clubs, offices and showrooms — delivered weekly with account-managed continuity.", "price_label": "from £1,200 / month", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 10},
             {"title": "Product Launches & Openings", "description": "Statement floral architecture — arches, pedestals, installations and press-wall floral detailing.", "price_label": "from £3,500", "image_url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200", "sort_order": 20},
             {"title": "Gala Dinners & Award Events", "description": "Tablescape design, room decoration and guest floral gifts.", "price_label": "from £2,500", "image_url": "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", "sort_order": 30},
             {"title": "Executive & Client Gifting", "description": "Curated gift programmes for VIPs, clients and executives — delivered nationally.", "price_label": "from £95 per piece", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 40},
@@ -3341,7 +3362,7 @@ PAGE_CONTENT_SEED = [
             {"title": "Music Videos", "description": "Hero floral builds for music video productions — petal baths, floor florals, floral architecture.", "price_label": "from £3,200", "image_url": "https://images.unsplash.com/photo-1567696911980-2eed69a46042?w=1200", "sort_order": 30},
             {"title": "Film & TV Set Florals", "description": "Period-accurate or contemporary floral set dressing — for series, features and commercials.", "price_label": "from £2,800 / day", "image_url": "https://images.unsplash.com/photo-1505944270255-72b8c68c6a70?w=1200", "sort_order": 40},
             {"title": "Brand Campaign Florals", "description": "Hero stems, custom builds and bespoke florals shot for global advertising.", "price_label": "from £1,200", "image_url": "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200", "sort_order": 50},
-            {"title": "Daily Studio Programmes", "description": "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", "price_label": "from £680 / day", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 60},
+            {"title": "Daily Studio Programmes", "description": "Talk-show, news and breakfast-TV studio florals delivered daily on a long-term retainer.", "price_label": "from £680 / day", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 60},
         ],
     },
     {
@@ -3373,7 +3394,7 @@ PAGE_CONTENT_SEED = [
             {"title": "Bespoke Brand Activations", "description": "Floral takeovers of concept stores, capsule collections and product launches — designed end-to-end.", "price_label": "from £4,400", "image_url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200", "sort_order": 30},
             {"title": "Daily Café & Patisserie", "description": "Delicate florals on cake stands, counter tops and tableware — refreshed twice weekly.", "price_label": "from £180 / visit", "image_url": "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1200", "sort_order": 40},
             {"title": "Fitting Room Posies", "description": "Small considered posies in every fitting room — for bridal, boutique and luxury retail.", "price_label": "from £55 each", "image_url": "https://images.unsplash.com/photo-1561049501-e1f96bdd98fd?w=1200", "sort_order": 50},
-            {"title": "Permanent Programmes", "description": "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", "price_label": "from £1,800 / month", "image_url": "https://images.unsplash.com/photo-1606293926249-ed24cb1f7b97?w=1200", "sort_order": 60},
+            {"title": "Permanent Programmes", "description": "Ongoing weekly or fortnightly programmes — single point of contact, fixed monthly retainer.", "price_label": "from £1,800 / month", "image_url": "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=1200", "sort_order": 60},
         ],
     },
     {
@@ -4588,6 +4609,49 @@ class SEOPage(BaseModel):
     robots: str = "index,follow"
     structured_data: Optional[Dict] = None
 
+_DEFAULT_PAGE_SEO = {
+    "/collection": ("Luxury Flowers Delivered in Leicester | Flower Atelier",
+                    "Editorial, hand-tied bouquets made to order in our Leicester atelier and delivered across Leicester and the Midlands."),
+    "/weddings": ("Wedding Florist Leicester | Flower Atelier",
+                  "Bridal bouquets, ceremony and reception flowers designed for your day by a Leicester wedding florist."),
+    "/traveller-weddings": ("Traveller Wedding Flowers | Flower Atelier",
+                            "Statement traveller wedding flowers — grand arches, cars, venues and bridal pieces, made to be seen."),
+    "/faith-weddings": ("Asian, Hindu, Sikh & Muslim Wedding Flowers | Flower Atelier",
+                        "Mandap, nikah and multicultural wedding florals designed with respect for every tradition."),
+    "/sympathy": ("Funeral & Sympathy Flowers Leicester | Flower Atelier",
+                  "Dignified funeral tributes, wreaths, coffin sprays and sympathy flowers, made with care in Leicester."),
+    "/traveller-funerals": ("Traveller Funeral Flowers & Tributes | Flower Atelier",
+                            "Large bespoke traveller funeral tributes, lettering and themed pieces made to honour a life."),
+    "/corporate": ("Corporate Florist & Office Flowers | Flower Atelier",
+                   "Weekly office, reception and event flowers for businesses across Leicester and the Midlands."),
+    "/hotels-hospitality": ("Hotel & Hospitality Flowers | Flower Atelier",
+                            "Lobby, suite and event floristry programmes for hotels and hospitality venues."),
+    "/restaurants": ("Restaurant & Bar Flowers | Flower Atelier",
+                     "Table, bar and seasonal installation flowers for restaurants, bars and private clubs."),
+    "/house-installs": ("Home Flower Subscriptions & Installs | Flower Atelier",
+                        "Seasonal flowers for your home, refreshed on a schedule that suits you."),
+    "/shop-front-installs": ("Shop Front Flower Installations | Flower Atelier",
+                             "Eye-catching floral shop front and window installations that stop the street."),
+    "/in-shop-displays": ("In-Store Floral Displays | Flower Atelier",
+                          "Floral displays and visual merchandising for retail spaces and launches."),
+    "/film-tv-photoshoot": ("Film, TV & Photoshoot Florist | Flower Atelier",
+                            "Florals for film sets, TV studios, editorial shoots and music videos."),
+    "/workshops": ("Flower Workshops in Leicester | Flower Atelier",
+                   "Hands-on flower arranging and wreath workshops — at our atelier or at your venue."),
+    "/workshops/pubs-venues": ("Flower Workshops for Pubs & Venues | Flower Atelier",
+                               "Host a flower workshop night at your pub or venue — we bring everything."),
+    "/workshops/care-homes": ("Flower Workshops for Care Homes | Flower Atelier",
+                              "Gentle, accessible flower arranging sessions for care home residents."),
+    "/portfolio": ("Portfolio | Flower Atelier",
+                   "A selection of weddings, funerals, events and installations by Flower Atelier."),
+    "/consultation": ("Bespoke Flower Enquiry | Flower Atelier",
+                      "Tell us about your wedding, event or tribute and we'll be in touch to plan your flowers."),
+    "/delivery": ("Delivery & Flower Care | Flower Atelier",
+                  "Delivery days, charges and how to care for your Flower Atelier flowers."),
+    "/privacy": ("Privacy & Cookies | Flower Atelier", ""),
+}
+
+
 @api_router.get("/seo")
 async def get_seo_for_path(path: str = "/"):
     """Public — returns merged SEO meta for a given route, with defaults."""
@@ -4603,6 +4667,11 @@ async def get_seo_for_path(path: str = "/"):
         "structured_data": None,
         "site_name": settings.get("seo_site_name", "Flower Atelier"),
     }
+    page_default = _DEFAULT_PAGE_SEO.get(path.rstrip("/") or "/")
+    if page_default:
+        fallback["title"] = page_default[0]
+        if page_default[1]:
+            fallback["description"] = page_default[1]
     doc = await db.seo_pages.find_one({"path": path}, {"_id": 0})
     if not doc:
         return fallback
