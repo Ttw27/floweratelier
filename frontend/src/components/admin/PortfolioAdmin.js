@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Pencil, Trash2, X, Upload, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Upload, Star, Images } from "lucide-react";
+import BulkPortfolioImport from "./BulkPortfolioImport";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const CATEGORIES = [
+  { value: "bouquets",           label: "Bouquets & Gifts" },
   { value: "wedding",            label: "Weddings" },
   { value: "traveller_wedding",  label: "Traveller Weddings" },
   { value: "faith_wedding",      label: "Faith Weddings" },
@@ -37,6 +39,7 @@ export default function PortfolioAdmin() {
   const [filter, setFilter] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const fileRef = useRef(null);
 
   const load = async () => {
@@ -106,6 +109,7 @@ export default function PortfolioAdmin() {
 
   return (
     <div className="bg-white border border-[#E5E5E5] p-6 md:p-8" data-testid="portfolio-admin-card">
+      {bulkOpen && <BulkPortfolioImport categories={CATEGORIES} onClose={() => setBulkOpen(false)} onDone={load} />}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h3 className="font-heading text-2xl font-light text-[#1A1A1A]">Portfolio</h3>
@@ -119,6 +123,9 @@ export default function PortfolioAdmin() {
               return <option key={c.value} value={c.value}>{c.label} ({n})</option>;
             })}
           </select>
+          <Button onClick={() => setBulkOpen(true)} variant="outline" className="rounded-none" data-testid="portfolio-bulk-btn">
+            <Images size={14} className="mr-2" /> Bulk import
+          </Button>
           <Button onClick={() => setEditing(empty())} className="btn-dark rounded-none" data-testid="portfolio-add-btn">
             <Plus size={14} className="mr-2" /> Add item
           </Button>

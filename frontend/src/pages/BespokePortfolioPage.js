@@ -8,6 +8,7 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const FILTERS = [
   { id: "all", name: "All" },
+  { id: "bouquets", name: "Bouquets & Gifts" },
   { id: "wedding", name: "Weddings" },
   { id: "traveller_wedding", name: "Traveller Weddings" },
   { id: "faith_wedding", name: "Faith & Cultural" },
@@ -233,7 +234,7 @@ export default function BespokePortfolioPage() {
                 </div>
               )}
               <Link
-                to={`/consultation?service=${encodeURIComponent(selected.category === "hotels" ? "hotels_hospitality" : (selected.category || "bespoke"))}&portfolio_item_id=${selected.id}&ref_title=${encodeURIComponent(selected.title || "")}`}
+                to={`/consultation?service=${encodeURIComponent(selected.category === "hotels" ? "hotels_hospitality" : selected.category === "bouquets" ? "gift" : (selected.category || "bespoke"))}&portfolio_item_id=${selected.id}&ref_title=${encodeURIComponent(selected.title || "")}`}
                 data-testid="portfolio-inquire"
               >
                 <Button className="btn-dark w-full rounded-none py-6 inline-flex items-center justify-center gap-3">
