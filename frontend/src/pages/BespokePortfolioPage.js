@@ -41,8 +41,18 @@ export default function BespokePortfolioPage() {
   }, [searchParams]);
 
   // Write filter to URL when changed from inside the page
+  const galleryRef = useRef(null);
+  const filterBarRef = useRef(null);
   const handleFilterChange = (id) => {
     setFilter(id);
+    // If the visitor has scrolled into the gallery, bring them back to the start of the photos
+    // (just under the sticky header + filter bar) rather than leaving them mid-way through.
+    const gallery = galleryRef.current;
+    if (gallery) {
+      const offset = headerH + (filterBarRef.current?.offsetHeight || 0);
+      const target = gallery.getBoundingClientRect().top + window.scrollY - offset;
+      if (window.scrollY > target + 4) window.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+    }
     if (id === "all") {
       searchParams.delete("category");
     } else {
@@ -125,6 +135,7 @@ export default function BespokePortfolioPage() {
 
       {/* Filters */}
       <section
+        ref={filterBarRef}
         className="sticky z-30 border-b border-[#E5E5E5] bg-[#FAFAF7]/95 backdrop-blur-md"
         style={{ top: headerH }}
         data-testid="portfolio-filter-bar"
@@ -162,7 +173,7 @@ export default function BespokePortfolioPage() {
       </section>
 
       {/* Gallery — Masonry feel via CSS columns */}
-      <section className="py-16 md:py-24 px-6 md:px-12">
+      <section ref={galleryRef} className="py-16 md:py-24 px-6 md:px-12">
         <div className="max-w-[1400px] mx-auto">
           {loading ? (
             <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
